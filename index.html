@@ -1,0 +1,2481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRUCOLOCO — El Juego</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #e8d5a0;
+  }
+  #game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+    z-index: 1;
+  }
+  /* Overlay UI on top of canvas */
+  #ui-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    min-height: 50px;
+    background: linear-gradient(180deg, rgba(10,5,0,0.95) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    pointer-events: none;
+  }
+  #title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #c8860a;
+    text-shadow: 0 0 20px #c8860a, 0 0 40px rgba(200,134,10,0.5);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  #music-indicator {
+    font-size: 13px;
+    color: #888;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  #music-toggle {
+    pointer-events: auto;
+    background: rgba(20, 10, 5, 0.8);
+    border: 1px solid rgba(200,134,10,0.35);
+    color: #c8a951;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  #music-toggle:hover {
+    border-color: #c8a951;
+    box-shadow: 0 0 12px rgba(200,169,81,0.25);
+  }
+  #selected-player-badge {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(8, 5, 4, 0.92);
+    border: 1px solid rgba(200,169,81,0.35);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 11px;
+    color: #e8d5b0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 14;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+  #hand-info {
+    font-size: 13px;
+    color: #c8860a;
+  }
+  #score-panel-left, #score-panel-right {
+    position: absolute;
+    top: 60px;
+    width: 130px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(200,134,10,0.3);
+    border-radius: 6px;
+    padding: 10px;
+    pointer-events: auto;
+  }
+  #score-panel-left { left: 8px; }
+  #score-panel-right { right: 8px; }
+  .score-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .score-value {
+    font-size: 36px;
+    font-weight: bold;
+    text-shadow: 0 0 15px currentColor;
+    line-height: 1;
+  }
+  .score-team-a .score-value { color: #c8390a; text-shadow: 0 0 15px #c8390a; }
+  .score-team-b .score-value { color: #0a4ac8; text-shadow: 0 0 15px #0a4ac8; }
+  .score-goal { font-size: 9px; color: #666; margin-top: 4px; }
+  #penalties-list {
+    margin-top: 8px;
+    font-size: 9px;
+    color: #c8390a;
+    min-height: 40px;
+  }
+  #bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    min-height: 80px;
+    background: linear-gradient(0deg, rgba(10,5,0,0.97) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 180px;
+    pointer-events: auto;
+  }
+  .canto-btn {
+    background: rgba(30,15,5,0.9);
+    border: 1px solid rgba(200,134,10,0.5);
+    color: #c8860a;
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    pointer-events: auto;
+  }
+  .canto-btn:hover {
+    background: rgba(200,134,10,0.3);
+    border-color: #c8860a;
+    box-shadow: 0 0 10px rgba(200,134,10,0.4);
+    transform: translateY(-1px);
+  }
+  .canto-btn.special {
+    border-color: rgba(200,57,10,0.7);
+    color: #ff6633;
+  }
+  .canto-btn.special:hover {
+    background: rgba(200,57,10,0.3);
+    border-color: #ff6633;
+  }
+  .canto-btn.trucoloco {
+    border-color: rgba(150,0,200,0.7);
+    color: #cc44ff;
+    animation: glowPurple 2s ease-in-out infinite;
+  }
+  @keyframes glowPurple { 0%,100%{box-shadow:0 0 5px rgba(150,0,200,0.3)} 50%{box-shadow:0 0 15px rgba(150,0,200,0.7)} }
+  #turn-indicator {
+    position: absolute;
+    bottom: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(200,134,10,0.4);
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 11px;
+    color: #c8860a;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #trucoloco-card-display {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    border: 1px solid rgba(150,0,200,0.5);
+    border-radius: 8px;
+    padding: 8px 16px;
+    text-align: center;
+    pointer-events: none;
+  }
+  #trucoloco-card-display .tc-label {
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #trucoloco-card-display .tc-name {
+    font-size: 13px;
+    color: #cc44ff;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(150,0,200,0.7);
+  }
+  /* Sustancia X overlay */
+  #sustancia-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    display: none;
+    z-index: 50;
+  }
+  #sustancia-overlay.active {
+    display: block;
+    animation: psychedelic 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes psychedelic {
+    0% { background: radial-gradient(ellipse at center, rgba(100,0,200,0.12) 0%, rgba(0,200,100,0.06) 50%, transparent 70%); }
+    50% { background: radial-gradient(ellipse at center, rgba(200,0,100,0.1) 0%, rgba(0,100,200,0.08) 50%, transparent 70%); }
+    100% { background: radial-gradient(ellipse at 30% 70%, rgba(0,200,200,0.1) 0%, rgba(200,100,0,0.06) 50%, transparent 70%); }
+  }
+  .sustancia-text {
+    position: absolute;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(200,100,255,0.7);
+    text-shadow: 0 0 20px rgba(200,100,255,0.9), 2px 2px 0 rgba(0,200,200,0.5), -2px -2px 0 rgba(200,0,100,0.5);
+    animation: floatText 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes floatText {
+    0% { transform: translateY(0px) rotate(-2deg); opacity: 0.7; }
+    50% { transform: translateY(-20px) rotate(2deg); opacity: 1; }
+    100% { transform: translateY(0px) rotate(-2deg); opacity: 0.7; }
+  }
+  /* Highlight flash */
+  #highlight-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    display: none;
+    z-index: 60;
+    background: rgba(200,134,10,0.3);
+    justify-content: center;
+    align-items: center;
+  }
+  #highlight-overlay.active {
+    display: flex;
+    animation: highlightFlash 0.5s ease-in-out 3;
+  }
+  @keyframes highlightFlash {
+    0%,100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  #highlight-text {
+    font-size: 60px;
+    font-weight: bold;
+    color: #c8860a;
+    text-shadow: 0 0 30px #c8860a, 0 0 60px rgba(200,134,10,0.7);
+    letter-spacing: 8px;
+  }
+  /* Speech bubbles */
+  .speech-bubble {
+    position: absolute;
+    background: rgba(20,10,5,0.95);
+    border: 1px solid rgba(200,134,10,0.6);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #e8d5a0;
+    pointer-events: none;
+    z-index: 30;
+    max-width: 160px;
+    text-align: center;
+    animation: bubbleIn 0.2s ease-out;
+  }
+  @keyframes bubbleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(200,134,10,0.6);
+  }
+  /* Vignette */
+  #vignette {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 5;
+  }
+  /* Modal for Trucoloco card reveal */
+  #card-reveal-modal {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: auto;
+  }
+  #card-reveal-modal.active { display: flex; }
+  #card-reveal-inner {
+    background: linear-gradient(135deg, #1a0a2a, #0a0a1a);
+    border: 2px solid #cc44ff;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 0 60px rgba(150,0,200,0.5), 0 0 120px rgba(150,0,200,0.2);
+    animation: revealIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes revealIn { from { transform: scale(0.3) rotate(-10deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
+  #card-reveal-inner h2 {
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+  }
+  #card-reveal-inner h1 {
+    font-size: 28px;
+    color: #cc44ff;
+    text-shadow: 0 0 20px #cc44ff;
+    margin-bottom: 16px;
+  }
+  #card-reveal-inner p {
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  #reveal-close-btn {
+    background: rgba(150,0,200,0.3);
+    border: 1px solid #cc44ff;
+    color: #cc44ff;
+    padding: 10px 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    transition: all 0.2s;
+  }
+  #reveal-close-btn:hover { background: rgba(150,0,200,0.6); }
+  /* Penalty flash */
+  #penalty-flash {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(200,0,0,0.25);
+    pointer-events: none;
+    display: none;
+    z-index: 55;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 80px;
+  }
+  #penalty-flash.active { display: flex; animation: penaltyAnim 0.8s ease-out forwards; }
+  @keyframes penaltyAnim {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  #penalty-text-big {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff2200;
+    text-shadow: 0 0 20px #ff2200;
+    letter-spacing: 4px;
+  }
+  /* EXODIA overlay */
+  #exodia-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(200,160,0,0.2);
+    pointer-events: none;
+    display: none;
+    z-index: 65;
+    justify-content: center;
+    align-items: center;
+  }
+  #exodia-overlay.active {
+    display: flex;
+    animation: exodiaAnim 3s ease-out forwards;
+  }
+  @keyframes exodiaAnim {
+    0% { background: rgba(200,160,0,0.5); }
+    50% { background: rgba(200,160,0,0.3); }
+    100% { background: transparent; }
+  }
+  #exodia-text {
+    font-size: 80px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 40px #ffd700, 0 0 80px rgba(255,215,0,0.8);
+    letter-spacing: 12px;
+    animation: exodiaText 3s ease-out forwards;
+  }
+  @keyframes exodiaText {
+    0% { transform: scale(0.1); opacity: 0; }
+    30% { transform: scale(1.2); opacity: 1; }
+    70% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+  /* Side panel */
+  #side-panel {
+    position: absolute;
+    right: 145px;
+    top: 200px;
+    width: 140px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid rgba(200,134,10,0.2);
+    border-radius: 6px;
+    padding: 8px;
+    pointer-events: auto;
+    font-size: 9px;
+  }
+  #side-panel h4 {
+    color: #c8860a;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(200,134,10,0.3);
+    padding-bottom: 4px;
+  }
+  .weapon-item {
+    color: #aaa;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  /* Log panel */
+  #log-panel {
+    position: absolute;
+    left: 145px;
+    top: 200px;
+    width: 140px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid rgba(200,134,10,0.2);
+    border-radius: 6px;
+    padding: 8px;
+    pointer-events: none;
+    font-size: 9px;
+    max-height: 200px;
+    overflow: hidden;
+  }
+  #log-panel h4 {
+    color: #c8860a;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(200,134,10,0.3);
+    padding-bottom: 4px;
+  }
+  .log-entry {
+    color: #888;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 8px;
+  }
+  .log-entry.important { color: #c8860a; }
+  .log-entry.penalty { color: #c8390a; }
+  /* game over */
+  #game-over-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.92);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    pointer-events: auto;
+  }
+  #game-over-screen.active { display: flex; }
+  #game-over-inner {
+    text-align: center;
+  }
+  #game-over-inner h1 {
+    font-size: 64px;
+    font-weight: bold;
+    letter-spacing: 8px;
+    text-shadow: 0 0 40px currentColor;
+    margin-bottom: 20px;
+  }
+  #game-over-inner p {
+    font-size: 20px;
+    color: #aaa;
+    margin-bottom: 30px;
+  }
+  #restart-btn {
+    background: rgba(200,134,10,0.2);
+    border: 2px solid #c8860a;
+    color: #c8860a;
+    padding: 14px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  #restart-btn:hover { background: rgba(200,134,10,0.4); }
+  /* chromatic aberration for sustancia */
+  .aberration-red {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(255,0,0,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .aberration-cyan {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at 80% 80%, rgba(0,255,200,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .hidden-ui {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .visible-ui {
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+  #start-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    background:
+      radial-gradient(circle at top, rgba(139,26,26,0.35), transparent 40%),
+      radial-gradient(circle at bottom right, rgba(200,169,81,0.18), transparent 35%),
+      linear-gradient(135deg, rgba(8,8,12,0.98), rgba(15,8,4,0.96));
+  }
+  #start-screen.hidden {
+    display: none;
+  }
+  #start-panel {
+    width: min(1200px, 100%);
+    max-height: calc(100vh - 60px);
+    overflow: auto;
+    border: 1px solid rgba(200,169,81,0.25);
+    border-radius: 28px;
+    padding: 28px;
+    background: rgba(8, 6, 5, 0.88);
+    box-shadow: 0 30px 100px rgba(0,0,0,0.45);
+  }
+  #start-panel h1 {
+    font-size: clamp(42px, 8vw, 96px);
+    color: #c8a951;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    line-height: 0.9;
+    text-shadow: 0 0 30px rgba(200,169,81,0.25);
+  }
+  #start-panel h2 {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #8b1a1a;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  #start-copy {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 20px;
+  }
+  .start-copy-block {
+    background: rgba(20, 12, 8, 0.82);
+    border: 1px solid rgba(200,169,81,0.16);
+    border-radius: 20px;
+    padding: 18px;
+  }
+  .start-copy-block p {
+    color: #d5c5a2;
+    line-height: 1.55;
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .start-copy-block strong {
+    color: #c8a951;
+  }
+  #start-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .meta-chip {
+    border: 1px solid rgba(200,169,81,0.2);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(6, 5, 4, 0.8);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #9a927e;
+  }
+  .meta-chip span {
+    display: block;
+    color: #e8d5b0;
+    font-size: 13px;
+    margin-top: 3px;
+  }
+  #character-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .character-card {
+    border: 1px solid rgba(200,169,81,0.18);
+    background: linear-gradient(180deg, rgba(19,13,10,0.95), rgba(10,8,7,0.9));
+    border-radius: 18px;
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .character-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(200,169,81,0.5);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+  }
+  .character-card.selected {
+    border-color: #c8a951;
+    box-shadow: 0 0 0 1px rgba(200,169,81,0.5), 0 18px 50px rgba(139,26,26,0.18);
+  }
+  .character-role {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #8b1a1a;
+    margin-bottom: 6px;
+  }
+  .character-name {
+    font-size: 24px;
+    color: #f1dfba;
+    margin-bottom: 6px;
+  }
+  .character-quote {
+    font-size: 12px;
+    color: #c9b999;
+    min-height: 38px;
+    line-height: 1.45;
+  }
+  .character-reaction {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #9b59b6;
+    line-height: 1.4;
+  }
+  #start-actions {
+    margin-top: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  #selected-character-summary {
+    flex: 1;
+    min-width: 250px;
+    color: #e8d5b0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  #selected-character-summary strong {
+    color: #c8a951;
+  }
+  .start-btn {
+    pointer-events: auto;
+    border-radius: 999px;
+    border: 1px solid rgba(200,169,81,0.5);
+    padding: 12px 22px;
+    background: rgba(24, 12, 8, 0.92);
+    color: #f1dfba;
+    cursor: pointer;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+  .start-btn:hover {
+    box-shadow: 0 0 16px rgba(200,169,81,0.2);
+  }
+  .start-btn.primary {
+    background: linear-gradient(135deg, rgba(139,26,26,0.9), rgba(60,11,11,0.95));
+    border-color: rgba(255,90,60,0.55);
+  }
+  .start-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  @media (max-width: 920px) {
+    #start-copy {
+      grid-template-columns: 1fr;
+    }
+    #character-grid {
+      grid-template-columns: 1fr;
+    }
+    #start-meta {
+      grid-template-columns: 1fr;
+    }
+    #bottom-bar {
+      padding: 10px 12px 18px;
+    }
+    #log-panel, #side-panel {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="start-screen">
+    <div id="start-panel">
+      <h1>TRUCOLOCO 5.0</h1>
+      <h2>La Traición • club clandestino de cartas • Rosario</h2>
+
+      <div id="start-copy">
+        <div class="start-copy-block">
+          <p><strong>Trucoloco</strong> no es un casino fino. Es humo, ego, lunfardo, gafas arruinavisión, un hexágono de madera y gente jurando que <strong>Pink Floyd es reglamentario</strong>.</p>
+          <p>Elegí un personaje y sentate en tu asiento. Los otros cinco quedan en manos de la IA. El objetivo sigue siendo el de siempre: ganar a 30, humillar al rival y sobrevivir a las cartas del mazo Trucoloco.</p>
+          <div id="start-meta">
+            <div class="meta-chip">Formato<span>1 humano vs 5 IA</span></div>
+            <div class="meta-chip">Objetivo<span>30 puntos</span></div>
+            <div class="meta-chip">Ambiente<span>Antro turbio</span></div>
+          </div>
+        </div>
+        <div class="start-copy-block">
+          <p><strong>Reglas activas en esta build:</strong> Truco base, envido, mazo Trucoloco, mazo de armas, Sustancia X, Ley L'Merk, Highlight y penalizaciones narradas como relator pasado de rosca.</p>
+          <p>Antes de entrar podés activar el placeholder de música. No carga temas reales: sólo marca el tono de la mesa y deja listo el ritual.</p>
+          <button class="start-btn" id="start-music-toggle" type="button">♪ Pink Floyd Placeholder</button>
+        </div>
+      </div>
+
+      <div id="character-grid"></div>
+
+      <div id="start-actions">
+        <div id="selected-character-summary">Elegí un personaje para arrancar la mano inicial.</div>
+        <button class="start-btn primary" id="start-match-btn" type="button" disabled>Entrar Al Antro</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+
+  <!-- Phaser injects canvas here automatically -->
+
+  <div id="ui-overlay" class="hidden-ui">
+    <div id="top-bar">
+      <div id="title">TRUCOLOCO</div>
+      <div id="hand-info">Mano #<span id="hand-number">1</span></div>
+      <button id="music-toggle" type="button">♪ Pink Floyd Placeholder</button>
+    </div>
+    <div id="selected-player-badge">Jugador humano: —</div>
+
+    <!-- Scores -->
+    <div id="score-panel-left" class="score-team-a">
+      <div class="score-label">Equipo A</div>
+      <div class="score-value" id="score-a">0</div>
+      <div class="score-goal">/ 30 puntos</div>
+      <div id="penalties-list-a"></div>
+    </div>
+    <div id="score-panel-right" class="score-team-b">
+      <div class="score-label">Equipo B</div>
+      <div class="score-value" id="score-b">0</div>
+      <div class="score-goal">/ 30 puntos</div>
+      <div id="penalties-list-b"></div>
+    </div>
+
+    <!-- Active Trucoloco card -->
+    <div id="trucoloco-card-display">
+      <div class="tc-label">Trucoloco activo</div>
+      <div class="tc-name" id="tc-active-name">—</div>
+    </div>
+
+    <!-- Log -->
+    <div id="log-panel">
+      <h4>Registro</h4>
+      <div id="log-entries"></div>
+    </div>
+
+    <!-- Weapons in play -->
+    <div id="side-panel">
+      <h4>Armas activas</h4>
+      <div id="weapons-active">Ninguna</div>
+      <h4 style="margin-top:8px">Penalizaciones</h4>
+      <div id="penalty-table" style="color:#c8390a;font-size:8px;">
+        <div>Cambiar música: -5pts</div>
+        <div>Violar Ley L'Merk: -3pts</div>
+        <div>Ley L'Merk: acuerdo obligatorio</div>
+      </div>
+    </div>
+
+    <!-- Turn indicator -->
+    <div id="turn-indicator">Turno de: <span id="current-turn-name">—</span></div>
+
+    <!-- Action buttons -->
+    <div id="bottom-bar">
+      <button class="canto-btn" id="btn-envido" onclick="gameUI.callCanto('envido')">ENVIDO</button>
+      <button class="canto-btn" id="btn-real-envido" onclick="gameUI.callCanto('real_envido')">REAL ENVIDO</button>
+      <button class="canto-btn" id="btn-falta-envido" onclick="gameUI.callCanto('falta_envido')">FALTA ENVIDO</button>
+      <button class="canto-btn" id="btn-truco" onclick="gameUI.callCanto('truco')">TRUCO</button>
+      <button class="canto-btn" id="btn-retruco" onclick="gameUI.callCanto('retruco')">RE TRUCO</button>
+      <button class="canto-btn" id="btn-vale4" onclick="gameUI.callCanto('vale4')">VALE 4</button>
+      <button class="canto-btn special" id="btn-super-envido" style="display:none" onclick="gameUI.callCanto('super_envido')">SUPER ENVIDO</button>
+      <button class="canto-btn special" id="btn-super-truco" style="display:none" onclick="gameUI.callCanto('super_truco')">SUPER TRUCO</button>
+      <button class="canto-btn trucoloco" id="btn-trucoloco" style="display:none" onclick="gameUI.callCanto('trucoloco')">¡TRUCOLOCO!</button>
+      <button class="canto-btn" id="btn-quiero" style="display:none;border-color:rgba(0,200,100,0.7);color:#00cc66" onclick="gameUI.respondCanto(true)">QUIERO</button>
+      <button class="canto-btn" id="btn-no-quiero" style="display:none;border-color:rgba(200,0,0,0.7);color:#cc0000" onclick="gameUI.respondCanto(false)">NO QUIERO</button>
+      <button class="canto-btn" id="btn-highlight" style="border-color:rgba(200,200,0,0.7);color:#cccc00" onclick="gameUI.callHighlight()">HIGHLIGHT!</button>
+    </div>
+
+    <!-- Sustancia X overlay -->
+    <div id="sustancia-overlay">
+      <div class="aberration-red"></div>
+      <div class="aberration-cyan"></div>
+      <div class="sustancia-text" id="st1" style="top:20%;left:10%">EL UTONEO MANDA</div>
+      <div class="sustancia-text" id="st2" style="top:40%;right:10%;animation-delay:1s">SUSTANCIA ACTIVA</div>
+      <div class="sustancia-text" id="st3" style="top:60%;left:30%;animation-delay:2s">INVENCIBLE</div>
+      <div class="sustancia-text" id="st4" style="top:15%;right:25%;animation-delay:0.5s;font-size:14px;color:rgba(0,255,200,0.7)">¡¡¡ MODO DIOS !!!</div>
+    </div>
+
+    <!-- Highlight overlay -->
+    <div id="highlight-overlay">
+      <div id="highlight-text">¡HIGHLIGHT!</div>
+    </div>
+
+    <!-- Penalty flash -->
+    <div id="penalty-flash">
+      <div id="penalty-text-big">PENALIZACIÓN</div>
+    </div>
+
+    <!-- EXODIA overlay -->
+    <div id="exodia-overlay">
+      <div id="exodia-text">EXODIA</div>
+    </div>
+
+    <!-- Trucoloco card reveal modal -->
+    <div id="card-reveal-modal">
+      <div id="card-reveal-inner">
+        <h2>✦ Carta Trucoloco ✦</h2>
+        <h1 id="reveal-card-name">MODO CLÁSICO</h1>
+        <p id="reveal-card-desc">Truco normal. Que gane el mejor.</p>
+        <button id="reveal-close-btn" onclick="gameUI.closeReveal()">¡DALE!</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="game-over-screen">
+      <div id="game-over-inner">
+        <h1 id="game-over-title" style="color:#c8860a">¡CAMPEÓN!</h1>
+        <p id="game-over-subtitle">Equipo X ganó la partida</p>
+        <button id="restart-btn" onclick="location.reload()">JUGAR DE NUEVO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<script>
+'use strict';
+
+// ===== CONSTANTS =====
+const W = window.innerWidth;
+const H = window.innerHeight;
+const CX = W / 2;
+const CY = H / 2;
+
+// Card hierarchy values (higher = stronger)
+const CARD_POWER = {};
+function buildCardPower() {
+  // 1 espada = 14, 1 basto = 13, 7 espada = 12, 7 oro = 11
+  // 3s = 10, 2s = 9, 1 copa/oro = 8, 12s = 7, 11s = 6, 10s = 5
+  // 7 copa/basto = 4, 6s = 3, 5s = 2, 4s = 1
+  const suits = ['espada','basto','oro','copa'];
+  const values = [1,2,3,4,5,6,7,10,11,12];
+  suits.forEach(s => values.forEach(v => {
+    let p = 0;
+    if (v===1 && s==='espada') p=14;
+    else if (v===1 && s==='basto') p=13;
+    else if (v===7 && s==='espada') p=12;
+    else if (v===7 && s==='oro') p=11;
+    else if (v===3) p=10;
+    else if (v===2) p=9;
+    else if (v===1) p=8; // copa, oro
+    else if (v===12) p=7;
+    else if (v===11) p=6;
+    else if (v===10) p=5;
+    else if (v===7) p=4; // copa, basto
+    else if (v===6) p=3;
+    else if (v===5) p=2;
+    else if (v===4) p=1;
+    CARD_POWER[`${v}_${s}`] = p;
+  }));
+}
+buildCardPower();
+
+const SUIT_SYMBOLS = { espada: '⚔', basto: '♣', oro: '★', copa: '☕' };
+const SUIT_COLORS = { espada: '#e8d5a0', basto: '#7acc44', oro: '#ffd700', copa: '#ff7744' };
+
+// ===== MAZO DEL TRUCO =====
+function createTrucoMazo() {
+  const suits = ['espada','basto','oro','copa'];
+  const vals = [1,2,3,4,5,6,7,10,11,12];
+  const deck = [];
+  suits.forEach(s => vals.forEach(v => deck.push({suit:s, value:v, id:`${v}_${s}`})));
+  return shuffle(deck);
+}
+
+// ===== TRUCOLOCO CARDS =====
+const TRUCOLOCO_CARDS = [
+  { name: 'Modo Clásico', desc: 'Truco normal. Que gane el mejor.' },
+  { name: 'Modo Invertido', desc: 'Todos sostienen las cartas al revés. ¡A ver cómo jugás así!' },
+  { name: 'Modo Oculto/Oculto', desc: 'Elegís tapado, jugás tapado. Nadie sabe nada.' },
+  { name: 'Modo Oculto/Descubierto', desc: 'Elegís sin ver, jugás destapado. El azar manda.' },
+  { name: 'Modo Descubierto/Oculto', desc: 'Ves tus cartas pero jugás tapado. El bluff es todo.' },
+  { name: 'Espada', desc: '¡Armáte! Cada jugador saca una carta del Mazo de Armas.' },
+  { name: 'Versus', desc: 'Duelo directo entre vos y tu antagonista. Mano a mano.' },
+  { name: 'SUPER Versus', desc: 'Cada uno pone su mejor carta. Se mezclan y redistribuyen. Caos total.' },
+  { name: 'Gafas', desc: 'El jugador activo DEBE ponerse las gafas del hexágono.' },
+  { name: 'Hexágono 6 Gafas', desc: '¡TODOS se ponen gafas! Nadie se salva esta mano.' },
+  { name: 'Prohibido Negociar', desc: 'Los negociantes no pueden hacer tratos esta mano. ¡Silencio!' },
+  { name: 'Revolver', desc: '6 balas, una por jugador. Cada una elimina una carta rival.' },
+  { name: 'Gomera', desc: 'Un tiro certero para eliminar la mejor carta del oponente.' },
+  { name: 'Sustancia X', desc: '⚠ EFECTO DROGA ⚠ Pantalla psicodélica. El jugador es INVENCIBLE e inventa una habilidad.' },
+  { name: 'R.I.P.', desc: 'El jugador sorteado queda eliminado de esta mano. Descanse en paz.' },
+  { name: 'SUPER J.E.', desc: 'El J.E. toma todas las cartas de sus compañeros y juega SOLO.' },
+  { name: 'Anulación Gazpacho', desc: 'Los poderes de El Gazpacho quedan anulados esta mano. Mortal.' },
+  { name: 'EXODIA', desc: '☀ PODER ABSOLUTO ☀ Pertenece a El Gazpacho por derecho divino. Puede ser desafiado.' },
+  { name: 'Kryptonita del Ancho', desc: 'El As de Espada vale como un 4 esta mano. El Gazpacho sufre.' },
+  { name: 'Tráfico de Drogas', desc: 'Los Team Managers están en quiebra. No pueden usar armas esta mano.' },
+];
+
+// ===== MAZO DE ARMAS =====
+const WEAPONS = [
+  { name: 'As', desc: 'Poder absoluto. Pertenece a El Gazpacho (último MVP).', special: 'as' },
+  { name: 'Comodín', desc: 'Funciona como cualquier carta excepto el As.', special: 'comodin' },
+  { name: 'Varita Mágica', desc: 'Cambia el palo de una carta.', special: 'varita' },
+  { name: 'Bloqueo Envido', desc: 'Bloquea el canto de envido del rival.', special: 'bloqueo_envido' },
+  { name: 'Bloqueo Truco', desc: 'Bloquea el canto de truco del rival.', special: 'bloqueo_truco' },
+  { name: 'Ojo', desc: 'Ves una carta de cada oponente.', special: 'ojo' },
+  { name: 'Anti-gafas', desc: 'Elimina las gafas de cualquier jugador.', special: 'antigafas' },
+  { name: 'Escudo', desc: 'Protege de cualquier arma o habilidad.', special: 'escudo' },
+  { name: 'EXODIA', desc: 'Poder absoluto si El Gazpacho tiene el As.', special: 'exodia' },
+  { name: 'Trampa', desc: 'El rival descarta una carta aleatoriamente.', special: 'trampa' },
+  { name: 'Rotación Gafas Edu', desc: 'Las gafas malditas cambian de dueño sin pedir permiso.', special: 'rotacion_gafas' },
+  { name: 'Parca', desc: 'Marca a un rival: su mejor carta queda tocada por la desgracia.', special: 'parca' },
+  { name: 'Tiempo Arena', desc: 'Acelera el caos: la siguiente respuesta se toma bajo presión.', special: 'tiempo_arena' },
+  { name: 'Mano de Dios', desc: 'Mejora una carta media y la vende como milagro.', special: 'mano_de_dios' },
+  { name: 'Llamado del Hexágono', desc: 'Todo el mundo mira al centro y sospecha del de al lado.', special: 'hexagono' },
+];
+
+const CHARACTER_BIOS = {
+  1: { title: 'Negociante rival', reaction: 'Con Sustancia X empieza a cerrar tratos con una lámpara y exige firmas invisibles.' },
+  2: { title: 'J.E. soviético de utilería', reaction: 'Se convence de que puede ver el futuro y canta cartas que todavía no salieron.' },
+  3: { title: 'Team manager salvaje', reaction: 'Promete arsenal infinito y termina arengando al mazo de armas como si fuera una hinchada.' },
+  4: { title: 'Negociante del barro', reaction: 'Bajo Sustancia X habla en tecnicismos falsos y cree que la Ley L\'Merk la inventó él.' },
+  5: { title: 'MVP legendario', reaction: 'Se declara literalmente invencible, reclama inmunidad divina y grita "EXODIA. OBLITERATE." sin contexto.' },
+  6: { title: 'Dueño legítimo de las gafas', reaction: 'Siente que cada lente le revela otra dimensión y acusa a todos de tocarle el inventario.' },
+};
+
+// ===== PLAYERS =====
+const PLAYERS = [
+  { id: 1, name: 'El Cónsul', role: 'negociante', team: 'B', quote: '"Los puntos se negocian, no se regalan."', hasGafas: false, hasWeapon: null, sustanciaX: false, isEliminated: false },
+  { id: 2, name: 'El Ruso', role: 'je', team: 'B', quote: '"La mejor carta siempre está en mi mano."', hasGafas: false, hasWeapon: null, sustanciaX: false, isEliminated: false },
+  { id: 3, name: 'La Bestia', role: 'tm', team: 'B', quote: '"Las armas no se piden prestadas."', hasGafas: false, hasWeapon: null, sustanciaX: false, isEliminated: false },
+  { id: 4, name: 'El Negociante', role: 'negociante', team: 'A', quote: '"Un trato es un trato, flaco."', hasGafas: false, hasWeapon: null, sustanciaX: false, isEliminated: false },
+  { id: 5, name: 'El Gazpacho', role: 'je', team: 'A', quote: '"El As es mío por derecho divino."', hasGafas: false, hasWeapon: null, sustanciaX: false, isEliminated: false, isGazpacho: true },
+  { id: 6, name: 'Edu', role: 'tm', team: 'A', quote: '"No me toquen las gafas."', hasGafas: true, hasWeapon: null, sustanciaX: false, isEliminated: false, isEdu: true },
+];
+
+// Seat positions around table (angle from center)
+// Positions 1-3 top, 4-6 bottom
+const SEAT_ANGLES = [210, 270, 330, 30, 90, 150]; // degrees from right
+function getSeatPos(idx) {
+  // idx 0-5, table ellipse
+  const rx = Math.min(W * 0.28, 250);
+  const ry = Math.min(H * 0.28, 180);
+  const angle = (SEAT_ANGLES[idx] - 90) * Math.PI / 180;
+  return {
+    x: CX + rx * Math.cos(angle),
+    y: CY + ry * Math.sin(angle)
+  };
+}
+
+// ===== UTILITIES =====
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function roleLabel(role) {
+  if (role === 'je') return 'Jugador Estrella';
+  if (role === 'negociante') return 'Negociante';
+  return 'Team Manager';
+}
+function getCharacterSummary(player) {
+  const bio = CHARACTER_BIOS[player.id];
+  return `${player.name} es ${bio.title}. ${player.quote} Sustancia X: ${bio.reaction}`;
+}
+const PLAY_TAUNTS = [
+  '¡Y ahí va una carta con olor a antro clandestino!',
+  'Esto no estaba en el reglamento, pero ya salió.',
+  'La mesa tiembla. El ego no.',
+  '¡Mamita, qué manera de arriesgar cartón!'
+];
+const AI_REPLIES = ['¡Dale que va!', 'Esto no te lo esperabas.', '¿En serio jugaste eso?', 'Tomá, discutí esta.'];
+
+// ===== GAME STATE =====
+const GameState = {
+  appPhase: 'BOOT',
+  phase: 'SETUP', // SETUP, ENVIDO_PHASE, TRUCO_PHASE, SCORING, NEXT_HAND, GAME_OVER
+  handNumber: 1,
+  currentTurn: 3, // index into PLAYERS (0-based), starts at player index 3 (pos 4 = Negociante A)
+  turnOrder: [3,4,5,0,1,2], // Equipo A first
+  turnIndex: 0,
+  humanPlayerIdx: null,
+  selectedCharacterId: null,
+  scores: { A: 0, B: 0 },
+  hands: { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[] },
+  playedCards: [], // {playerIdx, card}
+  roundWins: { A: 0, B: 0 }, // wins in current hand
+  round: 1, // 1-3 rounds in a hand
+  activeTrucoCard: null,
+  trucoDeck: [],
+  trucolocoDeck: [],
+  armasDeck: [],
+  envidoStake: 1, // points at stake for envido
+  trucoStake: 1,
+  pendingCanto: null, // {type, callerIdx, stake}
+  waitingForResponse: false,
+  prohibidoNegociar: false,
+  sustanciaXActive: false,
+  sustanciaXPlayer: -1,
+  exodiaActive: false,
+  gazpachoAnulado: false,
+  kryptonitaAncho: false,
+  allGafas: false,
+  trucolocoBet: false, // Trucoloco! called
+  penalties: [],
+  highlightUsed: false,
+  activeWeapons: [],
+  leyLMerkPending: false,
+  aiThinking: false,
+  timeArenaActive: false,
+  musicEnabled: false,
+};
+
+// ===== GAME LOGIC =====
+const TrucoLogic = {
+  getCardPower(card) {
+    if (!card) return 0;
+    let p = CARD_POWER[card.id] || 0;
+    if (GameState.kryptonitaAncho && card.id === '1_espada') p = 1;
+    return p;
+  },
+  getEnvidoValue(card) {
+    if (card.value >= 10) return 0;
+    return card.value;
+  },
+  calcEnvido(hand) {
+    const suits = {};
+    hand.forEach(c => {
+      if (!suits[c.suit]) suits[c.suit] = [];
+      suits[c.suit].push(c);
+    });
+    let best = 0;
+    Object.values(suits).forEach(cards => {
+      if (cards.length >= 2) {
+        const vals = cards.map(c => this.getEnvidoValue(c)).sort((a,b)=>b-a);
+        const score = 20 + vals[0] + (vals[1] || 0);
+        if (score > best) best = score;
+      } else {
+        const v = this.getEnvidoValue(cards[0]);
+        if (v > best) best = v;
+      }
+    });
+    return best;
+  },
+  compareCards(a, b) {
+    const pa = this.getCardPower(a);
+    const pb = this.getCardPower(b);
+    if (pa > pb) return 1;
+    if (pb > pa) return -1;
+    return 0; // parda
+  },
+  determineRoundWinner(playedCards) {
+    // Returns 'A', 'B', or 'parda'
+    const aCards = playedCards.filter(pc => PLAYERS[pc.playerIdx].team === 'A');
+    const bCards = playedCards.filter(pc => PLAYERS[pc.playerIdx].team === 'B');
+    if (!aCards.length || !bCards.length) return null;
+    const bestA = aCards.reduce((best, pc) => this.getCardPower(pc.card) > this.getCardPower(best.card) ? pc : best);
+    const bestB = bCards.reduce((best, pc) => this.getCardPower(pc.card) > this.getCardPower(best.card) ? pc : best);
+    const cmp = this.compareCards(bestA.card, bestB.card);
+    if (cmp > 0) return 'A';
+    if (cmp < 0) return 'B';
+    return 'parda';
+  }
+};
+
+// ===== CARD RENDERER (Phaser scene helper) =====
+const CardRenderer = {
+  drawCardBack(scene, x, y, w, h) {
+    const g = scene.add.graphics();
+    g.fillStyle(0x1a0d05, 1);
+    g.fillRoundedRect(x - w/2, y - h/2, w, h, 4);
+    g.lineStyle(1, 0x3d2010, 1);
+    g.strokeRoundedRect(x - w/2, y - h/2, w, h, 4);
+    // Wood pattern
+    g.lineStyle(1, 0x2d1808, 0.5);
+    for (let i = 0; i < 6; i++) {
+      g.lineBetween(x - w/2 + 2, y - h/2 + i * (h/6), x + w/2 - 2, y - h/2 + i*(h/6) + h/10);
+    }
+    // T monogram
+    const t = scene.add.text(x, y, 'T', {
+      fontSize: Math.floor(h * 0.45) + 'px',
+      color: '#3d2010',
+      fontStyle: 'bold',
+      fontFamily: 'serif'
+    }).setOrigin(0.5, 0.5);
+    return { graphics: g, text: t };
+  },
+
+  drawCard(scene, x, y, w, h, card, glowColor = null, faceDown = false) {
+    if (faceDown) return this.drawCardBack(scene, x, y, w, h);
+    const g = scene.add.graphics();
+    // Shadow
+    g.fillStyle(0x000000, 0.5);
+    g.fillRoundedRect(x - w/2 + 2, y - h/2 + 3, w, h, 4);
+    // Card body
+    g.fillStyle(0xf5ead8, 1);
+    g.fillRoundedRect(x - w/2, y - h/2, w, h, 4);
+    // Border
+    g.lineStyle(1.5, 0xd4b896, 1);
+    g.strokeRoundedRect(x - w/2, y - h/2, w, h, 4);
+    // Glow
+    if (glowColor) {
+      g.lineStyle(3, glowColor, 0.7);
+      g.strokeRoundedRect(x - w/2 - 2, y - h/2 - 2, w + 4, h + 4, 5);
+    }
+    const suitColor = SUIT_COLORS[card.suit] || '#333';
+    const suitSym = SUIT_SYMBOLS[card.suit] || '?';
+    const valStr = card.value === 10 ? 'S' : card.value === 11 ? 'C' : card.value === 12 ? 'R' : String(card.value);
+    // Top left value
+    scene.add.text(x - w/2 + 4, y - h/2 + 3, valStr, {
+      fontSize: Math.floor(h * 0.2) + 'px', color: '#222', fontFamily: 'serif', fontStyle: 'bold'
+    }).setOrigin(0, 0);
+    // Top left suit
+    scene.add.text(x - w/2 + 3, y - h/2 + h * 0.22, suitSym, {
+      fontSize: Math.floor(h * 0.18) + 'px', color: suitColor
+    }).setOrigin(0, 0);
+    // Center suit big
+    scene.add.text(x, y, suitSym, {
+      fontSize: Math.floor(h * 0.38) + 'px', color: suitColor
+    }).setOrigin(0.5, 0.5);
+    // Bottom right (inverted)
+    const br = scene.add.text(x + w/2 - 4, y + h/2 - 3, valStr, {
+      fontSize: Math.floor(h * 0.2) + 'px', color: '#222', fontFamily: 'serif', fontStyle: 'bold'
+    }).setOrigin(1, 1);
+    return g;
+  }
+};
+
+// ===== SMOKE EFFECT =====
+class SmokeEffect {
+  constructor(scene) {
+    this.scene = scene;
+    this.particles = [];
+    for (let i = 0; i < 50; i++) {
+      this.particles.push(this.createParticle());
+    }
+    this.graphics = scene.add.graphics();
+    this.graphics.setDepth(3);
+  }
+  createParticle() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 80 + Math.random() * 70,
+      opacity: 0.02 + Math.random() * 0.06,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -0.2 - Math.random() * 0.4,
+      life: Math.random() * 300,
+      maxLife: 300 + Math.random() * 200,
+    };
+  }
+  update() {
+    this.graphics.clear();
+    this.particles.forEach((p, i) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life++;
+      const fade = p.life / p.maxLife;
+      const alpha = p.opacity * (1 - fade);
+      if (alpha > 0.005) {
+        this.graphics.fillStyle(0xaaaacc, alpha);
+        this.graphics.fillCircle(p.x, p.y, p.r);
+      }
+      if (p.life > p.maxLife || p.y < -p.r) {
+        this.particles[i] = this.createParticle();
+        this.particles[i].y = H + 50;
+        this.particles[i].life = 0;
+      }
+    });
+  }
+}
+
+// ===== ANIMATION MANAGER =====
+const AnimationManager = {
+  scene: null,
+  init(scene) { this.scene = scene; },
+
+  dealCard(fromX, fromY, toX, toY, card, playerIdx, faceDown, onComplete) {
+    const s = this.scene;
+    const w = 48, h = 72;
+    // Draw temporary card at source
+    const g = s.add.graphics();
+    g.fillStyle(0x1a0d05, 1);
+    g.fillRoundedRect(-w/2, -h/2, w, h, 4);
+    g.x = fromX; g.y = fromY;
+    g.setDepth(20);
+    s.tweens.add({
+      targets: g,
+      x: toX, y: toY,
+      duration: 350 + Math.random() * 150,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        g.destroy();
+        if (onComplete) onComplete();
+      }
+    });
+  },
+
+  playCard(fromX, fromY, toX, toY, card, teamColor, onComplete) {
+    const s = this.scene;
+    const w = 52, h = 78;
+    const g = s.add.graphics();
+    g.fillStyle(0xf5ead8, 1);
+    g.fillRoundedRect(-w/2, -h/2, w, h, 4);
+    g.lineStyle(2, teamColor, 1);
+    g.strokeRoundedRect(-w/2, -h/2, w, h, 4);
+    g.x = fromX; g.y = fromY;
+    g.setDepth(25);
+    s.tweens.add({
+      targets: g,
+      x: toX, y: toY,
+      duration: 400,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        if (onComplete) onComplete();
+        // Keep card on table, slowly fade after 3s
+        s.time.delayedCall(3000, () => {
+          s.tweens.add({ targets: g, alpha: 0, duration: 500, onComplete: () => g.destroy() });
+        });
+      }
+    });
+  },
+
+  showCantoSpeech(x, y, text, color) {
+    const el = document.createElement('div');
+    el.className = 'speech-bubble';
+    el.textContent = text;
+    el.style.left = (x - 80) + 'px';
+    el.style.top = (y - 60) + 'px';
+    el.style.borderColor = color || 'rgba(200,134,10,0.6)';
+    document.getElementById('ui-overlay').appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 600);
+    }, 2500);
+  },
+
+  showHighlight() {
+    const el = document.getElementById('highlight-overlay');
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 1600);
+  },
+
+  showPenalty(msg) {
+    const el = document.getElementById('penalty-flash');
+    const txt = document.getElementById('penalty-text-big');
+    txt.textContent = 'PENALIZACIÓN: ' + msg;
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 900);
+  },
+
+  showExodia() {
+    const el = document.getElementById('exodia-overlay');
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 3100);
+  },
+
+  activateSustanciaX() {
+    document.getElementById('sustancia-overlay').classList.add('active');
+    GameState.sustanciaXActive = true;
+  },
+  deactivateSustanciaX() {
+    document.getElementById('sustancia-overlay').classList.remove('active');
+    GameState.sustanciaXActive = false;
+    GameState.sustanciaXPlayer = -1;
+  },
+
+  floatingScore(x, y, pts, teamColor) {
+    const s = this.scene;
+    const t = s.add.text(x, y, '+' + pts, {
+      fontSize: '28px', color: teamColor === 'A' ? '#c8390a' : '#0a4ac8',
+      fontStyle: 'bold', fontFamily: 'Courier New'
+    }).setOrigin(0.5, 0.5).setDepth(50);
+    s.tweens.add({
+      targets: t,
+      y: y - 80, alpha: 0,
+      duration: 1500, ease: 'Cubic.easeOut',
+      onComplete: () => t.destroy()
+    });
+  }
+};
+
+// ===== UI MANAGER =====
+const gameUI = {
+  setHudVisible(visible) {
+    const overlay = document.getElementById('ui-overlay');
+    overlay.classList.toggle('hidden-ui', !visible);
+    overlay.classList.toggle('visible-ui', visible);
+  },
+
+  updateSelectedPlayerBadge() {
+    const badge = document.getElementById('selected-player-badge');
+    const player = PLAYERS[GameState.humanPlayerIdx];
+    badge.textContent = player ? `Jugador humano: ${player.name} • ${roleLabel(player.role)}` : 'Jugador humano: —';
+  },
+
+  updateMusicLabel() {
+    const label = GameState.musicEnabled
+      ? '♪ Pink Floyd Placeholder • ritual activo'
+      : '♪ Pink Floyd Placeholder';
+    const topBtn = document.getElementById('music-toggle');
+    const startBtn = document.getElementById('start-music-toggle');
+    if (topBtn) topBtn.textContent = label;
+    if (startBtn) startBtn.textContent = label;
+  },
+
+  toggleMusic() {
+    GameState.musicEnabled = !GameState.musicEnabled;
+    this.updateMusicLabel();
+    gameLog.add(
+      GameState.musicEnabled
+        ? 'Suena el placeholder ritual. Pink Floyd queda invocado por convenio moral.'
+        : 'El placeholder musical se apaga. Queda el humo y la tensión.',
+      'important'
+    );
+  },
+
+  selectCharacter(characterId) {
+    GameState.selectedCharacterId = characterId;
+    GameState.humanPlayerIdx = PLAYERS.findIndex(player => player.id === characterId);
+    document.querySelectorAll('.character-card').forEach(card => {
+      card.classList.toggle('selected', Number(card.dataset.id) === characterId);
+    });
+    const player = PLAYERS[GameState.humanPlayerIdx];
+    document.getElementById('selected-character-summary').innerHTML =
+      `<strong>${player.name}</strong> • ${roleLabel(player.role)} • Equipo ${player.team}<br>${getCharacterSummary(player)}`;
+    document.getElementById('start-match-btn').disabled = false;
+    this.updateSelectedPlayerBadge();
+  },
+
+  renderCharacterGrid() {
+    const grid = document.getElementById('character-grid');
+    grid.innerHTML = PLAYERS.map(player => {
+      const bio = CHARACTER_BIOS[player.id];
+      return `
+        <button class="character-card" type="button" data-id="${player.id}">
+          <div class="character-role">${roleLabel(player.role)} • Equipo ${player.team}</div>
+          <div class="character-name">${player.name}</div>
+          <div class="character-quote">${player.quote}</div>
+          <div class="character-reaction">Sustancia X: ${bio.reaction}</div>
+        </button>
+      `;
+    }).join('');
+    grid.querySelectorAll('.character-card').forEach(card => {
+      card.addEventListener('click', () => this.selectCharacter(Number(card.dataset.id)));
+    });
+  },
+
+  beginMatch() {
+    if (GameState.humanPlayerIdx === null || !scene) return;
+    document.getElementById('start-screen').classList.add('hidden');
+    this.setHudVisible(true);
+    this.updateSelectedPlayerBadge();
+    gameLog.resetForMatch();
+    scene.bootMatch();
+  },
+
+  updateScores() {
+    document.getElementById('score-a').textContent = GameState.scores.A;
+    document.getElementById('score-b').textContent = GameState.scores.B;
+  },
+  updateTurnIndicator() {
+    const p = PLAYERS[GameState.currentTurn];
+    document.getElementById('current-turn-name').textContent = p ? `${p.name} (${p.role.toUpperCase()})` : '—';
+  },
+  updateTrucolocoDisplay() {
+    const tc = GameState.activeTrucoCard;
+    document.getElementById('tc-active-name').textContent = tc ? tc.name : '—';
+  },
+  updateHandNumber() {
+    document.getElementById('hand-number').textContent = GameState.handNumber;
+  },
+  updateButtons() {
+    const humanTurn = GameState.currentTurn === GameState.humanPlayerIdx;
+    const p = PLAYERS[GameState.currentTurn];
+    const isJE = p && p.role === 'je';
+    const inEnvido = GameState.phase === 'ENVIDO_PHASE';
+    const inTruco = GameState.phase === 'TRUCO_PHASE';
+    const waiting = GameState.waitingForResponse;
+    const prohibido = GameState.prohibidoNegociar;
+
+    // Hide/show canto buttons
+    ['btn-envido','btn-real-envido','btn-falta-envido'].forEach(id => {
+      document.getElementById(id).style.display = inEnvido ? 'inline-block' : 'none';
+      document.getElementById(id).disabled = !(humanTurn && inEnvido && !waiting && !prohibido);
+    });
+    ['btn-truco','btn-retruco','btn-vale4'].forEach(id => {
+      document.getElementById(id).style.display = inTruco ? 'inline-block' : 'none';
+      document.getElementById(id).disabled = !(humanTurn && inTruco && !waiting);
+    });
+    document.getElementById('btn-super-envido').style.display = (isJE && inEnvido) ? 'inline-block' : 'none';
+    document.getElementById('btn-super-truco').style.display = (isJE && inTruco) ? 'inline-block' : 'none';
+    document.getElementById('btn-trucoloco').style.display = (isJE && inTruco) ? 'inline-block' : 'none';
+    document.getElementById('btn-super-envido').disabled = !(humanTurn && isJE && inEnvido && !waiting && !prohibido);
+    document.getElementById('btn-super-truco').disabled = !(humanTurn && isJE && inTruco && !waiting);
+    document.getElementById('btn-trucoloco').disabled = !(humanTurn && isJE && inTruco && !waiting);
+    const humanResponds = waiting && GameState.pendingCanto && GameState.pendingCanto.responderIdx === GameState.humanPlayerIdx;
+    document.getElementById('btn-quiero').style.display = humanResponds ? 'inline-block' : 'none';
+    document.getElementById('btn-no-quiero').style.display = humanResponds ? 'inline-block' : 'none';
+    document.getElementById('btn-quiero').disabled = !humanResponds;
+    document.getElementById('btn-no-quiero').disabled = !humanResponds;
+    document.getElementById('btn-highlight').disabled = !humanTurn;
+  },
+
+  callCanto(type, forcedByAI = false) {
+    if (GameState.waitingForResponse) return;
+    if (GameState.aiThinking) return;
+    if (!forcedByAI && GameState.currentTurn !== GameState.humanPlayerIdx) return;
+    const p = PLAYERS[GameState.currentTurn];
+    if (!p) return;
+
+    // Check prohibido negociar
+    if (GameState.prohibidoNegociar && ['envido','real_envido','falta_envido','super_envido'].includes(type)) {
+      gameLog.add('¡Prohibido negociar esta mano!', 'penalty');
+      AnimationManager.showPenalty('NEGOCIAR PROHIBIDO');
+      return;
+    }
+
+    const cantoNames = {
+      envido: 'ENVIDO', real_envido: 'REAL ENVIDO', falta_envido: 'FALTA ENVIDO',
+      truco: 'TRUCO', retruco: 'RE TRUCO', vale4: 'VALE 4',
+      super_envido: 'SÚPER ENVIDO', super_truco: 'SÚPER TRUCO', trucoloco: '¡TRUCOLOCO!'
+    };
+    const stakes = {
+      envido: 2, real_envido: 3, falta_envido: 30, truco: 2, retruco: 3, vale4: 4,
+      super_envido: 5, super_truco: 5, trucoloco: 8
+    };
+
+    const name = cantoNames[type] || type;
+    const stake = stakes[type] || 1;
+    const pos = getSeatPos(GameState.currentTurn);
+
+    AnimationManager.showCantoSpeech(pos.x, pos.y, name,
+      p.team === 'A' ? '#c8390a' : '#4488ff');
+    gameLog.add(`${p.name} canta: ${name}`, 'important');
+
+    // Special: Trucoloco!
+    if (type === 'trucoloco') {
+      GameState.trucolocoBet = true;
+      gameLog.add('¡Se apostó el TRUCOLOCO! Hay que ganar las 3 bazas.', 'important');
+    }
+
+    const responderIdx = forcedByAI
+      ? GameState.humanPlayerIdx
+      : rnd(GameState.turnOrder.filter(i => PLAYERS[i].team !== p.team));
+    GameState.pendingCanto = { type, callerIdx: GameState.currentTurn, responderIdx, stake };
+    GameState.waitingForResponse = true;
+    this.updateButtons();
+
+    if (!forcedByAI) {
+      setTimeout(() => this.aiRespondToCanto(), GameState.timeArenaActive ? 750 : 1500);
+    }
+  },
+
+  respondCanto(quiero) {
+    if (!GameState.pendingCanto || GameState.pendingCanto.responderIdx !== GameState.humanPlayerIdx) return;
+    const canto = GameState.pendingCanto;
+    const responder = PLAYERS[canto.responderIdx];
+    const caller = PLAYERS[canto.callerIdx];
+    const word = quiero ? '¡Quiero!' : '¡No quiero!';
+    const pos = getSeatPos(canto.responderIdx);
+    AnimationManager.showCantoSpeech(pos.x, pos.y, word);
+    gameLog.add(`${responder.name}: ${word}`);
+
+    this.resolveCanto(quiero, canto, responder);
+    GameState.pendingCanto = null;
+    GameState.waitingForResponse = false;
+    GameState.timeArenaActive = false;
+    this.updateButtons();
+    this.checkLeyLMerk(canto, quiero);
+  },
+
+  aiRespondToCanto() {
+    if (!GameState.pendingCanto) return;
+    const canto = GameState.pendingCanto;
+    const responderIdx = canto.responderIdx;
+    if (responderIdx === undefined) return;
+    const responder = PLAYERS[responderIdx];
+    // Simple AI: 60% chance to accept
+    const quiero = Math.random() > 0.4;
+    const word = quiero ? '¡Quiero!' : '¡No quiero!';
+    const pos = getSeatPos(responderIdx);
+    AnimationManager.showCantoSpeech(pos.x, pos.y, word, responder.team === 'A' ? '#c8390a' : '#4488ff');
+    gameLog.add(`${responder.name}: ${word}`);
+
+    this.resolveCanto(quiero, canto, responder);
+    GameState.pendingCanto = null;
+    GameState.waitingForResponse = false;
+    GameState.timeArenaActive = false;
+    this.updateButtons();
+    this.checkLeyLMerk(canto, quiero);
+  },
+
+  resolveCanto(quiero, canto, responder) {
+    const type = canto.type;
+    const callerTeam = PLAYERS[canto.callerIdx].team;
+    const responderTeam = responder.team;
+
+    if (!quiero) {
+      // Points go to caller
+      let pts = 1;
+      if (type === 'envido') pts = 1;
+      else if (type === 'real_envido') pts = 1;
+      else if (type === 'falta_envido') pts = 1;
+      else if (type === 'truco') pts = 1;
+      else if (type === 'retruco') pts = 2;
+      else if (type === 'vale4') pts = 3;
+      else if (type === 'super_envido') pts = 2;
+      else if (type === 'super_truco') pts = 2;
+      else if (type === 'trucoloco') {
+        pts = 3;
+        gameLog.add(`¡CAGÓN! ${responder.name} no quiso el Trucoloco.`, 'penalty');
+      }
+      GameState.scores[callerTeam] += pts;
+      AnimationManager.floatingScore(CX, CY, pts, callerTeam);
+      gameLog.add(`Equipo ${callerTeam} suma ${pts} puntos.`, 'important');
+    } else {
+      // Envido: compare envido values
+      if (['envido','real_envido','falta_envido','super_envido'].includes(type)) {
+        this.resolveEnvido(canto, responder);
+      }
+      // Truco/etc: continue playing, stake is set
+      if (['truco','retruco','vale4','super_truco','trucoloco'].includes(type)) {
+        GameState.trucoStake = canto.stake;
+        gameLog.add(`Truco apostado: ${canto.stake} puntos.`);
+      }
+    }
+    this.updateScores();
+    this.checkGameOver();
+  },
+
+  resolveEnvido(canto, responder) {
+    // Compare envido of each team
+    let bestA = 0, bestB = 0;
+    PLAYERS.forEach((p, i) => {
+      const hand = GameState.hands[i];
+      if (!hand || hand.length === 0) return;
+      const env = TrucoLogic.calcEnvido(hand);
+      if (p.team === 'A' && env > bestA) bestA = env;
+      if (p.team === 'B' && env > bestB) bestB = env;
+    });
+    gameLog.add(`Envido: A=${bestA} B=${bestB}`);
+    const pts = canto.stake;
+    const winTeam = bestA > bestB ? 'A' : 'B';
+    GameState.scores[winTeam] += pts;
+    AnimationManager.floatingScore(CX, CY, pts, winTeam);
+    gameLog.add(`Equipo ${winTeam} gana el envido: +${pts}`, 'important');
+    // Ley L'Merk: negociantes must agree
+    GameState.leyLMerkPending = true;
+  },
+
+  checkLeyLMerk(canto, quiero) {
+    if (!GameState.leyLMerkPending) return;
+    if (['envido','real_envido','falta_envido','falta_envido','super_envido'].includes(canto.type)) {
+      // Check if both negociantes are present
+      const negA = PLAYERS.find(p => p.team === 'A' && p.role === 'negociante');
+      const negB = PLAYERS.find(p => p.team === 'B' && p.role === 'negociante');
+      if (negA && negB) {
+        // Simulate: 80% they shake hands correctly
+        if (Math.random() > 0.2) {
+          gameLog.add(`✋ Ley L'Merk: ${negA.name} y ${negB.name} se estrechan la mano. Puntos confirmados.`, 'important');
+        } else {
+          // Violation
+          const violatorTeam = Math.random() > 0.5 ? 'A' : 'B';
+          GameState.scores[violatorTeam] -= 3;
+          AnimationManager.showPenalty('LEY L\'MERK (-3pts)');
+          gameLog.add(`¡Violación Ley L'Merk! Equipo ${violatorTeam} pierde 3 puntos.`, 'penalty');
+          this.updateScores();
+        }
+      }
+      GameState.leyLMerkPending = false;
+    }
+  },
+
+  callHighlight() {
+    const p = PLAYERS[GameState.currentTurn];
+    if (GameState.currentTurn !== GameState.humanPlayerIdx) return;
+    // Only TM can call highlight
+    const tm = PLAYERS.find(pl => pl.role === 'tm' && pl.team === (p ? p.team : 'A'));
+    if (!tm) return;
+    AnimationManager.showHighlight();
+    gameLog.add(`¡HIGHLIGHT! ${tm.name} activa poder especial para el equipo ${tm.team}.`, 'important');
+    const posX = getSeatPos(PLAYERS.indexOf(tm)).x;
+    const posY = getSeatPos(PLAYERS.indexOf(tm)).y;
+    AnimationManager.showCantoSpeech(posX, posY, '¡HIGHLIGHT!', '#cccc00');
+    // Give bonus
+    GameState.scores[tm.team] += 1;
+    this.updateScores();
+  },
+
+  closeReveal() {
+    document.getElementById('card-reveal-modal').classList.remove('active');
+    this.applyTrucolocoEffect();
+    gameUI.updateButtons();
+  },
+
+  applyTrucolocoEffect() {
+    const tc = GameState.activeTrucoCard;
+    if (!tc) return;
+    gameLog.add(`Efecto Trucoloco: ${tc.name}`, 'important');
+
+    switch (tc.name) {
+      case 'Sustancia X':
+        // Apply to a random player
+        const idx = Math.floor(Math.random() * 6);
+        GameState.sustanciaXPlayer = idx;
+        PLAYERS[idx].sustanciaX = true;
+        AnimationManager.activateSustanciaX();
+        gameLog.add(`¡SUSTANCIA X! ${PLAYERS[idx].name} está INVENCIBLE y en modo dios.`, 'important');
+        gameLog.add(`${PLAYERS[idx].name}: ${CHARACTER_BIOS[PLAYERS[idx].id].reaction}`, 'important');
+        break;
+      case 'EXODIA':
+        AnimationManager.showExodia();
+        GameState.exodiaActive = true;
+        // Belongs to Gazpacho
+        gameLog.add('¡EXODIA! El poder absoluto pertenece a El Gazpacho.', 'important');
+        break;
+      case 'Kryptonita del Ancho':
+        GameState.kryptonitaAncho = true;
+        gameLog.add('El As de Espada vale 4 esta mano. ¡Kryptonita del Ancho!', 'penalty');
+        break;
+      case 'Anulación Gazpacho':
+        GameState.gazpachoAnulado = true;
+        gameLog.add('Los poderes de El Gazpacho están anulados esta mano.', 'penalty');
+        break;
+      case 'Prohibido Negociar':
+        GameState.prohibidoNegociar = true;
+        gameLog.add('¡Prohibido Negociar! Los negociantes callan esta mano.', 'penalty');
+        break;
+      case 'Hexágono 6 Gafas':
+        GameState.allGafas = true;
+        PLAYERS.forEach(p => p.hasGafas = true);
+        gameLog.add('¡HEXÁGONO 6 GAFAS! Todos se ponen las gafas.', 'important');
+        scene && scene.drawPlayers && scene.drawPlayers();
+        break;
+      case 'Tráfico de Drogas':
+        gameLog.add('¡Tráfico de Drogas! Los Team Managers están en quiebra.', 'penalty');
+        break;
+      case 'Gafas':
+        PLAYERS[GameState.currentTurn].hasGafas = true;
+        gameLog.add(`${PLAYERS[GameState.currentTurn].name} queda condenado a las gafas del hexágono.`, 'important');
+        scene && scene.drawPlayers && scene.drawPlayers();
+        break;
+      case 'Tiempo Arena':
+        GameState.timeArenaActive = true;
+        gameLog.add('Tiempo arena activado. Las respuestas vuelan o se pagan caro.', 'important');
+        break;
+      case 'SUPER J.E.':
+        const je = PLAYERS.find(p => p.role === 'je' && p.team === 'A');
+        if (je) {
+          const jeIdx = PLAYERS.indexOf(je);
+          // Collect all teammates cards
+          [3,5].forEach(i => { // Negociante and TM of team A
+            GameState.hands[jeIdx].push(...GameState.hands[i]);
+            GameState.hands[i] = [];
+          });
+          gameLog.add(`¡SUPER J.E.! ${je.name} juega con todas las cartas del equipo.`, 'important');
+          scene && scene.redrawHands && scene.redrawHands();
+        }
+        break;
+      case 'R.I.P.':
+        const ripIdx = Math.floor(Math.random() * 6);
+        PLAYERS[ripIdx].isEliminated = true;
+        gameLog.add(`R.I.P.: ${PLAYERS[ripIdx].name} eliminado esta mano.`, 'penalty');
+        scene && scene.drawPlayers && scene.drawPlayers();
+        break;
+      default:
+        break;
+    }
+  },
+
+  updateWeaponsDisplay() {
+    const el = document.getElementById('weapons-active');
+    if (GameState.activeWeapons.length === 0) {
+      el.innerHTML = '<span style="color:#555">Ninguna</span>';
+    } else {
+      el.innerHTML = GameState.activeWeapons.map(w =>
+        `<div class="weapon-item">${w.name}</div>`).join('');
+    }
+  },
+
+  checkGameOver() {
+    if (GameState.scores.A >= 30) {
+      this.showGameOver('A');
+    } else if (GameState.scores.B >= 30) {
+      this.showGameOver('B');
+    }
+  },
+
+  showGameOver(winner) {
+    GameState.phase = 'GAME_OVER';
+    const screen = document.getElementById('game-over-screen');
+    const title = document.getElementById('game-over-title');
+    const sub = document.getElementById('game-over-subtitle');
+    title.style.color = winner === 'A' ? '#c8390a' : '#0a4ac8';
+    title.textContent = winner === 'A' ? '¡EQUIPO A GANÓ!' : '¡EQUIPO B GANÓ!';
+    const winnerNames = PLAYERS.filter(p => p.team === winner).map(p => p.name).join(', ');
+    sub.textContent = `¡${winnerNames} son los campeones! 30 puntos logrados.`;
+    screen.classList.add('active');
+    if (AnimationManager.scene) {
+      AnimationManager.showExodia();
+    }
+  }
+};
+
+// ===== LOG =====
+const gameLog = {
+  entries: [],
+  resetForMatch() {
+    this.entries = [];
+    this.add('=== TRUCOLOCO 5.0: LA TRAICIÓN ===', 'important');
+    this.add('Silencio en el antro. Se cierran las persianas y empieza la mano.', '');
+    const human = PLAYERS[GameState.humanPlayerIdx];
+    if (human) {
+      this.add(`Vos entrás como ${human.name}. ${human.quote}`, 'important');
+    }
+    this.add('El relator confirma: humo legal, ego ilegal.', '');
+    this.add('--- MANO 1 ---', 'important');
+  },
+  add(msg, type = '') {
+    this.entries.unshift({ msg, type });
+    if (this.entries.length > 30) this.entries.pop();
+    this.render();
+  },
+  render() {
+    const el = document.getElementById('log-entries');
+    el.innerHTML = this.entries.slice(0, 10).map(e =>
+      `<div class="log-entry ${e.type}">${e.msg}</div>`).join('');
+  }
+};
+
+// ===== PHASER SCENE =====
+let scene = null;
+class MainScene extends Phaser.Scene {
+  constructor() { super({ key: 'MainScene' }); }
+
+  preload() {
+    // nothing to load — all drawn
+  }
+
+  create() {
+    scene = this;
+    AnimationManager.init(this);
+
+    this.smokeEffect = new SmokeEffect(this);
+    this.playerGraphics = [];
+    this.handGraphics = [];
+    this.tableGraphics = this.add.graphics();
+    this.tableGraphics.setDepth(1);
+    this.deckGraphics = this.add.graphics();
+    this.deckGraphics.setDepth(2);
+    this.playerLayer = this.add.graphics();
+    this.playerLayer.setDepth(4);
+    this.cardLayer = this.add.graphics();
+    this.cardLayer.setDepth(5);
+    this.textLayer = this.add.group();
+
+    this.drawBackground();
+    this.drawTable();
+    this.drawDecks();
+    this.drawPlayers();
+
+    // Interaction: click on player cards
+    this.input.on('pointerdown', (ptr) => this.handleClick(ptr));
+  }
+
+  bootMatch() {
+    GameState.appPhase = 'LIVE';
+    GameState.phase = 'SETUP';
+    GameState.handNumber = 1;
+    GameState.scores = { A: 0, B: 0 };
+    GameState.turnOrder = [3,4,5,0,1,2];
+    GameState.turnIndex = 0;
+    GameState.currentTurn = GameState.turnOrder[0];
+    GameState.activeWeapons = [];
+    GameState.pendingCanto = null;
+    GameState.waitingForResponse = false;
+    GameState.highlightUsed = false;
+    this.startGame();
+  }
+
+  update() {
+    this.smokeEffect.update();
+  }
+
+  drawBackground() {
+    const g = this.add.graphics();
+    g.setDepth(0);
+    // Dark background gradient
+    g.fillGradientStyle(0x0a0a0f, 0x0a0a0f, 0x110810, 0x110810, 1);
+    g.fillRect(0, 0, W, H);
+    // Ambient light pool
+    g.fillStyle(0x1a0800, 0.4);
+    g.fillCircle(CX, CY, Math.min(W,H) * 0.4);
+    g.fillStyle(0x0a0510, 0.2);
+    g.fillCircle(CX * 0.3, CY * 0.3, 120);
+    g.fillCircle(CX * 1.7, CY * 1.7, 100);
+  }
+
+  drawTable() {
+    const g = this.tableGraphics;
+    g.clear();
+    // Outer glow
+    for (let r = 5; r >= 0; r--) {
+      const alpha = 0.04 - r * 0.006;
+      g.fillStyle(0xc8860a, alpha);
+      g.fillEllipse(CX, CY, W*0.62 + r*8, H*0.62 + r*8);
+    }
+    // Table wood edge
+    g.fillStyle(0x3d2010, 1);
+    g.fillEllipse(CX, CY, W * 0.60, H * 0.60);
+    // Table felt
+    g.fillStyle(0x1a0a0a, 1);
+    g.fillEllipse(CX, CY, W * 0.54, H * 0.54);
+    // Hexagon on table
+    this.drawHexagon(g);
+    // Subtle table lines
+    g.lineStyle(1, 0x2d1200, 0.4);
+    g.strokeEllipse(CX, CY, W * 0.54, H * 0.54);
+
+    // Center play area
+    g.fillStyle(0x150805, 0.8);
+    g.fillCircle(CX, CY, 70);
+    g.lineStyle(1, 0xc8860a, 0.2);
+    g.strokeCircle(CX, CY, 70);
+
+    // Label
+    this.add.text(CX, CY - 80, 'TRUCOLOCO', {
+      fontSize: '11px', color: '#3d2010', fontStyle: 'bold', letterSpacing: 6
+    }).setOrigin(0.5, 0.5).setDepth(2).setAlpha(0.6);
+  }
+
+  drawHexagon(g) {
+    const r = 52;
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60 - 30) * Math.PI / 180;
+      pts.push({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) });
+    }
+    g.fillStyle(0x3d2010, 1);
+    g.beginPath();
+    g.moveTo(pts[0].x, pts[0].y);
+    pts.slice(1).forEach(p => g.lineTo(p.x, p.y));
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(2, 0xc8860a, 0.8);
+    g.beginPath();
+    g.moveTo(pts[0].x, pts[0].y);
+    pts.slice(1).forEach(p => g.lineTo(p.x, p.y));
+    g.closePath();
+    g.strokePath();
+    // Hexagon label
+    this.add.text(CX, CY, '⬡', { fontSize: '60px', color: '#2d1808', alpha: 0.5 })
+      .setOrigin(0.5, 0.5).setDepth(2).setAlpha(0.3);
+  }
+
+  drawDecks() {
+    const g = this.deckGraphics;
+    g.clear();
+    // Mazo del Truco — top center
+    const tx = CX, ty = 80;
+    this.drawDeckPile(g, tx, ty, 0x1a0d05, 'TRUCO');
+    this.add.text(tx, ty + 42, 'Mazo Truco', { fontSize: '9px', color: '#c8860a', letterSpacing: 1 })
+      .setOrigin(0.5, 0).setDepth(4);
+
+    // Mazo Trucoloco — right
+    const tlx = W - 170, tly = CY;
+    this.drawDeckPile(g, tlx, tly, 0x1a0528, 'TRUCOLOCO', 0xcc44ff);
+    this.add.text(tlx, tly + 42, 'Mazo Trucoloco', { fontSize: '9px', color: '#cc44ff', letterSpacing: 1 })
+      .setOrigin(0.5, 0).setDepth(4);
+    this.add.text(tlx, tly, '✦', { fontSize: '16px', color: '#cc44ff' })
+      .setOrigin(0.5, 0.5).setDepth(5);
+
+    // Mazo de Armas — left
+    const tax = 170, tay = CY;
+    this.drawDeckPile(g, tax, tay, 0x05151a, 'ARMAS', 0x0a7ac8);
+    this.add.text(tax, tay + 42, 'Mazo Armas', { fontSize: '9px', color: '#4488ff', letterSpacing: 1 })
+      .setOrigin(0.5, 0).setDepth(4);
+    this.add.text(tax, tay, '⚔', { fontSize: '16px', color: '#4488ff' })
+      .setOrigin(0.5, 0.5).setDepth(5);
+
+    // Make deck zones clickable
+    const tcZone = this.add.zone(tlx, tly, 50, 70).setInteractive();
+    tcZone.on('pointerdown', () => this.drawTrucolocoCard());
+    const taZone = this.add.zone(tax, tay, 50, 70).setInteractive();
+    taZone.on('pointerdown', () => this.drawArmasCard());
+  }
+
+  drawDeckPile(g, x, y, bgColor, label, borderColor = 0xc8860a) {
+    // Stack of cards effect
+    for (let i = 3; i >= 0; i--) {
+      g.fillStyle(bgColor, 1);
+      g.fillRoundedRect(x - 24 + i, y - 36 + i, 48, 72, 4);
+      g.lineStyle(1, borderColor, 0.3 + i*0.1);
+      g.strokeRoundedRect(x - 24 + i, y - 36 + i, 48, 72, 4);
+    }
+  }
+
+  drawPlayers() {
+    // Clear old player graphics
+    if (this.playerGraphics) this.playerGraphics.forEach(g => g.destroy && g.destroy());
+    this.playerGraphics = [];
+    if (this.playerTexts) this.playerTexts.forEach(t => t.destroy());
+    this.playerTexts = [];
+
+    PLAYERS.forEach((player, idx) => {
+      const pos = getSeatPos(idx);
+      const g = this.add.graphics();
+      g.setDepth(4);
+      this.playerGraphics.push(g);
+
+      const teamColor = player.team === 'A' ? 0xc8390a : 0x0a4ac8;
+      const teamHex = player.team === 'A' ? '#c8390a' : '#4488ff';
+
+      // Seat circle
+      g.fillStyle(0x0a0505, 0.9);
+      g.fillCircle(pos.x, pos.y, 38);
+      g.lineStyle(2, teamColor, 0.8);
+      g.strokeCircle(pos.x, pos.y, 38);
+
+      // Role icon
+      const roleIcons = { negociante: '💰', je: '★', tm: '🎯' };
+      const roleIcon = player.role === 'je' ? '★' : player.role === 'negociante' ? '◆' : '▲';
+      const roleT = this.add.text(pos.x, pos.y - 12, roleIcon, {
+        fontSize: '20px', color: teamHex
+      }).setOrigin(0.5, 0.5).setDepth(5);
+      this.playerTexts.push(roleT);
+
+      // Gafas indicator
+      if (player.hasGafas || GameState.allGafas) {
+        const gafas = this.add.text(pos.x, pos.y + 8, '👓', { fontSize: '14px' })
+          .setOrigin(0.5, 0.5).setDepth(5);
+        this.playerTexts.push(gafas);
+      }
+
+      // Gazpacho golden glow
+      if (player.isGazpacho && !GameState.gazpachoAnulado) {
+        for (let r = 3; r >= 0; r--) {
+          g.lineStyle(3 - r, 0xffd700, 0.15 + r * 0.05);
+          g.strokeCircle(pos.x, pos.y, 40 + r * 4);
+        }
+      }
+
+      // Sustancia X glow
+      if (GameState.sustanciaXPlayer === idx) {
+        g.lineStyle(4, 0xcc44ff, 0.8);
+        g.strokeCircle(pos.x, pos.y, 44);
+      }
+
+      // Eliminated
+      if (player.isEliminated) {
+        g.lineStyle(3, 0xff0000, 0.8);
+        g.lineBetween(pos.x - 28, pos.y - 28, pos.x + 28, pos.y + 28);
+        g.lineBetween(pos.x + 28, pos.y - 28, pos.x - 28, pos.y + 28);
+      }
+
+      // Name badge
+      const nameOffset = this.getNameOffset(idx);
+      const nameBg = this.add.graphics().setDepth(4);
+      this.playerGraphics.push(nameBg);
+      nameBg.fillStyle(0x000000, 0.8);
+      const nameWidth = 100;
+      nameBg.fillRoundedRect(pos.x + nameOffset.x - nameWidth/2, pos.y + nameOffset.y - 8, nameWidth, 22, 4);
+      nameBg.lineStyle(1, teamColor, 0.6);
+      nameBg.strokeRoundedRect(pos.x + nameOffset.x - nameWidth/2, pos.y + nameOffset.y - 8, nameWidth, 22, 4);
+
+      const nameT = this.add.text(pos.x + nameOffset.x, pos.y + nameOffset.y + 3, player.name, {
+        fontSize: '10px', color: teamHex, fontStyle: 'bold'
+      }).setOrigin(0.5, 0.5).setDepth(5);
+      this.playerTexts.push(nameT);
+
+      const roleLabel = player.role === 'je' ? 'J.E.' : player.role === 'negociante' ? 'NEG.' : 'T.M.';
+      const roleT2 = this.add.text(pos.x + nameOffset.x, pos.y + nameOffset.y + 14, roleLabel, {
+        fontSize: '8px', color: '#666'
+      }).setOrigin(0.5, 0.5).setDepth(5);
+      this.playerTexts.push(roleT2);
+
+      // Current turn indicator
+      if (GameState.currentTurn === idx) {
+        g.lineStyle(3, 0xc8860a, 1);
+        g.strokeCircle(pos.x, pos.y, 44);
+        // Pulsing done via tween
+        this.tweens.add({
+          targets: g,
+          alpha: 0.6,
+          duration: 600,
+          yoyo: true,
+          repeat: -1
+        });
+      }
+
+      if (GameState.humanPlayerIdx === idx) {
+        g.lineStyle(2, 0xc8a951, 0.95);
+        g.strokeCircle(pos.x, pos.y, 50);
+      }
+    });
+
+    this.drawHands();
+  }
+
+  getNameOffset(idx) {
+    // Position name badge around seat
+    const angles = [210, 270, 330, 30, 90, 150];
+    const a = angles[idx] * Math.PI / 180;
+    return { x: Math.round(60 * Math.cos(a)), y: Math.round(60 * Math.sin(a)) };
+  }
+
+  drawHands() {
+    if (this.handCards) this.handCards.forEach(c => c.destroy && c.destroy());
+    this.handCards = [];
+
+    PLAYERS.forEach((player, idx) => {
+      const pos = getSeatPos(idx);
+      const hand = GameState.hands[idx] || [];
+      const cardW = 36, cardH = 54;
+      const spread = Math.min(30, 90 / Math.max(hand.length, 1));
+      const isHuman = idx === GameState.humanPlayerIdx;
+      const showFace = isHuman;
+
+      const faceDown = GameState.activeTrucoCard &&
+        (GameState.activeTrucoCard.name === 'Modo Oculto/Oculto' ||
+         GameState.activeTrucoCard.name === 'Modo Oculto/Descubierto') && isHuman;
+
+      hand.forEach((card, ci) => {
+        const totalAngle = (hand.length - 1) * spread;
+        const cardAngle = -totalAngle / 2 + ci * spread;
+        const rad = cardAngle * Math.PI / 180;
+        // Fan offset from player position
+        const fanR = 55;
+        const cx = pos.x + Math.sin(rad) * 20;
+        const cy = pos.y + fanR + ci * 3 - hand.length * 1.5;
+
+        const glowColor = player.isGazpacho && !GameState.gazpachoAnulado ? 0xffd700 : null;
+
+        if (showFace && !faceDown) {
+          const g = CardRenderer.drawCard(this, cx, cy, cardW, cardH, card, glowColor, false);
+          if (g) {
+            this.handCards.push(g);
+            // Make clickable only for the selected human seat
+            const zone = this.add.zone(cx, cy, cardW, cardH).setInteractive().setDepth(6);
+            zone.on('pointerdown', () => this.playCardAction(idx, ci));
+            zone.on('pointerover', () => {
+              g.setAlpha && g.setAlpha(0.8);
+            });
+            this.handCards.push(zone);
+          }
+        } else {
+          const back = CardRenderer.drawCardBack(this, cx, cy, cardW, cardH);
+          if (back) {
+            this.handCards.push(back.graphics);
+            if (back.text) this.handCards.push(back.text);
+          }
+        }
+      });
+    });
+  }
+
+  redrawHands() {
+    this.drawHands();
+  }
+
+  handleClick(ptr) {
+    // Handled by zones
+  }
+
+  playCardAction(playerIdx, cardIdx) {
+    if (GameState.phase !== 'TRUCO_PHASE') {
+      // In envido phase, allow play
+      if (GameState.phase !== 'ENVIDO_PHASE') return;
+    }
+    if (playerIdx !== GameState.humanPlayerIdx) return;
+    if (GameState.currentTurn !== playerIdx) {
+      gameLog.add('No es tu turno, boludo.', 'penalty');
+      return;
+    }
+    const hand = GameState.hands[playerIdx];
+    if (!hand || !hand[cardIdx]) return;
+    const card = hand.splice(cardIdx, 1)[0];
+
+    const pos = getSeatPos(playerIdx);
+    const teamColor = PLAYERS[playerIdx].team === 'A' ? 0xc8390a : 0x0a4ac8;
+    const destX = CX + (Math.random() - 0.5) * 60;
+    const destY = CY + (Math.random() - 0.5) * 40;
+
+    AnimationManager.playCard(pos.x, pos.y, destX, destY, card, teamColor);
+    GameState.playedCards.push({ playerIdx, card });
+    gameLog.add(`${PLAYERS[playerIdx].name} juega ${card.value} de ${card.suit} (${SUIT_SYMBOLS[card.suit]}). ${rnd(PLAY_TAUNTS)}`);
+
+    this.redrawHands();
+    this.advanceTurn();
+
+    // Check if round is complete (all 6 played or enough)
+    if (GameState.playedCards.length >= 6) {
+      this.resolveRound();
+    }
+  }
+
+  advanceTurn() {
+    GameState.turnIndex = (GameState.turnIndex + 1) % GameState.turnOrder.length;
+    GameState.currentTurn = GameState.turnOrder[GameState.turnIndex];
+    // Skip eliminated
+    let tries = 0;
+    while (PLAYERS[GameState.currentTurn].isEliminated && tries < 6) {
+      GameState.turnIndex = (GameState.turnIndex + 1) % GameState.turnOrder.length;
+      GameState.currentTurn = GameState.turnOrder[GameState.turnIndex];
+      tries++;
+    }
+    gameUI.updateTurnIndicator();
+    gameUI.updateButtons();
+    this.drawPlayers();
+
+    // If it's not the human seat, let AI resolve the turn
+    if (GameState.currentTurn !== GameState.humanPlayerIdx && !GameState.waitingForResponse) {
+      this.time.delayedCall(1200, () => this.aiPlayCard());
+    }
+  }
+
+  aiPlayCard() {
+    const playerIdx = GameState.currentTurn;
+    if (playerIdx === GameState.humanPlayerIdx) return;
+    const hand = GameState.hands[playerIdx];
+    if (!hand || hand.length === 0) return;
+
+    // Simple AI: play a random card
+    const cardIdx = Math.floor(Math.random() * hand.length);
+    const card = hand.splice(cardIdx, 1)[0];
+
+    const pos = getSeatPos(playerIdx);
+    const destX = CX + (Math.random() - 0.5) * 60;
+    const destY = CY + (Math.random() - 0.5) * 40;
+
+    const teamColor = PLAYERS[playerIdx].team === 'A' ? 0xc8390a : 0x0a4ac8;
+    AnimationManager.playCard(pos.x, pos.y, destX, destY, card, teamColor);
+    GameState.playedCards.push({ playerIdx, card });
+    gameLog.add(`${PLAYERS[playerIdx].name} juega ${card.value} de ${card.suit}. ${rnd(AI_REPLIES)}`);
+
+    this.redrawHands();
+
+    // AI cantos (30% chance)
+    if (Math.random() < 0.3 && GameState.phase === 'TRUCO_PHASE' && !GameState.waitingForResponse) {
+      const cantos = ['truco', 'retruco'];
+      const canto = rnd(cantos);
+      this.time.delayedCall(600, () => {
+        gameUI.callCanto(canto, true);
+      });
+    }
+
+    this.advanceTurn();
+
+    if (GameState.playedCards.length >= 6) {
+      this.resolveRound();
+    }
+  }
+
+  resolveRound() {
+    const winner = TrucoLogic.determineRoundWinner(GameState.playedCards);
+    GameState.playedCards = [];
+
+    if (winner === 'parda') {
+      gameLog.add('¡Parda! Empate en la baza.', 'important');
+    } else if (winner) {
+      GameState.roundWins[winner]++;
+      gameLog.add(`Equipo ${winner} gana la baza ${GameState.round}.`, 'important');
+    }
+
+    GameState.round++;
+    if (GameState.round > 3 || GameState.roundWins.A >= 2 || GameState.roundWins.B >= 2) {
+      this.resolveHand();
+    } else {
+      // Next round
+      gameLog.add(`--- Baza ${GameState.round} ---`);
+    }
+  }
+
+  resolveHand() {
+    let winner;
+    if (GameState.roundWins.A > GameState.roundWins.B) winner = 'A';
+    else if (GameState.roundWins.B > GameState.roundWins.A) winner = 'B';
+    else winner = null;
+
+    let pts = GameState.trucoStake;
+    if (GameState.trucolocoBet) {
+      // Check if won all 3 rounds
+      const wonAll = winner && GameState.roundWins[winner] === 3;
+      pts = wonAll ? 8 : 2; // 2 = nullified
+    }
+
+    if (winner) {
+      GameState.scores[winner] += pts;
+      AnimationManager.floatingScore(CX, CY, pts, winner);
+      gameLog.add(`¡Equipo ${winner} gana la mano! +${pts} puntos.`, 'important');
+    }
+
+    gameUI.updateScores();
+    gameUI.checkGameOver();
+
+    if (GameState.phase !== 'GAME_OVER') {
+      this.time.delayedCall(2000, () => this.nextHand());
+    }
+  }
+
+  nextHand() {
+    GameState.handNumber++;
+    GameState.phase = 'SETUP';
+    GameState.roundWins = { A: 0, B: 0 };
+    GameState.round = 1;
+    GameState.playedCards = [];
+    GameState.trucoStake = 1;
+    GameState.envidoStake = 1;
+    GameState.trucolocoBet = false;
+    GameState.prohibidoNegociar = false;
+    GameState.kryptonitaAncho = false;
+    GameState.gazpachoAnulado = false;
+    GameState.allGafas = false;
+    GameState.sustanciaXActive = false;
+    GameState.sustanciaXPlayer = -1;
+    GameState.exodiaActive = false;
+    GameState.timeArenaActive = false;
+    AnimationManager.deactivateSustanciaX();
+    PLAYERS.forEach(p => {
+      p.isEliminated = false;
+      p.hasWeapon = null;
+      p.sustanciaX = false;
+      p.hasGafas = p.isEdu;
+    });
+
+    // Rotate who deals
+    GameState.turnOrder = [...GameState.turnOrder.slice(1), GameState.turnOrder[0]];
+    GameState.turnIndex = 0;
+    GameState.currentTurn = GameState.turnOrder[0];
+
+    gameUI.updateHandNumber();
+    gameLog.add(`=== MANO ${GameState.handNumber} ===`, 'important');
+    this.startGame();
+  }
+
+  startGame() {
+    // Deal cards
+    GameState.trucoDeck = createTrucoMazo();
+    PLAYERS.forEach((p, i) => {
+      GameState.hands[i] = GameState.trucoDeck.splice(0, 3);
+    });
+
+    // Draw Trucoloco card
+    GameState.trucolocoDeck = shuffle([...TRUCOLOCO_CARDS]);
+    GameState.activeTrucoCard = GameState.trucolocoDeck[0];
+
+    // Draw Armas deck
+    GameState.armasDeck = shuffle([...WEAPONS, ...WEAPONS, ...WEAPONS]);
+
+    gameUI.updateTrucolocoDisplay();
+    gameUI.updateHandNumber();
+    gameUI.updateTurnIndicator();
+    gameUI.updateButtons();
+    gameUI.updateWeaponsDisplay();
+    gameUI.updateSelectedPlayerBadge();
+    gameUI.updateScores();
+
+    // Deal animation
+    let delay = 0;
+    PLAYERS.forEach((p, i) => {
+      GameState.hands[i].forEach((card, ci) => {
+        const pos = getSeatPos(i);
+        this.time.delayedCall(delay, () => {
+          AnimationManager.dealCard(CX, 80, pos.x, pos.y, card, i, true, null);
+        });
+        delay += 80;
+      });
+    });
+
+    // After deal, reveal trucoloco card
+    this.time.delayedCall(delay + 200, () => {
+      this.revealTrucolocoCard();
+    });
+
+    this.drawPlayers();
+    GameState.phase = 'ENVIDO_PHASE';
+
+    if (GameState.currentTurn !== GameState.humanPlayerIdx) {
+      this.time.delayedCall(delay + 1000, () => this.aiPlayCard());
+    }
+  }
+
+  revealTrucolocoCard() {
+    const tc = GameState.activeTrucoCard;
+    document.getElementById('reveal-card-name').textContent = tc.name;
+    document.getElementById('reveal-card-desc').textContent = tc.desc;
+    document.getElementById('card-reveal-modal').classList.add('active');
+    gameLog.add(`Trucoloco: ${tc.name}`, 'important');
+
+    // Dramatic scene flash
+    const flash = this.add.graphics().setDepth(30);
+    flash.fillStyle(0xcc44ff, 0.15);
+    flash.fillRect(0, 0, W, H);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 1000,
+      onComplete: () => flash.destroy()
+    });
+  }
+
+  drawTrucolocoCard() {
+    if (GameState.trucolocoDeck.length === 0) {
+      GameState.trucolocoDeck = shuffle([...TRUCOLOCO_CARDS]);
+    }
+    const tc = GameState.trucolocoDeck.shift();
+    GameState.activeTrucoCard = tc;
+    gameUI.updateTrucolocoDisplay();
+    this.revealTrucolocoCard();
+  }
+
+  drawArmasCard() {
+    if (GameState.armasDeck.length === 0) {
+      GameState.armasDeck = shuffle([...WEAPONS, ...WEAPONS]);
+    }
+    const weapon = GameState.armasDeck.shift();
+    // Give to current TM
+    const tm = PLAYERS.find(p => p.role === 'tm' && p.team === PLAYERS[GameState.currentTurn].team);
+    if (tm) {
+      tm.hasWeapon = weapon;
+      GameState.activeWeapons.push(weapon);
+      gameUI.updateWeaponsDisplay();
+      gameLog.add(`${tm.name} obtiene arma: ${weapon.name}`, 'important');
+      const pos = getSeatPos(PLAYERS.indexOf(tm));
+      AnimationManager.showCantoSpeech(pos.x, pos.y, weapon.name + '!', '#4488ff');
+      this.applyWeapon(weapon, tm);
+    }
+  }
+
+  applyWeapon(weapon, tm) {
+    switch (weapon.special) {
+      case 'ojo':
+        // Reveal opponent cards in log
+        PLAYERS.forEach((p, i) => {
+          if (p.team !== tm.team) {
+            const hand = GameState.hands[i];
+            const cards = hand.map(c => `${c.value}${SUIT_SYMBOLS[c.suit]}`).join(', ');
+            gameLog.add(`OJO: ${p.name} tiene ${cards}`, 'important');
+          }
+        });
+        break;
+      case 'exodia':
+        if (tm.team === 'A') { // Gazpacho's team
+          AnimationManager.showExodia();
+          gameLog.add('¡EXODIA activado por El Gazpacho!', 'important');
+          GameState.scores['A'] += 5;
+          gameUI.updateScores();
+          gameUI.checkGameOver();
+        }
+        break;
+      case 'escudo':
+        gameLog.add(`${tm.name} tiene escudo activo.`, 'important');
+        break;
+      case 'antigafas':
+        PLAYERS.forEach(p => { p.hasGafas = false; });
+        GameState.allGafas = false;
+        gameLog.add('Anti-gafas: Nadie lleva gafas.', 'important');
+        this.drawPlayers();
+        break;
+      case 'rotacion_gafas': {
+        const targets = PLAYERS.filter(p => !p.isEliminated);
+        const chosen = rnd(targets);
+        PLAYERS.forEach(p => { if (!p.isEdu) p.hasGafas = false; });
+        chosen.hasGafas = true;
+        gameLog.add(`Rotación Gafas Edu: ahora las sufre ${chosen.name}.`, 'important');
+        this.drawPlayers();
+        break;
+      }
+      case 'parca':
+        gameLog.add(`¡Y AHÍIII... la Parca hace su aparición! ${tm.name} marca una carta rival para el olvido.`, 'important');
+        break;
+      case 'tiempo_arena':
+        GameState.timeArenaActive = true;
+        gameLog.add('Tiempo arena activado desde el mazo de armas. Se responde sin pestañear.', 'important');
+        break;
+      case 'mano_de_dios':
+        gameLog.add(`${tm.name} vende humo celestial: una carta mediocre pasa a parecer legendaria.`, 'important');
+        break;
+      case 'hexagono':
+        gameLog.add('Llamado del Hexágono: la mesa sospecha de todos y nadie mira tranquilo.', 'important');
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+// ===== PHASER CONFIG =====
+const config = {
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  parent: 'game-container',
+  backgroundColor: '#0a0a0f',
+  scene: [MainScene],
+  render: {
+    antialias: true,
+    pixelArt: false,
+  }
+};
+
+const game = new Phaser.Game(config);
+
+// Handle resize
+window.addEventListener('resize', () => {
+  // Soft reload for proper resize
+  // game.scale.resize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById('music-toggle').addEventListener('click', () => gameUI.toggleMusic());
+document.getElementById('start-music-toggle').addEventListener('click', () => gameUI.toggleMusic());
+document.getElementById('start-match-btn').addEventListener('click', () => gameUI.beginMatch());
+gameUI.renderCharacterGrid();
+gameUI.updateMusicLabel();
+gameUI.updateSelectedPlayerBadge();
+</script>
+</body>
+</html>

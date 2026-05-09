@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+build/
+**/build/
+
+# Logs and local runtime output
+*.log
+*.tmp
+*.temp
+vite-dev.*.log
+screenshots/
+**/screenshots/
+
+# Environment and editor state
+.codex/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Unity generated folders
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+
+# Nested tooling checkout
+Unity-MCP/

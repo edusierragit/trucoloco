@@ -1,0 +1,71 @@
+Estás trabajando en este repo:
+C:\Users\eduar\DEVTHINGS\frikex\trucoloco-thegame
+
+Objetivo:
+Mejorar fuerte la PRESENTACION del MVP web de Trucoloco sin tocar la lógica de juego.
+
+Contexto:
+- El proyecto activo es `trucoloco-web/`
+- Stack: Vite + React + Three.js + @react-three/fiber
+- El juego ya tiene:
+  - mesa 3D
+  - HUD 2D
+  - mano jugable
+  - Truco / Envido basicos
+  - armas basicas
+- El problema actual es visual:
+  - se ve demasiado dashboard / prototipo
+  - falta identidad de juego
+  - falta atmosfera y composicion
+  - todavia hay poca coherencia entre mesa y HUD
+
+Tu ownership es SOLO esta zona:
+- `trucoloco-web/src/game/ui/Hud.jsx`
+- `trucoloco-web/src/styles.css`
+
+NO toques:
+- `trucoloco-web/src/game/hooks/useTrucolocoMatch.js`
+- `trucoloco-web/src/game/scene/*`
+- `package.json`
+- config de MCP
+- cualquier archivo de Unity
+
+Objetivo visual:
+- Que el juego se sienta mas “antro clandestino de cartas” y menos panel enterprise
+- Que la UI sea mas compacta, intencional y con mejor jerarquia
+- Que la mesa siga visible como protagonista
+- Que la mano del jugador se vea importante y usable
+- Que los cantos y el relato tengan mas peso visual
+- Que mobile/desktop no queden rotos
+
+Direccion estetica:
+- turbio
+- argentino
+- gracioso pero no payasesco
+- sucio, calido, nocturno
+- nada de look corporativo
+- tipografia con personalidad si podes resolverlo solo por CSS
+- preferi overlays mas finos y bandejas mas cinematograficas
+- reduci cajas gigantes si no son necesarias
+
+Reglas:
+- No cambies logica ni nombres de funciones existentes
+- No inventes estado nuevo en React
+- No rompas compatibilidad con el hook actual
+- Si necesitas reordenar markup en `Hud.jsx`, hacelo, pero manteniendo las props actuales
+- Mantene ASCII
+- Hace cambios reales en archivos, no solo recomendaciones
+
+Entrega:
+1. Implementa los cambios
+2. Decime que archivos tocaste
+3. Decime en 4-8 bullets que mejoraste visualmente
+4. Si no pudiste resolver algo sin tocar logica, aclaralo
+
+Antes de editar:
+- lee `trucoloco-web/src/game/ui/Hud.jsx`
+- lee `trucoloco-web/src/styles.css`
+
+Despues:
+- corre `npm run build` dentro de `trucoloco-web`
+- si falla, arreglalo antes de terminar

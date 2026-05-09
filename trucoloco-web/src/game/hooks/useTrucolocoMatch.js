@@ -1,0 +1,1145 @@
+import { useMemo, useState } from "react";
+import { MATCH_CONFIG } from "../config";
+import { deck, modifiers } from "../data/cards";
+import { roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
+import { weaponPool } from "../data/weapons";
+import {
+  PARDA,
+  applyHandPoints,
+  awardPoints,
+  getAdvantageTeam,
+  getHandWinner,
+  getMatchWinner,
+  getPardaCount,
+  getPlayerName,
+  resolveEnvido
+} from "../rules/truco";
+
+const CLASSIC_MODIFIER = modifiers.find((modifier) => modifier.id === "modo-clasico") ?? modifiers[0];
+
+const shuffle = (items) => {
+  const copy = [...items];
+
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+
+  return copy;
+};
+
+const getLanePair = (role) => ({
+  role,
+  human: teams.A.find((player) => player.role === role) ?? teams.A[0],
+  rival: teams.B.find((player) => player.role === role) ?? teams.B[0]
+});
+
+const getPlayersById = () =>
+  [...teams.A, ...teams.B].reduce((lookup, player) => {
+    lookup[player.id] = player;
+    return lookup;
+  }, {});
+
+const getSeatByTeamRole = (team, role) => tableSeats.find((seat) => seat.team === team && seat.role === role) ?? tableSeats[0];
+const getSeatById = (seatId) => tableSeats.find((seat) => seat.seatId === seatId) ?? tableSeats[0];
+const getPlayerBySeatId = (seatId) => {
+  const seat = getSeatById(seatId);
+  return getPlayersById()[seat.playerId];
+};
+
+const getSeatPlayerName = (seatId) => getPlayerBySeatId(seatId)?.name ?? "Jugador";
+
+const getNextSeatId = (seatId) => {
+  const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
+  const currentIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
+  return orderedSeats[(currentIndex + 1) % orderedSeats.length].seatId;
+};
+
+const getPreviousSeatId = (seatId) => {
+  const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
+  const currentIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
+  return orderedSeats[(currentIndex - 1 + orderedSeats.length) % orderedSeats.length].seatId;
+};
+
+const getManoSeatForHand = (handNumber) => {
+  const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
+  return orderedSeats[(handNumber - 1) % orderedSeats.length] ?? orderedSeats[0];
+};
+
+const getSelectedSeatId = (role) => getSeatByTeamRole("A", role).seatId;
+const getOppositeSeatId = (role) => getSeatByTeamRole("B", role).seatId;
+
+const buildTableFlow = (state, activeLane, selectedRole, nextActorName) => {
+  const playersById = getPlayersById();
+  const manoSeat = state.manoSeatId ? getSeatById(state.manoSeatId) : getManoSeatForHand(state.handNumber);
+  const dealerSeat = getSeatById(getPreviousSeatId(manoSeat.seatId));
+  const actingSeat = state.currentTurnSeatId
+    ? getSeatById(state.currentTurnSeatId)
+    : tableSeats.find((seat) => playersById[seat.playerId]?.name === nextActorName);
+  const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
+
+  return {
+    manoSeatId: manoSeat.seatId,
+    dealerSeatId: dealerSeat.seatId,
+    actingSeatId: actingSeat?.seatId ?? null,
+    seats: orderedSeats.map((seat) => {
+      const player = playersById[seat.playerId];
+
+      return {
+        ...seat,
+        player,
+        isSelectedDuel: seat.role === selectedRole,
+        isMano: seat.seatId === manoSeat.seatId,
+        isDealer: seat.seatId === dealerSeat.seatId,
+        isActing: seat.seatId === actingSeat?.seatId
+      };
+    })
+  };
+};
+
+const getRoleOpeningLog = (activeLane, whoStartsName) => {
+  if (activeLane.role === "Negociante") {
+    return `${activeLane.human.name} y ${activeLane.rival.name} entran como negociantes. ${whoStartsName} sale primero y todavia se pueden negociar los puntos.`;
+  }
+
+  if (activeLane.role === "Cartachin") {
+    return `${activeLane.human.name} y ${activeLane.rival.name} entran como Cartachin. ${whoStartsName} sale primero y todavia se puede cargar un arma.`;
+  }
+
+  return `${activeLane.human.name} y ${activeLane.rival.name} entran como Jugador Estrella. ${whoStartsName} sale primero y la mano arranca limpia, solo con cartas.`;
+};
+
+const buildSharedPool = () => shuffle(deck);
+
+const buildHandIndex = (cardId, side, index) => `${cardId}-${side}-${index}-${Math.random()}`;
+
+const drawWeapons = () =>
+  shuffle(weaponPool).slice(0, 2).map((weapon, index) => ({
+    ...weapon,
+    handIndex: `${weapon.id}-${index}-${Math.random()}`
+  }));
+
+const dealSeatHands = (pool) => {
+  const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
+
+  return orderedSeats.reduce((hands, seat, seatIndex) => {
+    hands[seat.seatId] = pool.slice(seatIndex * 3, seatIndex * 3 + 3).map((card, cardIndex) => ({
+      ...card,
+      handIndex: buildHandIndex(card.id, seat.seatId, cardIndex)
+    }));
+    return hands;
+  }, {});
+};
+
+const pickAutoCard = (hand, currentTrickCards) => {
+  if (!hand.length) return null;
+  const sortedByPower = [...hand].sort((a, b) => a.power - b.power);
+  const highestOnTable = Math.max(...currentTrickCards.map((play) => play.power ?? play.card.power), 0);
+  return sortedByPower.find((card) => card.power > highestOnTable) ?? sortedByPower[0];
+};
+
+const resolveTableTrick = (tableCards, trickHistory, manoTeam, currentLeadSeatId) => {
+  const maxPower = Math.max(...tableCards.map((play) => play.power ?? play.card.power));
+  const topCards = tableCards.filter((play) => (play.power ?? play.card.power) === maxPower);
+
+  if (topCards.length > 1) {
+    const tiedTeams = new Set(topCards.map((play) => play.team));
+
+    if (tiedTeams.size === 1) {
+      const [winningPlay] = topCards;
+
+      return {
+        result: winningPlay.team,
+        winner: winningPlay.team,
+        winnerSeatId: winningPlay.seatId,
+        highlight: `${winningPlay.owner} gana la vuelta para su equipo.`,
+        outcomeTone: winningPlay.team === "A" ? "win" : "lose"
+      };
+    }
+
+    const winner = getAdvantageTeam(trickHistory, manoTeam);
+    const winnerSeatId = tableCards.find((play) => play.team === winner)?.seatId ?? currentLeadSeatId;
+
+    return {
+      result: PARDA,
+      winner,
+      winnerSeatId,
+      highlight: "Vuelta parda.",
+      outcomeTone: "draw"
+    };
+  }
+
+  const [winningPlay] = topCards;
+
+  return {
+    result: winningPlay.team,
+    winner: winningPlay.team,
+    winnerSeatId: winningPlay.seatId,
+    highlight: `${winningPlay.owner} gana la vuelta.`,
+    outcomeTone: winningPlay.team === "A" ? "win" : "lose"
+  };
+};
+
+const getBestCardPower = (hand) => Math.max(...hand.map((card) => card.power), 0);
+
+const syncLaneHands = (state, selectedRole) => {
+  const selectedSeatId = getSelectedSeatId(selectedRole);
+  const oppositeSeatId = getOppositeSeatId(selectedRole);
+
+  return {
+    ...state,
+    humanHand: state.handsBySeat?.[selectedSeatId] ?? [],
+    rivalHand: state.handsBySeat?.[oppositeSeatId] ?? []
+  };
+};
+
+const buildTablePlay = (seatId, card, tableIndex) => {
+  const seat = getSeatById(seatId);
+  const player = getPlayerBySeatId(seatId);
+
+  return {
+    ...card,
+    card,
+    owner: player?.name ?? "Jugador",
+    side: seat.team,
+    team: seat.team,
+    role: seat.role,
+    seatId,
+    seatLabel: seat.label,
+    tableIndex,
+    power: card.power
+  };
+};
+
+const describeTableCards = (tableCards) =>
+  tableCards.map((play) => `${play.owner} ${play.card?.name ?? play.name}`).join(" · ");
+
+const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
+  if (!card || !current.handStarted || current.handClosed || current.envidoPending) {
+    return current;
+  }
+
+  const seat = getSeatById(seatId);
+  const nextHandsBySeat = {
+    ...current.handsBySeat,
+    [seatId]: (current.handsBySeat?.[seatId] ?? []).filter((item) => item.handIndex !== card.handIndex)
+  };
+  const nextTableCards = [...current.tableCards, buildTablePlay(seatId, card, current.tableCards.length)];
+  const currentVuelta = current.vueltaIndex + 1;
+
+  if (nextTableCards.length < tableSeats.length) {
+    const nextTurnSeatId = getNextSeatId(seatId);
+    const nextState = {
+      ...current,
+      handsBySeat: nextHandsBySeat,
+      currentTurnSeatId: nextTurnSeatId,
+      tableCards: nextTableCards,
+      eventLog: `${getSeatPlayerName(seatId)} juega ${card.name}. Sigue ${getSeatPlayerName(nextTurnSeatId)}.`,
+      highlight: `Vuelta ${currentVuelta}. Actua ${getSeatPlayerName(nextTurnSeatId)}.`,
+      outcomeTone: seat.team === "A" ? "neutral" : "neutral",
+      pendingAnimationKey: current.pendingAnimationKey + 1
+    };
+
+    return syncLaneHands(nextState, selectedRole);
+  }
+
+  const resolution = resolveTableTrick(nextTableCards, current.trickHistory, current.manoTeam, current.currentLeadSeatId);
+  const nextTrickWins =
+    resolution.result === PARDA
+      ? current.trickWins
+      : {
+          ...current.trickWins,
+          [resolution.winner]: current.trickWins[resolution.winner] + 1
+        };
+  const selectedSeatId = getSelectedSeatId(selectedRole);
+  const oppositeSeatId = getOppositeSeatId(selectedRole);
+  const selectedPlay = nextTableCards.find((play) => play.seatId === selectedSeatId) ?? nextTableCards.find((play) => play.team === "A");
+  const oppositePlay = nextTableCards.find((play) => play.seatId === oppositeSeatId) ?? nextTableCards.find((play) => play.team === "B");
+  const trickHistory = [
+    ...current.trickHistory,
+    {
+      index: currentVuelta,
+      result: resolution.result,
+      winner: resolution.winner,
+      winnerSeatId: resolution.winnerSeatId,
+      cards: nextTableCards,
+      humanCard: selectedPlay?.card ?? selectedPlay,
+      rivalCard: oppositePlay?.card ?? oppositePlay
+    }
+  ];
+  const handWinner = getHandWinner(trickHistory, current.manoTeam);
+  const baseResolvedState = {
+    ...current,
+    handsBySeat: nextHandsBySeat,
+    tableCards: nextTableCards,
+    trickHistory,
+    trickWins: nextTrickWins,
+    vueltaIndex: currentVuelta,
+    lastWinner: resolution.winner,
+    leadTeam: resolution.winner,
+    currentLeadSeatId: resolution.winnerSeatId,
+    currentTurnSeatId: null,
+    activeWeapon: null,
+    pendingAnimationKey: current.pendingAnimationKey + 1,
+    eventLog: `${describeTableCards(nextTableCards)}. ${resolution.highlight} Vueltas: ${nextTrickWins.A}-${nextTrickWins.B}.`,
+    highlight: resolution.highlight,
+    outcomeTone: resolution.outcomeTone
+  };
+
+  if (!handWinner) {
+    return syncLaneHands(baseResolvedState, selectedRole);
+  }
+
+  const scoring = applyHandPoints(current.scores, handWinner, current.activeBet, current.pointsInverted);
+  const matchWinner = getMatchWinner(scoring.scores);
+  const handWinnerName = getPlayerName(handWinner, activeLane);
+  const scoringWinnerName = getPlayerName(scoring.scoringWinner, activeLane);
+
+  return syncLaneHands(
+    {
+      ...baseResolvedState,
+      scores: scoring.scores,
+      handClosed: true,
+      handWinner,
+      scoringWinner: scoring.scoringWinner,
+      leadTeam: handWinner,
+      trucoRaiseOwner: null,
+      eventLog: `${baseResolvedState.eventLog} La mano queda para ${handWinnerName}.${current.pointsInverted ? ` Pero cobra ${scoringWinnerName} por negociacion.` : ""}`,
+      highlight: matchWinner
+        ? matchWinner === "A"
+          ? "Partida para la casa."
+          : "Partida para la visita."
+        : handWinner === "A"
+          ? "Ganaste la mano."
+          : "Perdiste la mano.",
+      outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
+      matchWinner
+    },
+    selectedRole
+  );
+};
+
+const getNextTrucoCall = (activeBet) => {
+  if (activeBet <= 1) return { label: "Truco", acceptedBet: 2, rejectedPoints: 1 };
+  if (activeBet === 2) return { label: "Retruco", acceptedBet: 3, rejectedPoints: 2 };
+  if (activeBet === 3) return { label: "Vale cuatro", acceptedBet: 4, rejectedPoints: 3 };
+  return null;
+};
+
+const shouldRivalAcceptTruco = (rivalHand, currentBet, trickWins) => {
+  const bestPower = getBestCardPower(rivalHand);
+  if (currentBet <= 1) return bestPower >= 9 || trickWins.B > trickWins.A;
+  if (currentBet === 2) return bestPower >= 11 || trickWins.B > trickWins.A;
+  if (currentBet === 3) return bestPower >= 13 || trickWins.B >= 1;
+  return false;
+};
+
+const getOpeningPhaseHint = (activeLane, isNegociante, isCartachin) => {
+  if (isNegociante) {
+    return "Primero definis si negocias los puntos. Despues baja la primera carta.";
+  }
+
+  if (isCartachin) {
+    return "Primero elegis si cargas un arma. Despues baja la primera carta.";
+  }
+
+  return "Esta mano arranca directo con cartas. Baja la primera y marca el ritmo.";
+};
+
+const buildRoleSelectState = (handNumber, scores, activeLane) => {
+  const manoSeat = getManoSeatForHand(handNumber);
+  const manoTeam = manoSeat.team;
+  const whoStartsName = getSeatPlayerName(manoSeat.seatId);
+
+  return {
+    handStarted: false,
+    handNumber,
+    scores,
+    manoTeam,
+    manoSeatId: manoSeat.seatId,
+    leadTeam: manoTeam,
+    activeModifier: CLASSIC_MODIFIER,
+    activeBet: 1,
+    handsBySeat: {},
+    currentLeadSeatId: null,
+    currentTurnSeatId: null,
+    humanHand: [],
+    rivalHand: [],
+    weaponHand: [],
+    activeWeapon: null,
+    weaponUsed: false,
+    handClosed: false,
+    matchWinner: null,
+    tableCards: [],
+    trickHistory: [],
+    vueltaIndex: 0,
+    trickWins: { A: 0, B: 0 },
+    lastWinner: null,
+    handWinner: null,
+    scoringWinner: null,
+    pointsInverted: false,
+    negotiationUsed: false,
+    negotiationDice: null,
+    envidoResolved: false,
+    envidoResult: null,
+    envidoPending: null,
+    trucoState: "none",
+    trucoRaiseOwner: null,
+    pendingAnimationKey: 0,
+    eventLog: `${activeLane.human.name} va como ${activeLane.role}. Cuando arranque la mano, sale primero ${whoStartsName}.`,
+    highlight: `Elegi ${activeLane.role}.`,
+    outcomeTone: "neutral"
+  };
+};
+
+const buildOpeningState = (handNumber, scores, activeLane) => {
+  const pool = buildSharedPool();
+  const manoSeat = getManoSeatForHand(handNumber);
+  const manoTeam = manoSeat.team;
+  const whoStartsName = getSeatPlayerName(manoSeat.seatId);
+  const handsBySeat = dealSeatHands(pool);
+  const selectedSeatId = getSelectedSeatId(activeLane.role);
+  const oppositeSeatId = getOppositeSeatId(activeLane.role);
+
+  return {
+    handStarted: true,
+    handNumber,
+    scores,
+    manoTeam,
+    manoSeatId: manoSeat.seatId,
+    leadTeam: manoTeam,
+    activeModifier: CLASSIC_MODIFIER,
+    activeBet: 1,
+    handsBySeat,
+    currentLeadSeatId: manoSeat.seatId,
+    currentTurnSeatId: manoSeat.seatId,
+    humanHand: handsBySeat[selectedSeatId] ?? [],
+    rivalHand: handsBySeat[oppositeSeatId] ?? [],
+    weaponHand: drawWeapons(),
+    activeWeapon: null,
+    weaponUsed: false,
+    handClosed: false,
+    matchWinner: null,
+    tableCards: [],
+    trickHistory: [],
+    vueltaIndex: 0,
+    trickWins: { A: 0, B: 0 },
+    lastWinner: null,
+    handWinner: null,
+    scoringWinner: null,
+    pointsInverted: false,
+    negotiationUsed: false,
+    negotiationDice: null,
+    envidoResolved: false,
+    envidoResult: null,
+    envidoPending: null,
+    trucoState: "none",
+    trucoRaiseOwner: null,
+    pendingAnimationKey: 0,
+    eventLog: getRoleOpeningLog(activeLane, whoStartsName),
+    highlight: `Mano ${handNumber}. Sale ${whoStartsName}.`,
+    outcomeTone: "neutral"
+  };
+};
+
+const revealRivalLead = (state, activeLane, selectedRole) => {
+  if (!state.currentTurnSeatId || state.currentTurnSeatId === getSelectedSeatId(selectedRole)) {
+    return state;
+  }
+
+  const hand = state.handsBySeat?.[state.currentTurnSeatId] ?? [];
+  const card = pickAutoCard(hand, state.tableCards);
+  return playSeatCard(state, state.currentTurnSeatId, card, activeLane, selectedRole);
+};
+
+const clearResolvedTrick = (state, activeLane, selectedRole) => {
+  if (state.tableCards.length < tableSeats.length || state.handClosed) {
+    return state;
+  }
+
+  const nextVuelta = state.vueltaIndex + 1;
+  const nextTurnSeatId = state.currentLeadSeatId ?? state.manoSeatId ?? getSeatByTeamRole(state.leadTeam, selectedRole).seatId;
+  const nextLeaderName = getSeatPlayerName(nextTurnSeatId);
+
+  return syncLaneHands(
+    {
+      ...state,
+      tableCards: [],
+      currentLeadSeatId: nextTurnSeatId,
+      currentTurnSeatId: nextTurnSeatId,
+      eventLog: `Se limpia el paño. Arranca la vuelta ${nextVuelta} y sale ${nextLeaderName}.`,
+      highlight: `Vuelta ${nextVuelta}. Sale ${nextLeaderName}.`,
+      outcomeTone: "neutral"
+    },
+    selectedRole
+  );
+};
+
+const getPhaseData = (state, activeLane) => {
+  const isNegociante = activeLane.role === "Negociante";
+  const isCartachin = activeLane.role === "Cartachin";
+  const roleDefinition = roleDefinitions[activeLane.role] ?? roleDefinitions.Cartachin;
+  const openingWindow = state.handStarted && state.vueltaIndex === 0 && state.tableCards.length === 0 && !state.handClosed;
+  const firstCardWindow = state.handStarted && state.vueltaIndex === 0 && state.tableCards.length === 0 && state.trickHistory.length === 0 && !state.handClosed;
+  const humanActionWindow = state.handStarted && !state.handClosed && (state.leadTeam === "A" || state.tableCards.some((card) => card.side === "B"));
+  const canSwitchAtBoundary = !state.handStarted || Boolean(state.matchWinner);
+  const displayVueltaNumber =
+    !state.handStarted
+      ? 1
+      : state.handClosed || state.tableCards.length >= tableSeats.length
+      ? Math.max(1, state.trickHistory.length)
+      : Math.min(state.trickHistory.length + 1, 3);
+  const pardaCount = getPardaCount(state.trickHistory);
+
+  const whoStartsName = getSeatPlayerName(state.manoSeatId ?? state.currentLeadSeatId ?? getManoSeatForHand(state.handNumber).seatId);
+  const leadPlayerName = getSeatPlayerName(state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId);
+  const selectedSeatId = getSelectedSeatId(activeLane.role);
+  const currentTurnSeat = state.currentTurnSeatId ? getSeatById(state.currentTurnSeatId) : null;
+  const currentActorName = state.currentTurnSeatId ? getSeatPlayerName(state.currentTurnSeatId) : null;
+  const isSelectedSeatTurn = state.currentTurnSeatId === selectedSeatId;
+  const tableTrickOpen = Boolean(
+    state.handStarted && !state.handClosed && state.currentTurnSeatId && state.tableCards.length < tableSeats.length
+  );
+  const handEndsCopy = "La mano termina cuando alguien gana 2 vueltas o cuando se cierra la tercera.";
+  const nextTrucoCall = getNextTrucoCall(state.activeBet);
+  const humanHasTrucoRaise = !state.trucoRaiseOwner || state.trucoRaiseOwner === "A";
+  const canRaiseTruco = Boolean(nextTrucoCall) && tableTrickOpen && isSelectedSeatTurn && humanHasTrucoRaise;
+
+  if (state.envidoPending && !state.envidoResolved) {
+    return {
+      phase: "envido-resolution",
+      phaseLabel: "Resolver envido",
+      phaseHint: state.envidoPending.accepted
+        ? `${activeLane.rival.name} quiso. Se cantan los tantos y se anota antes de seguir la mano.`
+        : `${activeLane.rival.name} no quiso. Se anota 1 punto y la mano sigue normal.`,
+      stepNumber: 1,
+      stepTitle: "Anotar envido",
+      advanceLabel: "Anotar envido",
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: true,
+      canUseRolePower: false,
+      canSwitchRole: false,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: null,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: "El envido se resuelve antes de volver a las cartas.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
+
+  if (!state.handStarted) {
+    return {
+      phase: "role-select",
+      phaseLabel: "Elegir rol",
+      phaseHint: `Elegí rol y confirmá para repartir. ${whoStartsName} va a salir primero.`,
+      stepNumber: 1,
+      stepTitle: "Elegir rol",
+      advanceLabel: "Confirmar y repartir",
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: true,
+      canUseRolePower: false,
+      canSwitchRole: true,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: null,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: isNegociante
+        ? "Cuando arranque la mano, primero podes negociar los puntos."
+        : isCartachin
+          ? "Cuando arranque la mano, primero podes cargar un arma."
+          : "Cuando arranque la mano, este rol va directo a las cartas.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
+
+  if (state.matchWinner) {
+    return {
+      phase: "match-end",
+      phaseLabel: "Partida cerrada",
+      phaseHint: "La partida llego a 30. Baraja de nuevo si queres otra prueba.",
+      stepNumber: 5,
+      stepTitle: "Nueva partida",
+      advanceLabel: "Nueva partida",
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: true,
+      canUseRolePower: false,
+      canSwitchRole: true,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: null,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: "La partida ya termino.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
+
+  if (state.handClosed) {
+    return {
+      phase: "hand-end",
+      phaseLabel: "Cerrar mano",
+      phaseHint: "La mano termino. Cobra el punto y pasá a la siguiente.",
+      stepNumber: 4,
+      stepTitle: "Cobrar la mano",
+      advanceLabel: "Siguiente mano",
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: true,
+      canUseRolePower: false,
+      canSwitchRole: true,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: null,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: state.pointsInverted
+        ? "La negociacion invirtio el cobro de esta mano."
+        : "La mano cobra normal.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
+
+  if (state.tableCards.length >= tableSeats.length) {
+    const nextLeaderName = getSeatPlayerName(state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId);
+    const nextLeaderCopy =
+      state.leadTeam === "A"
+        ? `Limpiá la mesa y la siguiente vuelta arranca con ${nextLeaderName}.`
+        : `Limpiá la mesa y ${nextLeaderName} abre la siguiente vuelta.`;
+
+    return {
+      phase: "trick-closed",
+      phaseLabel: `Vuelta ${state.vueltaIndex} resuelta`,
+      phaseHint: nextLeaderCopy,
+      stepNumber: 3,
+      stepTitle: "Limpiar la mesa",
+      advanceLabel: "Limpiar mesa",
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: true,
+      canUseRolePower: false,
+      canSwitchRole: false,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: null,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: "La mano sigue viva.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
+
+  if (tableTrickOpen) {
+    const firstCardWindowForSeat = firstCardWindow && isSelectedSeatTurn;
+    const rolePowerWindow = openingWindow && firstCardWindow;
+    const cartachinPowerAvailable = rolePowerWindow && isCartachin && !state.weaponUsed;
+    const negociantePowerAvailable = rolePowerWindow && isNegociante && !state.negotiationUsed;
+    const roleOpeningDecisionAvailable = cartachinPowerAvailable || negociantePowerAvailable;
+
+    return {
+      phase: isSelectedSeatTurn ? "table-human-turn" : "table-auto-turn",
+      phaseLabel: isSelectedSeatTurn ? `Tu turno · ${activeLane.human.name}` : `Turno de ${currentActorName}`,
+      phaseHint: isSelectedSeatTurn
+        ? roleOpeningDecisionAvailable
+          ? `Antes de bajar tu primera carta, podes usar tu rol o jugar directo.`
+          : `Te toca como ${activeLane.human.name}. Elegi una carta para la vuelta ${displayVueltaNumber}.`
+        : roleOpeningDecisionAvailable
+          ? `${currentActorName} va a salir, pero antes podes usar tu rol.`
+          : `${currentActorName} juega ahora en la ronda de mesa.`,
+      stepNumber: 2,
+      stepTitle: isSelectedSeatTurn ? "Bajar carta" : "Avanzar mesa",
+      advanceLabel: isSelectedSeatTurn ? null : roleOpeningDecisionAvailable ? `Dejar jugar a ${currentActorName}` : `${currentActorName} juega`,
+      canPlayCard: isSelectedSeatTurn,
+      canUseWeapon: cartachinPowerAvailable,
+      canCallEnvido: firstCardWindowForSeat && !state.envidoResolved && state.activeBet === 1,
+      canCallTruco: canRaiseTruco,
+      canAdvance: !isSelectedSeatTurn,
+      canUseRolePower: negociantePowerAvailable,
+      canSwitchRole: false,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: currentActorName,
+      nextActorSeatId: state.currentTurnSeatId,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: negociantePowerAvailable
+        ? "Todavia podes negociar antes de que salga la primera carta."
+        : cartachinPowerAvailable
+          ? "Todavia podes cargar un arma antes de que salga la primera carta."
+          : currentTurnSeat?.role
+            ? `${currentActorName} ocupa ${currentTurnSeat.label}.`
+            : "La mesa avanza por orden.",
+      rolePowerButtonLabel: roleDefinition.powerName,
+      trucoCallLabel: nextTrucoCall?.label
+    };
+  }
+
+  /*
+  if (state.tableCards.length === 0 && state.leadTeam === "B") {
+    const hasOpeningDecision =
+      openingWindow && ((isNegociante && !state.negotiationUsed) || (isCartachin && !state.weaponUsed));
+
+    return {
+      phase: hasOpeningDecision ? "pre-rival-lead" : "rival-leads",
+      phaseLabel: hasOpeningDecision ? "Decision antes de la salida" : `Sale ${activeLane.rival.name}`,
+      phaseHint: hasOpeningDecision
+        ? `${activeLane.rival.name} va a salir primero, pero antes decidis si usas tu rol.`
+        : `${activeLane.rival.name} arranca esta vuelta. Mirá su carta antes de responder.`,
+      stepNumber: openingWindow ? 1 : 2,
+      stepTitle: hasOpeningDecision ? "Tu decision previa" : openingWindow ? "Ver salida rival" : "Ver salida rival",
+      advanceLabel: hasOpeningDecision ? `Dejar salir a ${activeLane.rival.name}` : "Ver salida rival",
+      canPlayCard: false,
+      canUseWeapon: openingWindow && isCartachin && !state.weaponUsed,
+      canCallEnvido: firstCardWindow && !state.envidoResolved && state.activeBet === 1,
+      canCallTruco: canRaiseTruco,
+      canAdvance: true,
+      canUseRolePower: openingWindow && isNegociante && !state.negotiationUsed,
+      canSwitchRole: canSwitchAtBoundary,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: hasOpeningDecision ? activeLane.human.name : activeLane.rival.name,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: isNegociante
+        ? state.negotiationUsed
+          ? state.pointsInverted
+            ? "La negociacion salio. Esta mano cobra al reves."
+            : "La negociacion fallo. Esta mano cobra normal."
+          : "Todavia podes negociar los puntos antes de que salga la primera carta."
+        : isCartachin
+          ? state.weaponUsed
+            ? "Ya elegiste el arma de esta mano."
+            : "Podes cargar un arma antes de mirar la salida rival."
+          : "Este rol juega la mano clasica sin mecanica extra.",
+      rolePowerButtonLabel: "Negociar puntos",
+      trucoCallLabel: nextTrucoCall?.label
+    };
+  }
+
+  if (openingWindow) {
+    return {
+      phase: "opening",
+      phaseLabel: "Preparar mano",
+      phaseHint: getOpeningPhaseHint(activeLane, isNegociante, isCartachin),
+      stepNumber: 1,
+      stepTitle: "Abrir la mano",
+      advanceLabel: null,
+      canPlayCard: true,
+      canUseWeapon: isCartachin && !state.weaponUsed,
+      canCallEnvido: firstCardWindow && !state.envidoResolved && state.activeBet === 1,
+      canCallTruco: canRaiseTruco,
+      canAdvance: false,
+      canUseRolePower: isNegociante && !state.negotiationUsed,
+      canSwitchRole: canSwitchAtBoundary,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: activeLane.human.name,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: isNegociante
+        ? state.negotiationUsed
+          ? state.pointsInverted
+            ? "La negociacion salio. Esta mano cobra al reves."
+            : "La negociacion fallo. Esta mano cobra normal."
+          : "Todavia podes negociar los puntos antes de jugar."
+        : isCartachin
+          ? state.weaponUsed
+            ? "Ya elegiste el arma de esta mano."
+            : "Podes cargar un arma antes de jugar la primera carta."
+          : "Este rol juega la mano clasica sin mecanica extra.",
+      rolePowerButtonLabel: "Negociar puntos",
+      trucoCallLabel: nextTrucoCall?.label
+    };
+  }
+  */
+
+  return {
+    phase: "play",
+    phaseLabel: `Jugar vuelta ${state.vueltaIndex + 1}`,
+    phaseHint: "Ahora la mano se define con cartas. Elegi una y cerrá la vuelta.",
+    stepNumber: 2,
+    stepTitle: "Bajar carta",
+    advanceLabel: null,
+    canPlayCard: true,
+    canUseWeapon: false,
+    canCallEnvido: false,
+    canCallTruco: canRaiseTruco,
+    canAdvance: false,
+    canUseRolePower: false,
+    canSwitchRole: false,
+    displayVueltaNumber,
+    pardaCount,
+    whoStartsName,
+    leadPlayerName,
+    nextActorName: activeLane.human.name,
+    handEndsCopy,
+    rolePowerName: roleDefinition.powerName,
+    rolePowerSummary: roleDefinition.powerSummary,
+    rolePowerStatus: state.pointsInverted
+      ? "Ganes o pierdas la mano, el cobro esta invertido."
+      : isCartachin
+        ? "El arma se define solo al abrir la mano."
+        : "La diferencia ahora la hacen las cartas.",
+    rolePowerButtonLabel: roleDefinition.powerName,
+    trucoCallLabel: nextTrucoCall?.label
+  };
+};
+
+export function useTrucolocoMatch() {
+  const [selectedRole, setSelectedRole] = useState(MATCH_CONFIG.defaultRole);
+  const activeLane = useMemo(() => getLanePair(selectedRole), [selectedRole]);
+  const roster = useMemo(() => ({ A: teams.A, B: teams.B }), []);
+  const [state, setState] = useState(() => buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(MATCH_CONFIG.defaultRole)));
+
+  const negotiatePoints = () => {
+    setState((current) => {
+      const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
+
+      if (activeLane.role !== "Negociante" || current.negotiationUsed || current.envidoPending || !openingWindow) {
+        return current;
+      }
+
+      const humanDie = Math.floor(Math.random() * 6) + 1;
+      const rivalDie = Math.floor(Math.random() * 6) + 1;
+      const success = humanDie + rivalDie >= 8;
+
+      return {
+        ...current,
+        negotiationUsed: true,
+        pointsInverted: success,
+        negotiationDice: { humanDie, rivalDie, success },
+        eventLog: success
+          ? `${activeLane.human.name} abre la negociacion. Dados ${humanDie} y ${rivalDie}: esta mano se cobra invertida.`
+          : `${activeLane.human.name} intenta negociar. Dados ${humanDie} y ${rivalDie}: la mano sigue cobrando normal.`,
+        highlight: success ? "Negociacion aprobada." : "Negociacion rechazada.",
+        outcomeTone: success ? "neutral" : "lose"
+      };
+    });
+  };
+
+  const useWeapon = (weaponId) => {
+    setState((current) => {
+      const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
+
+      if (activeLane.role !== "Cartachin" || current.weaponUsed || current.envidoPending || !openingWindow) {
+        return current;
+      }
+
+      const weapon = current.weaponHand.find((item) => item.handIndex === weaponId);
+      if (!weapon) return current;
+
+      return {
+        ...current,
+        weaponUsed: true,
+        activeWeapon: weapon,
+        weaponHand: current.weaponHand.filter((item) => item.handIndex !== weaponId),
+        eventLog:
+          weapon.id === "parca-utileria"
+            ? `${activeLane.human.name} carga ${weapon.name}. Tu proxima carta sube dos lugares en la vuelta.`
+            : `${activeLane.human.name} prepara ${weapon.name}. La carta rival va a entrar debilitada.`,
+        highlight: `${weapon.name} lista.`,
+        outcomeTone: "neutral"
+      };
+    });
+  };
+
+  const callEnvido = () => {
+    setState((current) => {
+      const firstCardWindow =
+        current.handStarted &&
+        current.vueltaIndex === 0 &&
+        current.tableCards.length === 0 &&
+        current.trickHistory.length === 0 &&
+        current.currentTurnSeatId === getSelectedSeatId(activeLane.role) &&
+        !current.handClosed;
+
+      if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1) return current;
+
+      const resolution = resolveEnvido(current.humanHand, current.rivalHand, current.manoTeam);
+      const rivalWants = resolution.rivalValue >= 24 || resolution.rivalValue >= resolution.humanValue - 2;
+      const winner = rivalWants ? resolution.winner : "A";
+      const points = rivalWants ? 2 : 1;
+      const winnerName = getPlayerName(winner, activeLane);
+
+      return {
+        ...current,
+        envidoPending: {
+          accepted: rivalWants,
+          humanValue: resolution.humanValue,
+          rivalValue: resolution.rivalValue,
+          winner,
+          points
+        },
+        eventLog: rivalWants
+          ? `${activeLane.human.name} canta envido. ${activeLane.rival.name} quiere. Tantos: ${resolution.humanValue} a ${resolution.rivalValue}.`
+          : `${activeLane.human.name} canta envido. ${activeLane.rival.name} no quiere.`,
+        highlight: rivalWants ? `Tantos: ${resolution.humanValue} a ${resolution.rivalValue}. Gana ${winnerName}.` : "Envido no querido.",
+        outcomeTone: winner === "A" ? "win" : "lose"
+      };
+    });
+  };
+
+  const settleEnvido = () => {
+    setState((current) => {
+      if (!current.envidoPending || current.envidoResolved) return current;
+
+      const { winner, points } = current.envidoPending;
+      const scores = awardPoints(current.scores, winner, points);
+      const matchWinner = getMatchWinner(scores);
+      const winnerName = getPlayerName(winner, activeLane);
+
+      return {
+        ...current,
+        scores,
+        envidoResolved: true,
+        envidoResult: current.envidoPending,
+        envidoPending: null,
+        eventLog: `${winnerName} cobra ${points} ${points === 1 ? "punto" : "puntos"} de envido. La mano vuelve a las cartas.`,
+        highlight: `Envido anotado para ${winnerName}.`,
+        outcomeTone: winner === "A" ? "win" : "lose",
+        matchWinner
+      };
+    });
+  };
+
+  const callTruco = () => {
+    setState((current) => {
+      const selectedSeatId = getSelectedSeatId(activeLane.role);
+      const humanActionWindow =
+        current.handStarted &&
+        !current.handClosed &&
+        current.currentTurnSeatId === selectedSeatId &&
+        current.tableCards.length < tableSeats.length;
+
+      const nextCall = getNextTrucoCall(current.activeBet);
+      if (current.envidoPending || !humanActionWindow || !nextCall) return current;
+
+      const rivalWants = shouldRivalAcceptTruco(current.rivalHand, current.activeBet, current.trickWins);
+
+      if (rivalWants) {
+        return {
+          ...current,
+          activeBet: nextCall.acceptedBet,
+          trucoState: nextCall.label.toLowerCase().replace(" ", "-"),
+          trucoRaiseOwner: "B",
+          eventLog: `${activeLane.human.name} canta ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} quiere. La mano ahora vale ${nextCall.acceptedBet} puntos.`,
+          highlight: `${nextCall.label} querido.`,
+          outcomeTone: "neutral"
+        };
+      }
+
+      const scores = awardPoints(current.scores, "A", nextCall.rejectedPoints);
+      const matchWinner = getMatchWinner(scores);
+
+      return {
+        ...current,
+        scores,
+        handClosed: true,
+        handWinner: "A",
+        scoringWinner: "A",
+        lastWinner: "A",
+        trucoState: `${nextCall.label.toLowerCase().replace(" ", "-")}-rejected`,
+        trucoRaiseOwner: null,
+        eventLog: `${activeLane.human.name} canta ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} no quiere. ${activeLane.human.name} cobra ${nextCall.rejectedPoints} ${nextCall.rejectedPoints === 1 ? "punto" : "puntos"}.`,
+        highlight: `${nextCall.label} no querido.`,
+        outcomeTone: "win",
+        matchWinner
+      };
+    });
+  };
+
+  const playCard = (cardId) => {
+    setState((current) => {
+      const selectedSeatId = getSelectedSeatId(activeLane.role);
+
+      if (
+        !current.handStarted ||
+        current.envidoPending ||
+        current.handClosed ||
+        current.currentTurnSeatId !== selectedSeatId ||
+        current.tableCards.length >= tableSeats.length
+      ) {
+        return current;
+      }
+
+      const humanCard = (current.handsBySeat?.[selectedSeatId] ?? []).find((card) => card.handIndex === cardId);
+      if (!humanCard) return current;
+
+      return playSeatCard(current, selectedSeatId, humanCard, activeLane, activeLane.role);
+    });
+  };
+
+  const startHand = () => {
+    setState((current) => {
+      if (current.handStarted || current.matchWinner) return current;
+      return buildOpeningState(current.handNumber, current.scores, activeLane);
+    });
+  };
+
+  const revealRivalLeadAction = () => {
+    setState((current) => {
+      if (!current.handStarted || current.envidoPending || current.handClosed) {
+        return current;
+      }
+
+      return revealRivalLead(current, activeLane, activeLane.role);
+    });
+  };
+
+  const clearTrick = () => {
+    setState((current) => clearResolvedTrick(current, activeLane, activeLane.role));
+  };
+
+  const startNextHand = () => {
+    setState((current) => {
+      if (!current.handClosed || current.matchWinner) return current;
+      return buildOpeningState(current.handNumber + 1, current.scores, activeLane);
+    });
+  };
+
+  const restartMatch = () => {
+    setState((current) => {
+      if (!current.matchWinner) return current;
+
+      return {
+        ...buildRoleSelectState(1, { A: 0, B: 0 }, activeLane),
+        eventLog: `${activeLane.human.name} vuelve a la mesa. Elegi si queres arrancar otra partida con ${activeLane.role}.`,
+        highlight: "Nueva partida."
+      };
+    });
+  };
+
+  const advance = () => {
+    setState((current) => {
+      if (current.matchWinner) {
+        return {
+          ...buildRoleSelectState(1, { A: 0, B: 0 }, activeLane),
+          eventLog: `${activeLane.human.name} vuelve a la mesa. Elegi si queres arrancar otra partida con ${activeLane.role}.`,
+          highlight: "Nueva partida."
+        };
+      }
+
+      if (current.envidoPending && !current.envidoResolved) {
+        const { winner, points } = current.envidoPending;
+        const scores = awardPoints(current.scores, winner, points);
+        const matchWinner = getMatchWinner(scores);
+        const winnerName = getPlayerName(winner, activeLane);
+
+        return {
+          ...current,
+          scores,
+          envidoResolved: true,
+          envidoResult: current.envidoPending,
+          envidoPending: null,
+          eventLog: `${winnerName} cobra ${points} ${points === 1 ? "punto" : "puntos"} de envido. La mano vuelve a las cartas.`,
+          highlight: `Envido anotado para ${winnerName}.`,
+          outcomeTone: winner === "A" ? "win" : "lose",
+          matchWinner
+        };
+      }
+
+      if (!current.handStarted) {
+        return buildOpeningState(current.handNumber, current.scores, activeLane);
+      }
+
+      if (
+        current.currentTurnSeatId &&
+        current.currentTurnSeatId !== getSelectedSeatId(activeLane.role) &&
+        current.tableCards.length < tableSeats.length &&
+        !current.handClosed
+      ) {
+        return revealRivalLead(current, activeLane, activeLane.role);
+      }
+
+      if (current.tableCards.length >= tableSeats.length && !current.handClosed) {
+        return clearResolvedTrick(current, activeLane, activeLane.role);
+      }
+
+      if (!current.handClosed) {
+        return current;
+      }
+
+      return buildOpeningState(current.handNumber + 1, current.scores, activeLane);
+    });
+  };
+
+  const selectRole = (role) => {
+    if (!availableRoles.includes(role)) return;
+    if (state.handStarted && !state.matchWinner) return;
+
+    setSelectedRole(role);
+    setState(buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(role)));
+  };
+
+  const phaseData = getPhaseData(state, activeLane);
+  const tableFlow = buildTableFlow(state, activeLane, selectedRole, phaseData.nextActorName);
+  const dealerSeat = tableFlow.seats.find((seat) => seat.isDealer);
+  const dealerTeam = dealerSeat?.team ?? (state.manoTeam === "A" ? "B" : "A");
+  const dealerName = dealerSeat?.player?.name ?? getSeatPlayerName(getPreviousSeatId(state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId));
+
+  return {
+    ...state,
+    roster,
+    config: MATCH_CONFIG,
+    roleOptions: availableRoles,
+    selectedRole,
+    activeLane,
+    dealerTeam,
+    dealerName,
+    tableFlow,
+    ...phaseData,
+    playCard,
+    useWeapon,
+    negotiatePoints,
+    callEnvido,
+    settleEnvido,
+    callTruco,
+    startHand,
+    revealRivalLead: revealRivalLeadAction,
+    clearTrick,
+    startNextHand,
+    restartMatch,
+    advance,
+    nextHand: advance,
+    selectRole
+  };
+}

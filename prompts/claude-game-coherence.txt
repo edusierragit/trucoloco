@@ -1,0 +1,69 @@
+Estás trabajando en este repo:
+C:\Users\eduar\DEVTHINGS\frikex\trucoloco-thegame
+
+Objetivo:
+Mejorar la COHERENCIA DEL GAMEPLAY del MVP web de Trucoloco sin tocar la presentacion fuera de lo necesario.
+
+Contexto:
+- El proyecto activo es `trucoloco-web/`
+- Stack: Vite + React + Three.js + @react-three/fiber
+- El gameplay actual ya tiene:
+  - mano jugable minima
+  - Truco / Envido basicos
+  - respuesta `Quiero / No quiero`
+  - armas basicas
+  - cartas extra absurdas tipo Yu-Gi-Oh
+- El problema actual es de coherencia:
+  - hay demasiada data mockeada
+  - la logica todavia se siente muy arcade/prototipo
+  - faltan mejores transiciones y reglas internas mas limpias
+  - deberia sentirse mas “truco retorcido” y menos random total
+
+Tu ownership es SOLO esta zona:
+- `trucoloco-web/src/game/hooks/useTrucolocoMatch.js`
+- `trucoloco-web/src/game/data/cards.js`
+- `trucoloco-web/src/game/data/weapons.js`
+- opcionalmente `trucoloco-web/src/game/config.js` si hace falta alguna constante
+
+NO toques:
+- `trucoloco-web/src/game/ui/*`
+- `trucoloco-web/src/game/scene/*`
+- `package.json`
+- config de MCP
+- cualquier archivo de Unity
+
+Objetivo de producto:
+- Menos ruido mock
+- Reglas un poco mas consistentes
+- Que las cartas extra absurdas aparezcan como excepcion sabrosa, no como ensalada constante
+- Que Truco / Envido / armas interactuen de modo legible
+- Que los textos del relato mantengan tono argentino, pero no parezcan placeholders aleatorios
+
+Direccion deseada:
+- conservar humor
+- conservar caos
+- reducir arbitrariedad
+- priorizar una buena primera impresion jugable
+- mantener el formato `3v3` y el duelo activo `Irvyn vs Cartachin`
+
+Reglas:
+- No cambiar la API publica del hook salvo que sea estrictamente necesario
+- Si agregas helpers, mantenelos dentro de los archivos de ownership
+- No metas librerias nuevas
+- Mantene ASCII
+- Hace cambios reales, no solo sugerencias
+
+Entrega:
+1. Implementa los cambios
+2. Decime que archivos tocaste
+3. Explica en 4-8 bullets que mejoraste del gameplay
+4. Aclara cualquier tradeoff o limitacion
+
+Antes de editar:
+- lee `trucoloco-web/src/game/hooks/useTrucolocoMatch.js`
+- lee `trucoloco-web/src/game/data/cards.js`
+- lee `trucoloco-web/src/game/data/weapons.js`
+
+Despues:
+- corre `npm run build` dentro de `trucoloco-web`
+- si falla, arreglalo antes de terminar

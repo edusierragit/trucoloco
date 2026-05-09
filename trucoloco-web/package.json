@@ -1,0 +1,27 @@
+{
+  "name": "trucoloco-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:mcp": "vite --host 127.0.0.1 --port 4173",
+    "check:rules": "node scripts/validate-truco-rules.mjs",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^3.0.4",
+    "@vitejs/plugin-react": "^6.0.1",
+    "postprocessing": "^6.39.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.183.2",
+    "vite": "^8.0.8"
+  },
+  "devDependencies": {
+    "threejs-devtools-mcp": "^0.4.1"
+  }
+}
