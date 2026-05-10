@@ -29,6 +29,7 @@ function CharacterSeat({
   isCurrentActor,
   isRoleSelect,
   isPlayerSeat,
+  isSelectedCharacter,
   isSeatedView,
   showFloatingLabel
 }) {
@@ -60,9 +61,9 @@ function CharacterSeat({
 
     // ---- Ring pulse ----
     if (ringRef.current) {
-      let opacity = isCurrentActor ? 0.78 : isSelectedLane ? 0.5 : 0.18;
+      let opacity = isCurrentActor ? 0.78 : isSelectedCharacter ? 0.72 : isSelectedLane ? 0.5 : 0.18;
       let color = character.accent;
-      let scale = isCurrentActor ? 1.12 : isSelectedLane ? 1.02 : 0.96;
+      let scale = isCurrentActor ? 1.12 : isSelectedCharacter ? 1.11 : isSelectedLane ? 1.02 : 0.96;
 
       // Winner team flash
       if (handClosed) {
@@ -110,8 +111,8 @@ function CharacterSeat({
         let opacity = 0.0;
         let scale = 1.12;
 
-        if (isSelectedLane || isCurrentActor) {
-          opacity = 0.08 + Math.abs(Math.sin(t * 1.4)) * 0.06;
+        if (isSelectedCharacter || isSelectedLane || isCurrentActor) {
+          opacity = (isSelectedCharacter ? 0.14 : 0.08) + Math.abs(Math.sin(t * 1.4)) * 0.06;
         }
 
         if (isExodia && isGazpacho) {
@@ -134,9 +135,13 @@ function CharacterSeat({
         let emissive = "#000000";
         let emissiveIntensity = 0.0;
 
-        if (isCurrentActor || isSelectedLane) {
+        if (isCurrentActor || isSelectedCharacter || isSelectedLane) {
           emissive = character.accent;
-          emissiveIntensity = isCurrentActor ? 0.18 + Math.abs(Math.sin(t * 2.4)) * 0.12 : 0.05 + Math.abs(Math.sin(t * 1.4)) * 0.04;
+          emissiveIntensity = isCurrentActor
+            ? 0.18 + Math.abs(Math.sin(t * 2.4)) * 0.12
+            : isSelectedCharacter
+              ? 0.12 + Math.abs(Math.sin(t * 1.4)) * 0.07
+              : 0.05 + Math.abs(Math.sin(t * 1.4)) * 0.04;
         }
 
         if (isExodia && isGazpacho) {
@@ -220,12 +225,12 @@ function CharacterSeat({
           <Text
             position={[0, -0.18, 0]}
             fontSize={0.07}
-            color={isCurrentActor || isSelectedLane ? character.accent : "#66513b"}
+            color={isCurrentActor || isSelectedCharacter || isSelectedLane ? character.accent : "#66513b"}
             anchorX="center"
             anchorY="middle"
             letterSpacing={0.08}
           >
-            {isCurrentActor ? character.name.toUpperCase() : character.role.toUpperCase()}
+            {isCurrentActor ? character.name.toUpperCase() : isSelectedCharacter ? "ELEGIDO" : character.role.toUpperCase()}
           </Text>
         </group>
       ) : null}
@@ -249,6 +254,7 @@ export function TeamsAroundTable({ match, cameraView = "table" }) {
   const modId = match.activeModifier?.id ?? "";
   const visibleRosterSeats = getVisibleRosterSeats(match);
   const isRoleSelect = match.phase === "role-select";
+  const selectedCharacterId = match.selectedCharacter?.id;
   const { size } = useThree();
   const isNarrow = size.width < 640;
 
@@ -257,6 +263,7 @@ export function TeamsAroundTable({ match, cameraView = "table" }) {
       {visibleRosterSeats.map((seat) => {
         const character = seat.character;
         const isSelectedLane = character.role === match.selectedRole;
+        const isSelectedCharacter = isRoleSelect && character.id === selectedCharacterId;
         const isPlayerSeat = seat.team === "A" && character.role === match.selectedRole;
         const isCurrentActor = match.handStarted && !match.handClosed && character.name === match.nextActorName;
         const showFloatingLabel = isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor;
@@ -273,6 +280,7 @@ export function TeamsAroundTable({ match, cameraView = "table" }) {
             isCurrentActor={isCurrentActor}
             isRoleSelect={isRoleSelect}
             isPlayerSeat={isPlayerSeat}
+            isSelectedCharacter={isSelectedCharacter}
             isSeatedView={isPlayerSeat && cameraView === "seat"}
             showFloatingLabel={showFloatingLabel}
           />

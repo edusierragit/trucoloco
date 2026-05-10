@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
-import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
+import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
@@ -15,6 +15,7 @@ const cameraViews = [
 ];
 
 const RING_START_STATE = {
+  mode: "ring",
   kind: "idle",
   token: 0,
   player: 0,
@@ -23,9 +24,24 @@ const RING_START_STATE = {
   rivalLane: 0.18,
   playerStamina: 3,
   rivalStamina: 3,
+  pull: 0,
+  playerTrigger: 0,
+  rivalTrigger: 0,
+  playerChamber: 4,
+  rivalChamber: 5,
+  turn: "player",
   resolved: false,
   lastMove: "Entraste a la sala de conflicto. Alineate, guardá aire y resolvé la discusión."
 };
+
+function createDebateState(overrides = {}) {
+  return {
+    ...RING_START_STATE,
+    playerChamber: 1 + Math.floor(Math.random() * 6),
+    rivalChamber: 1 + Math.floor(Math.random() * 6),
+    ...overrides
+  };
+}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -37,13 +53,51 @@ function getRingRead(distance, stamina) {
   return `${range} · ${air}`;
 }
 
+function resolveCorkRoulettePull(current) {
+  if (current.resolved) {
+    return createDebateState({
+      mode: "ruleta",
+      token: current.token + 1,
+      lastMove: "Se resetean los tambores de utileria. Seis chances por lado, cero argumentos validos."
+    });
+  }
+
+  const owner = current.turn ?? "player";
+  const playerTrigger = owner === "player" ? current.playerTrigger + 1 : current.playerTrigger;
+  const rivalTrigger = owner === "rival" ? current.rivalTrigger + 1 : current.rivalTrigger;
+  const pull = current.pull + 1;
+  const popped = owner === "player" ? playerTrigger >= current.playerChamber : rivalTrigger >= current.rivalChamber;
+  const playerLost = popped && owner === "player";
+  const rivalLost = popped && owner === "rival";
+
+  return {
+    ...current,
+    kind: popped ? "corchazo" : "click",
+    token: current.token + 1,
+    pull,
+    playerTrigger,
+    rivalTrigger,
+    turn: owner === "player" ? "rival" : "player",
+    player: rivalLost ? 5 : current.player,
+    rival: playerLost ? 5 : current.rival,
+    resolved: popped,
+    lastMove: popped
+      ? playerLost
+        ? "Tu tambor salto primero. La mesa gana esta disputa por cobarde jurisprudencia."
+        : "El tambor de la mesa salto primero. Tu version queda oficialmente aprobada."
+      : owner === "player"
+        ? `Vos apretas. Click seco. Te quedan ${6 - playerTrigger} posiciones.`
+        : `La mesa aprieta. Click seco. Le quedan ${6 - rivalTrigger} posiciones.`
+  };
+}
+
 export default function App() {
   const match = useTrucolocoMatch();
   const [cameraView, setCameraView] = useState("entry");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
   const [walkNotice, setWalkNotice] = useState("");
-  const [debateState, setDebateState] = useState(RING_START_STATE);
+  const [debateState, setDebateState] = useState(() => createDebateState());
   const previousHandStartedRef = useRef(match.handStarted);
   const returnToTableTimerRef = useRef(null);
   const walkNoticeTimerRef = useRef(null);
@@ -105,7 +159,7 @@ export default function App() {
     }
 
     if (hotspot === "ring") {
-      setDebateState(RING_START_STATE);
+      setDebateState(() => createDebateState());
       handleCameraViewChange("ring");
       return;
     }
@@ -132,12 +186,34 @@ export default function App() {
 
   const triggerDebateAction = useCallback((kind) => {
     setDebateState((current) => {
+      if (current.mode === "ruleta") {
+        if (kind !== "gatillo") {
+          return {
+            ...current,
+            kind: "wait",
+            token: current.token + 1,
+            lastMove: "En la ruleta no hay empujones. Solo apretar, mirar y bancarse el silencio."
+          };
+        }
+
+        if (current.turn !== "player" && !current.resolved) {
+          return {
+            ...current,
+            kind: "wait",
+            token: current.token + 1,
+            lastMove: "Ahora aprieta la mesa. No le robes el momento dramatico."
+          };
+        }
+
+        return resolveCorkRoulettePull(current);
+      }
+
       if (current.resolved) {
-        return {
-          ...RING_START_STATE,
+        return createDebateState({
+          mode: "ring",
           token: current.token + 1,
           lastMove: "Round nuevo. Dos pasos, una excusa y vuelve el quilombo."
-        };
+        });
       }
 
       const nextToken = current.token + 1;
@@ -186,6 +262,16 @@ export default function App() {
     });
   }, []);
 
+  const switchDebateMode = useCallback((mode) => {
+    setDebateState((current) => createDebateState({
+      mode,
+      token: current.token + 1,
+      lastMove: mode === "ruleta"
+        ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
+        : "Modo ring. Alineate, guardá aire y resolvé a empujones."
+    }));
+  }, []);
+
   useEffect(() => {
     if (cameraView !== "ring") {
       window.clearInterval(debateAiTimerRef.current);
@@ -195,6 +281,10 @@ export default function App() {
     debateAiTimerRef.current = window.setInterval(() => {
       setDebateState((current) => {
         if (current.resolved) return current;
+
+        if (current.mode === "ruleta") {
+          return current.turn === "rival" ? resolveCorkRoulettePull(current) : current;
+        }
 
         const nextToken = current.token + 1;
         const distance = Math.abs(current.playerLane - current.rivalLane);
@@ -247,7 +337,7 @@ export default function App() {
 
   const moveDebatePlayer = useCallback((direction) => {
     setDebateState((current) => {
-      if (current.resolved) return current;
+      if (current.resolved || current.mode === "ruleta") return current;
 
       return {
         ...current,
@@ -295,9 +385,19 @@ export default function App() {
           moveDebatePlayer(1);
           return;
         }
+        if (key === "g") {
+          event.preventDefault();
+          switchDebateMode("ring");
+          return;
+        }
+        if (key === "r") {
+          event.preventDefault();
+          switchDebateMode("ruleta");
+          return;
+        }
         if (event.code === "Space" || key === "j") {
           event.preventDefault();
-          triggerDebateAction("golpe");
+          triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
           return;
         }
         if (key === "k") {
@@ -309,7 +409,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cameraView, handleCameraViewChange, moveDebatePlayer, triggerDebateAction]);
+  }, [cameraView, debateState.mode, handleCameraViewChange, moveDebatePlayer, switchDebateMode, triggerDebateAction]);
 
   return (
     <div className="app-shell">
@@ -317,14 +417,14 @@ export default function App() {
         <section className="stage-viewport">
           <Canvas
             camera={{ position: [0, 4.45, 6.15], fov: 34 }}
-            shadows
+            shadows={{ enabled: true, type: PCFSoftShadowMap }}
             dpr={[1, 1.75]}
             gl={{
               antialias: true,
               outputColorSpace: SRGBColorSpace,
               powerPreference: "high-performance",
               toneMapping: ACESFilmicToneMapping,
-              toneMappingExposure: 1.34
+              toneMappingExposure: 1.22
             }}
           >
             <color attach="background" args={["#060403"]} />
@@ -333,6 +433,7 @@ export default function App() {
               match={match}
               cameraView={cameraView}
               debateAction={debateState}
+              selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
               walkHotspot={walkHotspot}
               onWalkHotspotChange={setWalkHotspot}
               onWalkInteract={handleWalkInteract}
@@ -399,27 +500,45 @@ export default function App() {
                 <span>Conflicto</span>
                 <strong>{debateState.player} - {debateState.rival}</strong>
               </div>
-              <strong>Sala de conflicto</strong>
+              <strong>{debateState.mode === "ruleta" ? "Ruleta de corchos" : "Sala de conflicto"}</strong>
               <p>{debateState.lastMove}</p>
               <div className="debate-meter-stack" aria-hidden="true">
                 <div className="debate-meter-row">
                   <span>Vos</span>
                   <div className="debate-meter debate-meter-player">
-                    <i style={{ "--debate-meter": `${Math.max(8, (debateState.player / 5) * 100)}%` }} />
+                    <i style={{ "--debate-meter": `${Math.max(8, ((debateState.mode === "ruleta" ? debateState.playerTrigger : debateState.player) / (debateState.mode === "ruleta" ? 6 : 5)) * 100)}%` }} />
                   </div>
                 </div>
                 <div className="debate-meter-row">
                   <span>Mesa</span>
                   <div className="debate-meter debate-meter-rival">
-                    <i style={{ "--debate-meter": `${Math.max(8, (debateState.rival / 5) * 100)}%` }} />
+                    <i style={{ "--debate-meter": `${Math.max(8, ((debateState.mode === "ruleta" ? debateState.rivalTrigger : debateState.rival) / (debateState.mode === "ruleta" ? 6 : 5)) * 100)}%` }} />
                   </div>
                 </div>
               </div>
               <div className="debate-readout">
-                <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
-                <span>{getRingRead(Math.abs(debateState.playerLane - debateState.rivalLane), debateState.playerStamina)}</span>
+                {debateState.mode === "ruleta" ? (
+                  <>
+                    <span>Vos {debateState.playerTrigger}/6</span>
+                    <span>Mesa {debateState.rivalTrigger}/6</span>
+                    <span>{debateState.turn === "player" ? "tu tambor" : "tambor de la mesa"}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
+                    <span>{getRingRead(Math.abs(debateState.playerLane - debateState.rivalLane), debateState.playerStamina)}</span>
+                  </>
+                )}
               </div>
-              <small>{debateState.resolved ? "J / K: revancha · Esc: volver al antro" : "A/D: moverte · J/espacio: piña · K: empujón · Esc: volver"}</small>
+              <small>
+                {debateState.mode === "ruleta"
+                  ? debateState.resolved
+                    ? "J: otra botella · G: ring · Esc: volver"
+                    : "J/espacio: apretar · G: ring · Esc: volver"
+                  : debateState.resolved
+                    ? "J / K: revancha · R: ruleta · Esc: volver"
+                    : "A/D: moverte · J: piña · K: empujón · R: ruleta · Esc: volver"}
+              </small>
             </div>
           ) : null}
 

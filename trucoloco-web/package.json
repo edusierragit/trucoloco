@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:mcp": "vite --host 127.0.0.1 --port 4173",
+    "dev:mcp": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/dev-with-threejs-mcp.ps1",
+    "mcp:three": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start-threejs-mcp.ps1",
     "check:rules": "node scripts/validate-truco-rules.mjs",
     "build": "vite build",
     "preview": "vite preview"

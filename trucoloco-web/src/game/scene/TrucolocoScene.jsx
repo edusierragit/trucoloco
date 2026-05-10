@@ -1,6 +1,8 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Float, RoundedBox, Text } from "@react-three/drei";
+import { ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
+import { PMREMGenerator } from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Table } from "./Table";
 import { TeamsAroundTable } from "./TeamsAroundTable";
 import { tableSeats } from "../data/characters";
@@ -17,6 +19,31 @@ const BAR_COLORS = {
   teal: "#3ebfb3",
   red: "#a84332"
 };
+
+function RenderEnvironment() {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const previousEnvironment = scene.environment;
+    const previousEnvironmentIntensity = scene.environmentIntensity;
+    const roomEnvironment = new RoomEnvironment();
+    const pmrem = new PMREMGenerator(gl);
+    const environmentMap = pmrem.fromScene(roomEnvironment, 0.035).texture;
+
+    scene.environment = environmentMap;
+    scene.environmentIntensity = 0.54;
+
+    return () => {
+      scene.environment = previousEnvironment;
+      scene.environmentIntensity = previousEnvironmentIntensity;
+      environmentMap.dispose();
+      pmrem.dispose();
+      roomEnvironment.dispose();
+    };
+  }, [gl, scene]);
+
+  return null;
+}
 
 // Modifier-reactive ambient light — pulses color and intensity based on active modifier
 function ModifierAmbientFX({ modId, handClosed, outcomeTone }) {
@@ -450,7 +477,7 @@ function DebateImpactFX({ action }) {
   const groupRef = useRef(null);
   const lastTokenRef = useRef(action?.token ?? 0);
   const progressRef = useRef(1);
-  const color = action?.kind === "empujon" ? "#f3dfb6" : action?.kind?.startsWith("rival") ? "#e06b4a" : action?.kind === "move" ? "#d98a36" : "#63d5c5";
+  const color = action?.kind === "empujon" ? "#f3dfb6" : action?.kind === "corchazo" ? "#e06b4a" : action?.kind?.startsWith("rival") ? "#e06b4a" : action?.kind === "move" ? "#d98a36" : "#63d5c5";
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -487,12 +514,67 @@ function DebateImpactFX({ action }) {
   );
 }
 
+function CorkRevolverStation({ side, active, trigger = 0, popped }) {
+  const isPlayer = side === "player";
+  const x = isPlayer ? -0.52 : 0.52;
+  const color = isPlayer ? "#e06b4a" : "#63d5c5";
+  const label = isPlayer ? "VOS" : "MESA";
+  const rotation = isPlayer ? -0.18 : 0.18;
+
+  return (
+    <group name={`Cork_Revolver_${side}`} position={[x, 0.2, 0.08]} rotation={[0, rotation, 0]}>
+      <RoundedBox args={[0.54, 0.16, 0.7]} radius={0.06} position={[0, -0.02, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={active ? "#2b1810" : "#140d0a"} roughness={0.62} metalness={0.08} />
+      </RoundedBox>
+      <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.16, 0.16, 24]} />
+        <meshStandardMaterial color="#21130e" roughness={0.38} metalness={0.34} />
+      </mesh>
+      <RoundedBox args={[0.16, 0.09, 0.58]} radius={0.035} position={[0, 0.13, -0.34]} rotation={[0.08, 0, 0]} castShadow>
+        <meshStandardMaterial color="#16100d" roughness={0.32} metalness={0.42} />
+      </RoundedBox>
+      <RoundedBox args={[0.12, 0.28, 0.12]} radius={0.035} position={[0.12, -0.12, 0.18]} rotation={[0, 0, -0.34]} castShadow>
+        <meshStandardMaterial color="#2b160d" roughness={0.7} metalness={0.1} />
+      </RoundedBox>
+      <mesh position={[0, 0.12, -0.68]} castShadow>
+        <sphereGeometry args={[0.045, 12, 8]} />
+        <meshStandardMaterial
+          color={popped ? "#f3dfb6" : "#c38335"}
+          emissive={popped ? "#e06b4a" : color}
+          emissiveIntensity={popped ? 0.75 : active ? 0.24 : 0.05}
+          roughness={0.44}
+          metalness={0.2}
+        />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5].map((index) => {
+        const angle = (index / 6) * Math.PI * 2;
+        const filled = index < trigger;
+
+        return (
+          <mesh key={index} position={[Math.cos(angle) * 0.105, 0.19, Math.sin(angle) * 0.105]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.018, 12]} />
+            <meshBasicMaterial color={filled ? color : "#3a2a1d"} transparent opacity={filled ? 0.95 : 0.48} depthWrite={false} />
+          </mesh>
+        );
+      })}
+      <Text position={[0, 0.03, 0.44]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.07} color={active ? "#f3dfb6" : color} anchorX="center" anchorY="middle" letterSpacing={0.12}>
+        {label} {trigger}/6
+      </Text>
+    </group>
+  );
+}
+
 function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }) {
   const isResolved = debateAction?.resolved;
+  const isRoulette = debateAction?.mode === "ruleta";
   const ringVerdict = isResolved
     ? (debateAction?.player ?? 0) > (debateAction?.rival ?? 0)
       ? "GANA TU VERSION"
       : "GANA LA MESA"
+    : isRoulette
+      ? debateAction?.turn === "player"
+        ? "TE TOCA APRETAR"
+        : "APRIETA LA MESA"
     : debateAction?.kind === "rival"
       ? "TE APURAN"
       : debateAction?.kind === "rival-move"
@@ -590,14 +672,37 @@ function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }
       <DebateFighter side="rival" action={debateAction} />
       <DebateImpactFX action={debateAction} />
 
+      {isRoulette ? (
+        <group name="Cork_Roulette_Prop" position={[0, 0.03, 0.02]}>
+          <RoundedBox args={[1.54, 0.08, 0.98]} radius={0.08} position={[0, 0.12, 0.02]} castShadow receiveShadow>
+            <meshStandardMaterial color="#130b08" roughness={0.72} metalness={0.08} />
+          </RoundedBox>
+          <CorkRevolverStation
+            side="player"
+            active={debateAction?.turn === "player" && !isResolved}
+            trigger={debateAction?.playerTrigger ?? 0}
+            popped={isResolved && (debateAction?.rival ?? 0) > (debateAction?.player ?? 0)}
+          />
+          <CorkRevolverStation
+            side="rival"
+            active={debateAction?.turn === "rival" && !isResolved}
+            trigger={debateAction?.rivalTrigger ?? 0}
+            popped={isResolved && (debateAction?.player ?? 0) > (debateAction?.rival ?? 0)}
+          />
+          <Text position={[0, 0.16, 0.58]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.06} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+            DOS TAMBORES · 6 POSICIONES
+          </Text>
+        </group>
+      ) : null}
+
       <Text position={[0, 1.08, 0.82]} fontSize={0.12} color={isResolved ? "#f3dfb6" : "#63d5c5"} anchorX="center" anchorY="middle" letterSpacing={0.16}>
         {ringVerdict}
       </Text>
       <Text position={[0, 0.82, -1.18]} fontSize={0.15} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        RING DEL CONFLICTO
+        {isRoulette ? "RULETA DEL CONFLICTO" : "RING DEL CONFLICTO"}
       </Text>
       <Text position={[0, 0.64, -1.18]} fontSize={0.06} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
-        SE DISCUTE CON EL CUERPO
+        {isRoulette ? "UN CORCHO DECIDE LA JURISPRUDENCIA" : "SE DISCUTE CON EL CUERPO"}
       </Text>
     </group>
   );
@@ -828,7 +933,7 @@ function getCameraPose({ match, isNarrow, cameraView }) {
   };
 }
 
-export function TrucolocoScene({ match, cameraView = "table", debateAction, walkHotspot, onWalkHotspotChange, onWalkInteract }) {
+export function TrucolocoScene({ match, cameraView = "table", debateAction, selectedWalkCharacter, walkHotspot, onWalkHotspotChange, onWalkInteract }) {
   const modId = match.activeModifier?.id ?? "";
   const modTitle = match.activeModifier?.title ?? "";
   const { camera, size } = useThree();
@@ -884,6 +989,7 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, walk
 
   return (
     <>
+      <RenderEnvironment />
       <ambientLight intensity={0.23} color="#9a6a45" />
       <hemisphereLight intensity={0.32} color="#d59b65" groundColor="#070b07" />
       <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} />
@@ -924,11 +1030,27 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, walk
 
         {!isRingMode ? (
           <>
+            <ContactShadows
+              name="Table_ContactShadows"
+              position={[0, -1.66, 0.04]}
+              scale={[7.4, 7.4]}
+              opacity={0.42}
+              blur={2.7}
+              far={3.2}
+              resolution={1024}
+              color="#050302"
+              frames={1}
+            />
             <Table match={match} />
             <TeamsAroundTable match={match} cameraView={cameraView} />
             {cameraView === "seat" ? <SeatViewFocus match={match} /> : null}
             {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} /> : null}
-            <WalkablePlayer enabled={isWalkMode} onHotspotChange={onWalkHotspotChange} onInteract={onWalkInteract} />
+            <WalkablePlayer
+              enabled={isWalkMode}
+              character={selectedWalkCharacter}
+              onHotspotChange={onWalkHotspotChange}
+              onInteract={onWalkInteract}
+            />
 
             <AnimatedLamp modId={modId} />
             <ModifierWallTag modId={modId} modTitle={modTitle} hidden={isNarrow} />

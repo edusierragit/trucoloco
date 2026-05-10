@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Vector3 } from "three";
+import { characterSkins } from "../../data/characters";
+import { CharacterFigure } from "../CharacterFigure";
 
 const ROOM_BOUNDS = {
   minX: -8.55,
@@ -40,7 +42,28 @@ function getNearestHotspot(position) {
   })?.id ?? null;
 }
 
-function AvatarBody({ refs }) {
+function AvatarBody({ refs, character, motionMode }) {
+  const skin = character?.skinId ? characterSkins[character.skinId] : null;
+
+  if (character && skin) {
+    return (
+      <group name={`Walkable_AvatarBody_${character.id}`} scale={0.78}>
+        <CharacterFigure
+          skin={skin}
+          accent={character.accent}
+          outfitMaterialRef={refs.outfitMaterial}
+          upperRef={refs.upper}
+          isActiveLane
+          animationMode={motionMode}
+        />
+        <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.46, 0.6, 36]} />
+          <meshBasicMaterial color={character.accent ?? "#91e9f6"} transparent opacity={0.34} depthWrite={false} />
+        </mesh>
+      </group>
+    );
+  }
+
   return (
     <group name="Walkable_AvatarBody">
       <mesh position={[0, 0.62, 0]} castShadow receiveShadow>
@@ -90,13 +113,15 @@ function AvatarBody({ refs }) {
   );
 }
 
-export function WalkablePlayer({ enabled, onHotspotChange, onInteract }) {
+export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const leftLegRef = useRef(null);
   const rightLegRef = useRef(null);
   const leftArmRef = useRef(null);
   const rightArmRef = useRef(null);
+  const upperRef = useRef(null);
+  const outfitMaterialRef = useRef(null);
   const keysRef = useRef(new Set());
   const yawRef = useRef(0);
   const positionRef = useRef(new Vector3(0, PLAYER_Y, 3.15));
@@ -109,6 +134,8 @@ export function WalkablePlayer({ enabled, onHotspotChange, onInteract }) {
   const cameraTargetRef = useRef(new Vector3());
   const hotspotRef = useRef(null);
   const timeRef = useRef(0);
+  const motionModeRef = useRef("idle");
+  const [motionMode, setMotionMode] = useState("idle");
 
   useEffect(() => {
     if (!enabled) {
@@ -156,6 +183,13 @@ export function WalkablePlayer({ enabled, onHotspotChange, onInteract }) {
     const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
     const moving = inputX !== 0 || inputZ !== 0;
     const speed = keys.has("shift") ? 2.9 : 1.85;
+    const nextMotionMode = moving ? keys.has("shift") ? "run" : "walk" : "idle";
+
+    if (motionModeRef.current !== nextMotionMode) {
+      motionModeRef.current = nextMotionMode;
+      setMotionMode(nextMotionMode);
+    }
+
     const rotateInput = (keys.has("e") ? 1 : 0) - (keys.has("q") ? 1 : 0);
 
     if (rotateInput) {
@@ -190,12 +224,10 @@ export function WalkablePlayer({ enabled, onHotspotChange, onInteract }) {
     groupRef.current.position.copy(positionRef.current);
 
     const swing = moving ? Math.sin(timeRef.current * (keys.has("shift") ? 12 : 8)) : 0;
-    if (!leftLegRef.current || !rightLegRef.current || !leftArmRef.current || !rightArmRef.current) return;
-
-    leftLegRef.current.rotation.x = swing * 0.46;
-    rightLegRef.current.rotation.x = -swing * 0.46;
-    leftArmRef.current.rotation.x = -swing * 0.34;
-    rightArmRef.current.rotation.x = swing * 0.34;
+    if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.46;
+    if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.46;
+    if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.34;
+    if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.34;
     groupRef.current.position.y = PLAYER_Y + (moving ? Math.abs(Math.sin(timeRef.current * 8)) * 0.025 : 0);
 
     worldPositionRef.current.copy(positionRef.current).add(ROOM_WORLD_OFFSET);
@@ -226,11 +258,15 @@ export function WalkablePlayer({ enabled, onHotspotChange, onInteract }) {
   return (
     <group ref={groupRef} name="Walkable_Player" position={[0, PLAYER_Y, 3.15]}>
       <AvatarBody
+        character={character}
+        motionMode={motionMode}
         refs={{
           leftArm: leftArmRef,
           rightArm: rightArmRef,
           leftLeg: leftLegRef,
-          rightLeg: rightLegRef
+          rightLeg: rightLegRef,
+          upper: upperRef,
+          outfitMaterial: outfitMaterialRef
         }}
       />
     </group>

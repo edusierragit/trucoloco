@@ -967,6 +967,119 @@ select {
   line-height: 1.25;
 }
 
+.character-picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(229, 168, 62, 0.18);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(240, 221, 180, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(12, 12, 10, 0.86), rgba(7, 8, 7, 0.68));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.character-picker-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.character-picker-head strong {
+  color: #f3dfb6;
+  font-size: 1rem;
+  text-align: right;
+}
+
+.character-card-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.character-card {
+  position: relative;
+  display: grid;
+  min-height: 118px;
+  padding: 12px 12px 12px 46px;
+  overflow: hidden;
+  border: 1px solid rgba(240, 221, 180, 0.12);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--ink);
+  text-align: left;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--character-accent) 22%, transparent), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 28%),
+    rgba(11, 12, 10, 0.82);
+  transition: transform 160ms ease, border-color 160ms ease, filter 160ms ease;
+}
+
+.character-card:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.07);
+}
+
+.character-card-active {
+  border-color: color-mix(in srgb, var(--character-accent) 68%, #ffe18f 16%);
+  box-shadow:
+    0 16px 42px color-mix(in srgb, var(--character-accent) 18%, rgba(0, 0, 0, 0.32)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.character-card-mark {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--character-accent) 72%, #f3dfb6);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--character-accent) 38%, transparent);
+}
+
+.character-card-active .character-card-mark::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--character-accent) 76%, #f3dfb6);
+}
+
+.character-card strong {
+  color: #f3dfb6;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 0.98;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.character-card small {
+  margin-top: 6px;
+  color: color-mix(in srgb, var(--character-accent) 64%, #f0ddb4);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.character-card em {
+  display: -webkit-box;
+  margin-top: 10px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .role-ready-strip {
   position: sticky;
   bottom: 0;
@@ -1210,6 +1323,18 @@ select {
 .hud-role-select .role-card small {
   margin-top: 6px;
   font-size: 0.68rem;
+}
+
+.hud-role-select .character-picker {
+  padding: 12px;
+}
+
+.hud-role-select .character-card-row {
+  grid-template-columns: 1fr;
+}
+
+.hud-role-select .character-card {
+  min-height: 96px;
 }
 
 .hud-role-select .role-ready-strip {
@@ -2183,6 +2308,14 @@ select {
   border-color: var(--role-accent-line);
 }
 
+.action-button-danger {
+  border-color: rgba(208, 90, 68, 0.4);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 150, 118, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(111, 36, 26, 0.88), rgba(50, 17, 13, 0.9));
+  color: #ffd7c9;
+}
+
 .action-button:disabled,
 .role-pill:disabled,
 .card-button:disabled,
@@ -2227,6 +2360,52 @@ select {
 .bottom-dock-weapons-only {
   width: min(520px, 32vw);
   max-width: calc(100vw - 780px);
+}
+
+.bottom-dock-truco {
+  width: min(760px, 48vw);
+  max-width: calc(100vw - 640px);
+}
+
+.truco-response-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.55fr) 176px;
+  border-color: rgba(229, 168, 62, 0.28);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(229, 168, 62, 0.16), transparent 36%),
+    linear-gradient(90deg, rgba(208, 90, 68, 0.1), transparent 30%, rgba(99, 213, 197, 0.07)),
+    linear-gradient(180deg, rgba(17, 13, 9, 0.9), rgba(7, 7, 6, 0.74));
+}
+
+.truco-ladder {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.truco-step {
+  padding: 8px 10px;
+  border: 1px solid rgba(243, 223, 182, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(240, 221, 180, 0.62);
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.truco-step-active {
+  border-color: rgba(229, 168, 62, 0.44);
+  background:
+    linear-gradient(180deg, rgba(229, 168, 62, 0.2), rgba(208, 90, 68, 0.08)),
+    rgba(255, 255, 255, 0.045);
+  color: #f3dfb6;
+  box-shadow: 0 0 24px rgba(229, 168, 62, 0.14);
+}
+
+.truco-response-actions {
+  align-content: stretch;
 }
 
 .auto-advance-panel {
@@ -2610,14 +2789,14 @@ select {
   justify-content: center;
   align-items: end;
   gap: 0;
-  padding: 12px 10px 4px;
-  min-height: 118px;
-  perspective: 900px;
+  padding: 18px 18px 8px;
+  min-height: 132px;
+  perspective: 1100px;
 }
 
 .hand-panel-play .hand-fan {
-  min-height: 202px;
-  padding: 10px 18px 0;
+  min-height: 236px;
+  padding: 18px 22px 2px;
 }
 
 .hand-empty {
@@ -2644,53 +2823,53 @@ select {
 
 .card-button {
   position: relative;
-  width: clamp(92px, 7vw, 118px);
-  min-width: 92px;
-  min-height: 126px;
-  margin: 0 -8px;
-  padding: 16px 12px 12px;
-  border: 1px solid rgba(255, 240, 206, 0.62);
-  border-radius: 8px;
+  width: clamp(104px, 7.4vw, 130px);
+  min-width: 104px;
+  aspect-ratio: 0.68;
+  min-height: 154px;
+  margin: 0 -9px;
+  padding: 0;
+  border: 1px solid rgba(255, 239, 205, 0.72);
+  border-radius: 9px;
   text-align: left;
   overflow: hidden;
   color: var(--card-ink-strong);
   background:
-    linear-gradient(90deg, rgba(113, 80, 50, 0.12) 0 3px, transparent 3px calc(100% - 3px), rgba(113, 80, 50, 0.12) calc(100% - 3px)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 26%),
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.4), transparent 34%),
-    linear-gradient(180deg, var(--card-paper-hot), var(--card-paper));
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 34%),
+    linear-gradient(180deg, #fff1cf, var(--card-paper) 72%, #decaa1);
   box-shadow:
-    0 28px 56px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(255, 244, 213, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 24px 48px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(255, 244, 213, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52);
   transform:
-    translateY(calc(max(var(--card-offset), calc(var(--card-offset) * -1)) * 18px))
-    rotate(calc(var(--card-offset) * 6.5deg))
-    rotateX(4deg);
+    translateY(calc(max(var(--card-offset), calc(var(--card-offset) * -1)) * 13px))
+    rotate(calc(var(--card-offset) * 7.5deg))
+    rotateX(7deg);
+  transform-origin: 50% 92%;
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
 }
 
 .hand-panel-focus .hand-fan {
-  min-height: 214px;
-  padding-top: 18px;
+  min-height: 244px;
+  padding-top: 20px;
 }
 
 .hand-panel-focus .card-button {
-  width: clamp(142px, 10.5vw, 176px);
-  min-width: 142px;
-  min-height: 202px;
-  margin: 0 -12px;
+  width: clamp(144px, 10vw, 178px);
+  min-width: 144px;
+  min-height: 212px;
+  margin: 0 -13px;
 }
 
 .hand-panel-play .card-button {
-  width: clamp(132px, 9.2vw, 166px);
-  min-width: 132px;
-  min-height: 190px;
-  margin: 0 -12px;
+  width: clamp(144px, 9.8vw, 176px);
+  min-width: 144px;
+  min-height: 214px;
+  margin: 0 -13px;
 }
 
 .hand-panel-play .card-name {
-  margin-top: 16px;
-  font-size: clamp(1.2rem, 1.45vw, 1.5rem);
+  font-size: clamp(1.08rem, 1.28vw, 1.34rem);
 }
 
 .hand-panel-play .card-suit-label,
@@ -2701,48 +2880,51 @@ select {
 .card-button::before {
   content: "";
   position: absolute;
-  inset: 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(91, 62, 39, 0.18);
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(113, 80, 50, 0.1) 0 4px, transparent 4px calc(100% - 4px), rgba(113, 80, 50, 0.1) calc(100% - 4px)),
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.36), transparent 24%),
+    radial-gradient(circle at 85% 86%, color-mix(in srgb, var(--card-accent) 18%, transparent), transparent 28%);
   pointer-events: none;
 }
 
 .card-button:not(:disabled) {
   cursor: pointer;
-  animation: card-ready 1800ms ease-in-out infinite;
+  animation: card-ready 1900ms ease-in-out infinite;
   box-shadow:
-    0 30px 58px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(229, 168, 62, 0.2),
-    0 0 34px rgba(229, 168, 62, 0.11),
-    inset 0 1px 0 rgba(255, 255, 255, 0.46);
+    0 30px 62px rgba(0, 0, 0, 0.58),
+    0 0 0 1px color-mix(in srgb, var(--card-accent) 28%, transparent),
+    0 0 38px color-mix(in srgb, var(--card-accent) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54);
 }
 
 .card-button:disabled {
   transform:
-    translateY(calc(10px + max(var(--card-offset), calc(var(--card-offset) * -1)) * 12px))
-    rotate(calc(var(--card-offset) * 4.5deg))
-    rotateX(8deg);
-  opacity: 0.62;
-  filter: saturate(0.72) brightness(0.82);
+    translateY(calc(12px + max(var(--card-offset), calc(var(--card-offset) * -1)) * 10px))
+    rotate(calc(var(--card-offset) * 5deg))
+    rotateX(10deg);
+  opacity: 0.58;
+  filter: saturate(0.68) brightness(0.78);
 }
 
 .card-button::after {
   content: "";
   position: absolute;
-  inset: 0 0 auto;
-  height: 8px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--card-accent) 86%, #fff 14%), rgba(255, 255, 255, 0.15));
+  inset: 7px;
+  border: 1px solid rgba(91, 62, 39, 0.18);
+  border-radius: 6px;
   pointer-events: none;
 }
 
 .card-button:hover:not(:disabled) {
   animation: none;
   transform:
-    translateY(calc(-28px + max(var(--card-offset), calc(var(--card-offset) * -1)) * 18px))
-    rotate(calc(var(--card-offset) * 6.5deg))
+    translateY(calc(-34px + max(var(--card-offset), calc(var(--card-offset) * -1)) * 10px))
+    rotate(calc(var(--card-offset) * 4.6deg))
     rotateX(0deg)
-    scale(1.04);
+    scale(1.055);
   z-index: 3;
+  filter: saturate(1.04) brightness(1.03);
 }
 
 @keyframes card-ready {
@@ -2757,17 +2939,19 @@ select {
 
 .card-corner {
   display: grid;
-  gap: 2px;
-  max-width: 72%;
+  gap: 1px;
+  max-width: 58%;
   color: var(--card-ink-strong);
+  padding: 11px 0 0 11px;
   position: relative;
   z-index: 2;
 }
 
 .card-corner-bottom {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  right: 11px;
+  bottom: 11px;
+  padding: 0;
   transform: rotate(180deg);
   text-align: center;
 }
@@ -2781,7 +2965,7 @@ select {
 }
 
 .card-corner .card-corner-number {
-  font-size: clamp(1.55rem, 1.8vw, 2.15rem);
+  font-size: clamp(1.3rem, 1.55vw, 1.8rem);
   letter-spacing: 0;
 }
 
@@ -2796,10 +2980,10 @@ select {
   position: absolute;
   top: 12px;
   right: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--card-accent) 18%, rgba(24, 14, 10, 0.08));
-  border: 1px solid rgba(68, 48, 28, 0.14);
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-accent) 22%, rgba(24, 14, 10, 0.07));
+  border: 1px solid color-mix(in srgb, var(--card-accent) 24%, rgba(68, 48, 28, 0.12));
   font-size: 0.62rem;
   color: var(--card-ink-soft);
   letter-spacing: 0.08em;
@@ -2816,45 +3000,104 @@ select {
 }
 
 .card-rank-word {
-  display: block;
-  margin-top: 12px;
-  color: var(--card-ink-soft);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  display: none;
+}
+
+.card-surface {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.card-main {
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  margin-top: 12px;
+  color: color-mix(in srgb, var(--card-accent) 52%, #25180f);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.card-main-rank {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 4.6vw, 5.25rem);
+  line-height: 0.78;
+  letter-spacing: 0;
+}
+
+.card-main-suit {
+  margin-top: 3px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-accent) 13%, rgba(255, 255, 255, 0.16));
+  color: var(--card-ink-soft);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
 }
 
 .card-name {
+  color: var(--card-ink-soft);
   display: block;
-  margin-top: 8px;
-  max-width: 88%;
+  align-self: end;
+  max-width: none;
+  margin: 0;
+  padding: 0 18px 36px;
+  color: var(--card-ink-strong);
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 1.55vw, 1.5rem);
-  line-height: 0.95;
+  font-size: clamp(1rem, 1.2vw, 1.24rem);
+  line-height: 0.94;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
   position: relative;
   z-index: 1;
 }
 
 .hand-panel:not(.hand-panel-focus) .card-name {
-  margin-top: 14px;
-  font-size: clamp(0.95rem, 1.1vw, 1.15rem);
+  font-size: clamp(0.88rem, 1vw, 1.05rem);
 }
 
 .card-suit-label {
   display: inline-flex;
-  margin-top: 10px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(90, 63, 39, 0.08);
+  padding: 0;
+  background: transparent;
   color: var(--card-ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card-footer {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--card-ink-soft);
+}
+
+.card-power {
+  color: color-mix(in srgb, var(--card-accent) 62%, #4c3320);
+  font-size: 0.58rem;
+  font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.hand-panel:not(.hand-panel-focus) .card-suit-label,
+.hand-panel:not(.hand-panel-focus) .card-footer,
 .hand-panel:not(.hand-panel-focus) .card-meta {
   display: none;
 }
@@ -3495,6 +3738,19 @@ select {
   .role-card,
   .hud-role-select .role-card {
     min-height: 132px;
+  }
+
+  .character-picker-head {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .character-picker-head strong {
+    text-align: left;
+  }
+
+  .character-card-row {
+    grid-template-columns: 1fr;
   }
 
   .role-ready-strip {

@@ -172,11 +172,11 @@ function CeilingBeams() {
   return (
     <group name="World_CeilingBeams">
       {[-3.1, -1.55, 0, 1.55, 3.1].map((x) => (
-        <RoundedBox key={x} args={[0.14, 0.18, 8.2]} radius={0.025} position={[x, 2.48, -0.2]} receiveShadow>
+        <RoundedBox key={x} args={[0.14, 0.16, 8.2]} radius={0.025} position={[x, 3.56, -0.2]} receiveShadow>
           <meshStandardMaterial color="#160b07" roughness={0.86} />
         </RoundedBox>
       ))}
-      <RoundedBox args={[10.8, 0.12, 0.16]} radius={0.025} position={[0, 2.36, -3.8]}>
+      <RoundedBox args={[10.8, 0.1, 0.16]} radius={0.025} position={[0, 3.42, -3.8]}>
         <meshStandardMaterial color={BAR.wallTrim} roughness={0.72} />
       </RoundedBox>
     </group>

@@ -28,6 +28,56 @@ Usalo para recordar para que se abrio cada chat, que se cambio, que quedo pendie
 
 ## Historial
 
+### 2026-05-09 - Seleccion de personajes y preparacion para GLB
+
+Objetivo:
+- Permitir elegir personaje dentro de cada rol antes de repartir.
+- Preparar la escena para integrar modelos GLB reales sin tocar reglas.
+
+Cambios:
+- `trucoloco-web/src/game/data/characters.js`
+  - `Pol` queda como opcion Cartachin junto a `Pochex`.
+  - Agregado `characterOptionsByRole`.
+- `trucoloco-web/src/game/hooks/useTrucolocoMatch.js`
+  - Estado de seleccion de personaje por rol.
+  - `selectCharacter`, `selectedCharacter`, `selectedRoleCharacters`.
+- `trucoloco-web/src/game/ui/Hud.jsx`
+  - Picker de personaje dentro del selector de rol.
+- `trucoloco-web/src/game/scene/TeamsAroundTable.jsx`
+  - El elegido recibe foco visual durante `role-select`, sin cambiar ocupantes reales de las seis sillas.
+- `trucoloco-web/src/game/scene/CharacterFigure.jsx`
+  - Los personajes sin GLB usan su figura procedural de rol en vez del fallback generico.
+  - Loader robusto contra bounds `NaN` en GLB, necesario para `marvyn.glb`.
+  - Clonado de modelos riggeados con `SkeletonUtils.clone`.
+  - Soporte para clips embebidos `idle/walk/run`.
+- `trucoloco-web/src/game/scene/world/WalkablePlayer.jsx`
+  - En modo `Caminar`, el avatar usa el personaje seleccionado.
+  - Cambia `animationMode` a `idle`, `walk` o `run` segun input/Shift.
+- `trucoloco-web/src/game/scene/Table.jsx`
+  - `tablero.glb` reemplaza al hexagono central procedural.
+- `trucoloco-web/package.json`, `trucoloco-web/README.md`, `MCP_SETUP.md`
+  - Agregado `npm run mcp:three`.
+  - `npm run dev:mcp` ahora usa `scripts/dev-with-threejs-mcp.ps1`: levanta Vite en `4173` y asegura el bridge `9222` si no esta abierto.
+- `trucoloco-web/src/styles.css`
+  - Estilos del picker de personajes.
+- `trucoloco-web/public/assets/characters/`
+  - Copiados desde `C:\Users\eduar\GAMES\trucoloco-info`: `irvyn.glb`, `marvyn.glb`, `pol-arabe.glb`, `tablero.glb`.
+  - Irvyn, Marvyn y Pol ahora apuntan a sus GLB reales.
+
+Validacion:
+- `npm run check:rules`: OK.
+- `npm run build`: OK, con warning esperado de bundle grande por Three/R3F.
+- Server local detectado en `http://127.0.0.1:4173`.
+- MCP Three.js conectado en esta sesion: proxy `http://localhost:9222` hacia `http://localhost:4173`.
+- Screenshot MCP final: vigas elevadas, Marvyn visible, `Imported_Tablero_Central` activo.
+
+Pendientes:
+- Revisar visualmente escala/rotacion fina de `irvyn.glb`, `marvyn.glb` y `pol-arabe.glb` despues de hard refresh.
+- Los GLB actuales no traen clips de animacion; para caminar/correr real hace falta exportar GLB/FBX con animaciones embebidas.
+- Revisar visualmente escala/altura de `tablero.glb`; ya se redujo el footprint a `1.74`, pero puede requerir otra pasada segun gameplay con cartas.
+- Para que Codex cargue tools MCP desde cero, abrir nueva sesion desde raiz del repo con `.codex/config.toml` activo.
+- Si se quiere que elegir Pol/Marvyn cambie tambien todos los nombres de reglas/mano, hay que agregar una capa dinamica de roster/asientos.
+
 ### 2026-05-08 - Relevo de sesiones y memoria operativa
 
 Objetivo:

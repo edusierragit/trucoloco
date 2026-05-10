@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox, Text } from "@react-three/drei";
+import { RoundedBox, Text, useGLTF } from "@react-three/drei";
+import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
 
@@ -301,6 +302,31 @@ const tableCardPoses = [
   { position: [0, 0.43, -0.7], rotation: [0, 0, 0] },
   { position: [-1.05, 0.42, -0.52], rotation: [0, 0, -0.14] }
 ];
+
+function CardTableauGuides({ active }) {
+  return (
+    <group name="Table_CardTableauGuides">
+      {tableCardPoses.map((pose, index) => (
+        <RoundedBox
+          key={index}
+          args={[0.96, 0.012, 1.36]}
+          radius={0.045}
+          position={[pose.position[0], 0.266, pose.position[2]]}
+          rotation={[0, 0, pose.rotation[2]]}
+          receiveShadow
+        >
+          <meshStandardMaterial
+            color={active ? "#0a1711" : "#0f2017"}
+            roughness={0.94}
+            metalness={0.01}
+            transparent
+            opacity={active ? 0.7 : 0.38}
+          />
+        </RoundedBox>
+      ))}
+    </group>
+  );
+}
 
 const getTableCardPose = (card, index) =>
   tableCardPoses[card.tableIndex ?? index] ?? {
@@ -691,6 +717,65 @@ function HexagonHub({ handClosed, outcomeTone, modId }) {
   );
 }
 
+function ImportedHexBoardAsset() {
+  const { scene } = useGLTF("/assets/characters/tablero.glb");
+  const { clonedScene, normalizedScale, offset } = useMemo(() => {
+    const clone = scene.clone();
+
+    clone.traverse((child) => {
+      if (!child.isMesh) return;
+
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      const usesMaterialArray = Array.isArray(child.material);
+      const materials = usesMaterialArray ? child.material : [child.material];
+      child.material = materials.map((material) => {
+        if (!material) return material;
+        const nextMaterial = material.clone();
+        if ("roughness" in nextMaterial) nextMaterial.roughness = Math.max(nextMaterial.roughness ?? 0.64, 0.56);
+        if ("metalness" in nextMaterial) nextMaterial.metalness = Math.min(nextMaterial.metalness ?? 0.04, 0.18);
+        return nextMaterial;
+      });
+      if (!usesMaterialArray) child.material = child.material[0];
+    });
+
+    const bounds = new Box3().setFromObject(clone);
+    const size = new Vector3();
+    const center = new Vector3();
+    bounds.getSize(size);
+    bounds.getCenter(center);
+
+    const maxFootprint = Math.max(size.x, size.z, 0.001);
+    const scaleFactor = 1.74 / maxFootprint;
+
+    return {
+      clonedScene: clone,
+      normalizedScale: scaleFactor,
+      offset: [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor]
+    };
+  }, [scene]);
+
+  return (
+    <primitive
+      object={clonedScene}
+      scale={normalizedScale}
+      position={offset}
+      dispose={null}
+    />
+  );
+}
+
+function ImportedHexBoard({ handClosed, outcomeTone, modId }) {
+  return (
+    <group name="Imported_Tablero_Central" position={[0, 0.245, 0.08]} rotation={[0, 0, 0]}>
+      <Suspense fallback={null}>
+        <ImportedHexBoardAsset />
+      </Suspense>
+    </group>
+  );
+}
+
 // Felt surface with modifier-reactive color tint
 function FeltSurface({ modId }) {
   const feltRef = useRef(null);
@@ -752,33 +837,16 @@ export function Table({ match }) {
       <BrassStuds />
       <TableProps />
 
-      <HexagonHub handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
 
       <mesh name="Table_Pedestal" castShadow receiveShadow position={[0, -1.05, 0]}>
         <cylinderGeometry args={[0.42, 0.58, 1.75, 24]} />
         <meshStandardMaterial color="#34180d" roughness={0.78} metalness={0.04} />
       </mesh>
 
-      {[0, 1, 2, 3, 4, 5].map((index) => {
-        const angle = (Math.PI * 2 * index) / 6;
-        return (
-          <mesh
-            name={`HexSlot_${index + 1}`}
-            key={index}
-            position={[Math.sin(angle) * 1.28, 0.32, Math.cos(angle) * 1.28]}
-            rotation={[0, -angle, 0]}
-            castShadow
-          >
-            <boxGeometry args={[0.22, 0.16, 0.68]} />
-            <meshStandardMaterial color="#603019" roughness={0.62} metalness={0.08} />
-          </mesh>
-        );
-      })}
-
-      <CenterBadge handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
-
       <TensionRing handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
       <TurnMarker match={match} />
+      <CardTableauGuides active={showActiveTableCards} />
 
       <ArchivedTrickCards trickHistory={match.trickHistory} showCurrentPair={showCurrentPair} handClosed={match.handClosed} />
 

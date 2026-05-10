@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { MATCH_CONFIG } from "../config";
 import { deck, modifiers } from "../data/cards";
-import { roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
+import { characterOptionsByRole, roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
 import { weaponPool } from "../data/weapons";
 import {
   PARDA,
@@ -33,6 +33,17 @@ const getLanePair = (role) => ({
   human: teams.A.find((player) => player.role === role) ?? teams.A[0],
   rival: teams.B.find((player) => player.role === role) ?? teams.B[0]
 });
+
+const getDefaultCharacterIdsByRole = () =>
+  availableRoles.reduce((lookup, role) => {
+    lookup[role] = characterOptionsByRole[role]?.[0]?.id ?? getLanePair(role).human.id;
+    return lookup;
+  }, {});
+
+const getSelectedCharacterForRole = (role, characterId) => {
+  const options = characterOptionsByRole[role] ?? [];
+  return options.find((character) => character.id === characterId) ?? options[0] ?? getLanePair(role).human;
+};
 
 const getPlayersById = () =>
   [...teams.A, ...teams.B].reduce((lookup, player) => {
@@ -215,7 +226,7 @@ const describeTableCards = (tableCards) =>
   tableCards.map((play) => `${play.owner} ${play.card?.name ?? play.name}`).join(" · ");
 
 const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
-  if (!card || !current.handStarted || current.handClosed || current.envidoPending) {
+  if (!card || !current.handStarted || current.handClosed || current.envidoPending || current.trucoPending) {
     return current;
   }
 
@@ -304,6 +315,7 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
       scoringWinner: scoring.scoringWinner,
       leadTeam: handWinner,
       trucoRaiseOwner: null,
+      trucoPending: null,
       eventLog: `${baseResolvedState.eventLog} La mano queda para ${handWinnerName}.${current.pointsInverted ? ` Pero cobra ${scoringWinnerName} por negociacion.` : ""}`,
       highlight: matchWinner
         ? matchWinner === "A"
@@ -333,6 +345,18 @@ const shouldRivalAcceptTruco = (rivalHand, currentBet, trickWins) => {
   if (currentBet === 3) return bestPower >= 13 || trickWins.B >= 1;
   return false;
 };
+
+const shouldRivalRaiseTruco = (rivalHand, currentBet, trickWins) => {
+  const nextRaise = getNextTrucoCall(currentBet <= 1 ? 2 : currentBet + 1);
+  const bestPower = getBestCardPower(rivalHand);
+
+  if (!nextRaise) return false;
+  if (currentBet <= 1) return bestPower >= 12 && trickWins.B >= trickWins.A;
+  if (currentBet === 2) return bestPower >= 13 && trickWins.B >= 1;
+  return false;
+};
+
+const getTrucoSlug = (label) => label.toLowerCase().replace(" ", "-");
 
 const getOpeningPhaseHint = (activeLane, isNegociante, isCartachin) => {
   if (isNegociante) {
@@ -385,6 +409,7 @@ const buildRoleSelectState = (handNumber, scores, activeLane) => {
     envidoPending: null,
     trucoState: "none",
     trucoRaiseOwner: null,
+    trucoPending: null,
     pendingAnimationKey: 0,
     eventLog: `${activeLane.human.name} va como ${activeLane.role}. Cuando arranque la mano, sale primero ${whoStartsName}.`,
     highlight: `Elegi ${activeLane.role}.`,
@@ -435,6 +460,7 @@ const buildOpeningState = (handNumber, scores, activeLane) => {
     envidoPending: null,
     trucoState: "none",
     trucoRaiseOwner: null,
+    trucoPending: null,
     pendingAnimationKey: 0,
     eventLog: getRoleOpeningLog(activeLane, whoStartsName),
     highlight: `Mano ${handNumber}. Sale ${whoStartsName}.`,
@@ -503,7 +529,40 @@ const getPhaseData = (state, activeLane) => {
   const handEndsCopy = "La mano termina cuando alguien gana 2 vueltas o cuando se cierra la tercera.";
   const nextTrucoCall = getNextTrucoCall(state.activeBet);
   const humanHasTrucoRaise = !state.trucoRaiseOwner || state.trucoRaiseOwner === "A";
-  const canRaiseTruco = Boolean(nextTrucoCall) && tableTrickOpen && isSelectedSeatTurn && humanHasTrucoRaise;
+  const canRaiseTruco = Boolean(nextTrucoCall) && tableTrickOpen && isSelectedSeatTurn && humanHasTrucoRaise && !state.trucoPending;
+
+  if (state.trucoPending) {
+    const callerName = getPlayerName(state.trucoPending.caller, activeLane);
+
+    return {
+      phase: "truco-response",
+      phaseLabel: `Responder ${state.trucoPending.label}`,
+      phaseHint: `${callerName} sube a ${state.trucoPending.label.toLowerCase()}. Si queres, la mano pasa a valer ${state.trucoPending.acceptedBet}. Si no, cobra ${state.trucoPending.rejectedPoints}.`,
+      stepNumber: 2,
+      stepTitle: "Responder truco",
+      advanceLabel: null,
+      canPlayCard: false,
+      canUseWeapon: false,
+      canCallEnvido: false,
+      canCallTruco: false,
+      canAdvance: false,
+      canUseRolePower: false,
+      canSwitchRole: false,
+      canRespondTruco: state.trucoPending.target === "A",
+      canRaiseTrucoResponse: Boolean(getNextTrucoCall(state.trucoPending.acceptedBet)) && state.trucoPending.target === "A",
+      trucoResponseRaiseLabel: getNextTrucoCall(state.trucoPending.acceptedBet)?.label,
+      displayVueltaNumber,
+      pardaCount,
+      whoStartsName,
+      leadPlayerName,
+      nextActorName: callerName,
+      handEndsCopy,
+      rolePowerName: roleDefinition.powerName,
+      rolePowerSummary: roleDefinition.powerSummary,
+      rolePowerStatus: "El lance de truco se responde antes de bajar otra carta.",
+      rolePowerButtonLabel: roleDefinition.powerName
+    };
+  }
 
   if (state.envidoPending && !state.envidoResolved) {
     return {
@@ -826,7 +885,13 @@ const getPhaseData = (state, activeLane) => {
 
 export function useTrucolocoMatch() {
   const [selectedRole, setSelectedRole] = useState(MATCH_CONFIG.defaultRole);
+  const [selectedCharacterIdsByRole, setSelectedCharacterIdsByRole] = useState(() => getDefaultCharacterIdsByRole());
   const activeLane = useMemo(() => getLanePair(selectedRole), [selectedRole]);
+  const selectedRoleCharacters = useMemo(() => characterOptionsByRole[selectedRole] ?? [], [selectedRole]);
+  const selectedCharacter = useMemo(
+    () => getSelectedCharacterForRole(selectedRole, selectedCharacterIdsByRole[selectedRole]),
+    [selectedCharacterIdsByRole, selectedRole]
+  );
   const roster = useMemo(() => ({ A: teams.A, B: teams.B }), []);
   const [state, setState] = useState(() => buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(MATCH_CONFIG.defaultRole)));
 
@@ -834,7 +899,7 @@ export function useTrucolocoMatch() {
     setState((current) => {
       const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
 
-      if (activeLane.role !== "Negociante" || current.negotiationUsed || current.envidoPending || !openingWindow) {
+      if (activeLane.role !== "Negociante" || current.negotiationUsed || current.envidoPending || current.trucoPending || !openingWindow) {
         return current;
       }
 
@@ -860,7 +925,7 @@ export function useTrucolocoMatch() {
     setState((current) => {
       const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
 
-      if (activeLane.role !== "Cartachin" || current.weaponUsed || current.envidoPending || !openingWindow) {
+      if (activeLane.role !== "Cartachin" || current.weaponUsed || current.envidoPending || current.trucoPending || !openingWindow) {
         return current;
       }
 
@@ -892,7 +957,7 @@ export function useTrucolocoMatch() {
         current.currentTurnSeatId === getSelectedSeatId(activeLane.role) &&
         !current.handClosed;
 
-      if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1) return current;
+      if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1 || current.trucoPending) return current;
 
       const resolution = resolveEnvido(current.humanHand, current.rivalHand, current.manoTeam);
       const rivalWants = resolution.rivalValue >= 24 || resolution.rivalValue >= resolution.humanValue - 2;
@@ -951,15 +1016,36 @@ export function useTrucolocoMatch() {
         current.tableCards.length < tableSeats.length;
 
       const nextCall = getNextTrucoCall(current.activeBet);
-      if (current.envidoPending || !humanActionWindow || !nextCall) return current;
+      const humanCanRaise = !current.trucoRaiseOwner || current.trucoRaiseOwner === "A";
+      if (current.envidoPending || current.trucoPending || !humanActionWindow || !nextCall || !humanCanRaise) return current;
 
       const rivalWants = shouldRivalAcceptTruco(current.rivalHand, current.activeBet, current.trickWins);
+      const rivalRaises = rivalWants && shouldRivalRaiseTruco(current.rivalHand, current.activeBet, current.trickWins);
+      const counterCall = rivalRaises ? getNextTrucoCall(nextCall.acceptedBet) : null;
+
+      if (counterCall) {
+        return {
+          ...current,
+          trucoPending: {
+            caller: "B",
+            target: "A",
+            label: counterCall.label,
+            acceptedBet: counterCall.acceptedBet,
+            rejectedPoints: counterCall.rejectedPoints,
+            sourceLabel: nextCall.label
+          },
+          trucoState: `${getTrucoSlug(nextCall.label)}-countered`,
+          eventLog: `${activeLane.human.name} canta ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} quiere y sube a ${counterCall.label.toLowerCase()}.`,
+          highlight: `${activeLane.rival.name} canta ${counterCall.label}.`,
+          outcomeTone: "neutral"
+        };
+      }
 
       if (rivalWants) {
         return {
           ...current,
           activeBet: nextCall.acceptedBet,
-          trucoState: nextCall.label.toLowerCase().replace(" ", "-"),
+          trucoState: getTrucoSlug(nextCall.label),
           trucoRaiseOwner: "B",
           eventLog: `${activeLane.human.name} canta ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} quiere. La mano ahora vale ${nextCall.acceptedBet} puntos.`,
           highlight: `${nextCall.label} querido.`,
@@ -967,21 +1053,111 @@ export function useTrucolocoMatch() {
         };
       }
 
-      const scores = awardPoints(current.scores, "A", nextCall.rejectedPoints);
-      const matchWinner = getMatchWinner(scores);
+      const scoring = applyHandPoints(current.scores, "A", nextCall.rejectedPoints, current.pointsInverted);
+      const matchWinner = getMatchWinner(scoring.scores);
 
       return {
         ...current,
-        scores,
+        scores: scoring.scores,
         handClosed: true,
         handWinner: "A",
-        scoringWinner: "A",
+        scoringWinner: scoring.scoringWinner,
         lastWinner: "A",
-        trucoState: `${nextCall.label.toLowerCase().replace(" ", "-")}-rejected`,
+        trucoState: `${getTrucoSlug(nextCall.label)}-rejected`,
         trucoRaiseOwner: null,
+        trucoPending: null,
         eventLog: `${activeLane.human.name} canta ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} no quiere. ${activeLane.human.name} cobra ${nextCall.rejectedPoints} ${nextCall.rejectedPoints === 1 ? "punto" : "puntos"}.`,
         highlight: `${nextCall.label} no querido.`,
-        outcomeTone: "win",
+        outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
+        matchWinner
+      };
+    });
+  };
+
+  const acceptTruco = () => {
+    setState((current) => {
+      const pending = current.trucoPending;
+      if (!pending || pending.target !== "A" || current.handClosed) return current;
+
+      return {
+        ...current,
+        activeBet: pending.acceptedBet,
+        trucoState: getTrucoSlug(pending.label),
+        trucoRaiseOwner: "A",
+        trucoPending: null,
+        eventLog: `${activeLane.human.name} quiere ${pending.label.toLowerCase()}. La mano ahora vale ${pending.acceptedBet} puntos.`,
+        highlight: `${pending.label} querido.`,
+        outcomeTone: "neutral"
+      };
+    });
+  };
+
+  const rejectTruco = () => {
+    setState((current) => {
+      const pending = current.trucoPending;
+      if (!pending || pending.target !== "A" || current.handClosed) return current;
+
+      const scoring = applyHandPoints(current.scores, pending.caller, pending.rejectedPoints, current.pointsInverted);
+      const matchWinner = getMatchWinner(scoring.scores);
+      const callerName = getPlayerName(pending.caller, activeLane);
+
+      return {
+        ...current,
+        scores: scoring.scores,
+        handClosed: true,
+        handWinner: pending.caller,
+        scoringWinner: scoring.scoringWinner,
+        lastWinner: pending.caller,
+        trucoState: `${getTrucoSlug(pending.label)}-rejected`,
+        trucoRaiseOwner: null,
+        trucoPending: null,
+        eventLog: `${activeLane.human.name} no quiere ${pending.label.toLowerCase()}. ${callerName} cobra ${pending.rejectedPoints} ${pending.rejectedPoints === 1 ? "punto" : "puntos"}.`,
+        highlight: `${pending.label} no querido.`,
+        outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
+        matchWinner
+      };
+    });
+  };
+
+  const raiseTrucoResponse = () => {
+    setState((current) => {
+      const pending = current.trucoPending;
+      if (!pending || pending.target !== "A" || current.handClosed) return current;
+
+      const nextCall = getNextTrucoCall(pending.acceptedBet);
+      if (!nextCall) return current;
+
+      const rivalWants = shouldRivalAcceptTruco(current.rivalHand, pending.acceptedBet, current.trickWins);
+
+      if (rivalWants) {
+        return {
+          ...current,
+          activeBet: nextCall.acceptedBet,
+          trucoState: getTrucoSlug(nextCall.label),
+          trucoRaiseOwner: "B",
+          trucoPending: null,
+          eventLog: `${activeLane.human.name} quiere ${pending.label.toLowerCase()} y sube a ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} quiere. La mano vale ${nextCall.acceptedBet}.`,
+          highlight: `${nextCall.label} querido.`,
+          outcomeTone: "neutral"
+        };
+      }
+
+      const scoring = applyHandPoints(current.scores, "A", nextCall.rejectedPoints, current.pointsInverted);
+      const matchWinner = getMatchWinner(scoring.scores);
+
+      return {
+        ...current,
+        scores: scoring.scores,
+        handClosed: true,
+        handWinner: "A",
+        scoringWinner: scoring.scoringWinner,
+        lastWinner: "A",
+        trucoState: `${getTrucoSlug(nextCall.label)}-rejected`,
+        trucoRaiseOwner: null,
+        trucoPending: null,
+        eventLog: `${activeLane.human.name} quiere ${pending.label.toLowerCase()} y sube a ${nextCall.label.toLowerCase()}. ${activeLane.rival.name} no quiere. ${activeLane.human.name} cobra ${nextCall.rejectedPoints}.`,
+        highlight: `${nextCall.label} no querido.`,
+        outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
         matchWinner
       };
     });
@@ -994,6 +1170,7 @@ export function useTrucolocoMatch() {
       if (
         !current.handStarted ||
         current.envidoPending ||
+        current.trucoPending ||
         current.handClosed ||
         current.currentTurnSeatId !== selectedSeatId ||
         current.tableCards.length >= tableSeats.length
@@ -1017,7 +1194,7 @@ export function useTrucolocoMatch() {
 
   const revealRivalLeadAction = () => {
     setState((current) => {
-      if (!current.handStarted || current.envidoPending || current.handClosed) {
+      if (!current.handStarted || current.envidoPending || current.trucoPending || current.handClosed) {
         return current;
       }
 
@@ -1077,6 +1254,10 @@ export function useTrucolocoMatch() {
         };
       }
 
+      if (current.trucoPending) {
+        return current;
+      }
+
       if (!current.handStarted) {
         return buildOpeningState(current.handNumber, current.scores, activeLane);
       }
@@ -1085,7 +1266,8 @@ export function useTrucolocoMatch() {
         current.currentTurnSeatId &&
         current.currentTurnSeatId !== getSelectedSeatId(activeLane.role) &&
         current.tableCards.length < tableSeats.length &&
-        !current.handClosed
+        !current.handClosed &&
+        !current.trucoPending
       ) {
         return revealRivalLead(current, activeLane, activeLane.role);
       }
@@ -1110,6 +1292,24 @@ export function useTrucolocoMatch() {
     setState(buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(role)));
   };
 
+  const selectCharacter = (characterId) => {
+    if (state.handStarted && !state.matchWinner) return;
+
+    const character = getSelectedCharacterForRole(selectedRole, characterId);
+    if (!character || character.role !== selectedRole) return;
+
+    setSelectedCharacterIdsByRole((current) => ({
+      ...current,
+      [selectedRole]: character.id
+    }));
+
+    setState((current) => ({
+      ...current,
+      eventLog: `${character.name} queda destacado como ${selectedRole}. Cuando arranque la mano, sale primero ${getSeatPlayerName(current.manoSeatId)}.`,
+      highlight: `${character.name} listo para ${selectedRole}.`
+    }));
+  };
+
   const phaseData = getPhaseData(state, activeLane);
   const tableFlow = buildTableFlow(state, activeLane, selectedRole, phaseData.nextActorName);
   const dealerSeat = tableFlow.seats.find((seat) => seat.isDealer);
@@ -1122,6 +1322,8 @@ export function useTrucolocoMatch() {
     config: MATCH_CONFIG,
     roleOptions: availableRoles,
     selectedRole,
+    selectedCharacter,
+    selectedRoleCharacters,
     activeLane,
     dealerTeam,
     dealerName,
@@ -1133,6 +1335,9 @@ export function useTrucolocoMatch() {
     callEnvido,
     settleEnvido,
     callTruco,
+    acceptTruco,
+    rejectTruco,
+    raiseTrucoResponse,
     startHand,
     revealRivalLead: revealRivalLeadAction,
     clearTrick,
@@ -1140,6 +1345,7 @@ export function useTrucolocoMatch() {
     restartMatch,
     advance,
     nextHand: advance,
-    selectRole
+    selectRole,
+    selectCharacter
   };
 }

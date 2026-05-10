@@ -1,6 +1,26 @@
 export const roleOptions = ["Negociante", "Jugador Estrella", "Cartachin"];
 
 export const characterSkins = {
+  "irvyn-negociante-glb": {
+    modelSrc: "/assets/characters/irvyn.glb",
+    modelScale: 1,
+    modelPosition: [0, 0.02, 0],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.72,
+    modelPromptKey: "irvyn",
+    chairSeatColor: "#241711",
+    chairBackColor: "#1f1410"
+  },
+  "marvyn-negociante-glb": {
+    modelSrc: "/assets/characters/marvyn.glb",
+    modelScale: 1.04,
+    modelPosition: [0, 0.03, -0.02],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.78,
+    modelPromptKey: "marvyn",
+    chairSeatColor: "#20353a",
+    chairBackColor: "#17272b"
+  },
   "pochex-cartachin-glb": {
     modelSrc: "/assets/characters/pocho.glb",
     modelScale: 0.9,
@@ -10,6 +30,16 @@ export const characterSkins = {
     modelPromptKey: "pochex",
     chairSeatColor: "#241711",
     chairBackColor: "#1f1410"
+  },
+  "pol-cartachin-glb": {
+    modelSrc: "/assets/characters/pol-arabe.glb",
+    modelScale: 1,
+    modelPosition: [0, 0.02, 0],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.72,
+    modelPromptKey: "pol",
+    chairSeatColor: "#172217",
+    chairBackColor: "#121a12"
   },
   "negociante-primer-skin": {
     modelKind: "negociante",
@@ -89,7 +119,7 @@ export const teams = {
       role: "Negociante",
       quote: "Si no se arregla charlando, se arregla cobrando.",
       accent: "#d9b36c",
-      skinId: "negociante-primer-skin"
+      skinId: "irvyn-negociante-glb"
     },
     {
       id: "gazpacho",
@@ -114,8 +144,8 @@ export const teams = {
       name: "Marvyn",
       role: "Negociante",
       quote: "Todo se negocia, hasta la verguenza.",
-      accent: "#7fc9ce",
-      skinId: "negociante-primer-skin"
+      accent: "#a6eef0",
+      skinId: "marvyn-negociante-glb"
     },
     {
       id: "myke-keta",
@@ -127,14 +157,19 @@ export const teams = {
     },
     {
       id: "cartachin-norte",
-      name: "Cartachin Norte",
+      name: "Pol",
       role: "Cartachin",
       quote: "Siempre hay una carta pegada al forro del saco.",
       accent: "#59a06e",
-      skinId: "cartachin-norte-skin"
+      skinId: "pol-cartachin-glb"
     }
   ]
 };
+
+export const characterOptionsByRole = roleOptions.reduce((options, role) => {
+  options[role] = [...teams.A, ...teams.B].filter((player) => player.role === role);
+  return options;
+}, {});
 
 export const tableSeats = [
   {

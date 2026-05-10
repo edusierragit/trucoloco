@@ -1,17 +1,51 @@
-import { Suspense, useMemo } from "react";
-import { Cylinder, RoundedBox, useGLTF } from "@react-three/drei";
+import { Suspense, useEffect, useMemo } from "react";
+import { Cylinder, RoundedBox, useAnimations, useGLTF } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+
+function isFiniteBox(box) {
+  return (
+    Number.isFinite(box.min.x) &&
+    Number.isFinite(box.min.y) &&
+    Number.isFinite(box.min.z) &&
+    Number.isFinite(box.max.x) &&
+    Number.isFinite(box.max.y) &&
+    Number.isFinite(box.max.z)
+  );
+}
+
+function getSafeObjectBounds(object) {
+  object.updateMatrixWorld(true);
+
+  const bounds = new Box3();
+
+  object.traverse((child) => {
+    const position = child.isMesh ? child.geometry?.attributes?.position : null;
+    if (!position) return;
+
+    const meshBounds = new Box3().setFromBufferAttribute(position);
+    if (!isFiniteBox(meshBounds)) return;
+
+    meshBounds.applyMatrix4(child.matrixWorld);
+    if (!isFiniteBox(meshBounds)) return;
+
+    bounds.union(meshBounds);
+  });
+
+  return bounds.isEmpty() || !isFiniteBox(bounds) ? new Box3().setFromObject(object) : bounds;
+}
 
 function CharacterModelAsset({
   src,
   scale = 1,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  targetHeight = 1.78
+  targetHeight = 1.78,
+  animationMode = "idle"
 }) {
-  const { scene } = useGLTF(src);
+  const { scene, animations = [] } = useGLTF(src);
   const { clonedScene, offset, normalizedScale } = useMemo(() => {
-    const clone = scene.clone();
+    const clone = cloneSkeleton(scene);
     clone.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
@@ -19,14 +53,23 @@ function CharacterModelAsset({
       }
     });
 
-    const bounds = new Box3().setFromObject(clone);
+    const bounds = getSafeObjectBounds(clone);
     const size = new Vector3();
     const center = new Vector3();
     bounds.getSize(size);
     bounds.getCenter(center);
 
-    const scaleFactor = size.y > 0 ? targetHeight / size.y : 1;
-    const centeredOffset = [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor];
+    const hasFiniteBounds =
+      Number.isFinite(size.x) &&
+      Number.isFinite(size.y) &&
+      Number.isFinite(size.z) &&
+      Number.isFinite(center.x) &&
+      Number.isFinite(center.y) &&
+      Number.isFinite(center.z) &&
+      Number.isFinite(bounds.min.y);
+
+    const scaleFactor = hasFiniteBounds && size.y > 0 ? targetHeight / size.y : 1;
+    const centeredOffset = hasFiniteBounds ? [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor] : [0, 0, 0];
 
     return {
       clonedScene: clone,
@@ -34,6 +77,36 @@ function CharacterModelAsset({
       normalizedScale: scaleFactor
     };
   }, [scene, targetHeight]);
+  const { actions } = useAnimations(animations, clonedScene);
+  const actionName = useMemo(() => {
+    const names = Object.keys(actions);
+    if (!names.length) return null;
+
+    const modeWords = animationMode === "run"
+      ? ["run", "jog", "sprint"]
+      : animationMode === "walk"
+        ? ["walk", "walking"]
+        : ["idle", "stand", "breath"];
+    const matched = names.find((name) => modeWords.some((word) => name.toLowerCase().includes(word)));
+
+    return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);
+  }, [actions, animationMode]);
+
+  useEffect(() => {
+    if (!actionName) return undefined;
+
+    Object.entries(actions).forEach(([name, action]) => {
+      if (name === actionName) {
+        action.reset().fadeIn(0.18).play();
+      } else {
+        action.fadeOut(0.16);
+      }
+    });
+
+    return () => {
+      actions[actionName]?.fadeOut(0.12);
+    };
+  }, [actionName, actions]);
 
   return (
     <group scale={scale} position={position} rotation={rotation}>
@@ -289,7 +362,7 @@ function ProceduralCharacterFigure({ skin, accent, outfitMaterialRef, upperRef, 
   return <FallbackFigure accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
 }
 
-export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane }) {
+export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane, animationMode = "idle" }) {
   if (skin?.modelSrc) {
     return (
       <Suspense fallback={<ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />}>
@@ -299,10 +372,11 @@ export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isA
           position={skin.modelPosition ?? [0, 0, 0]}
           rotation={skin.modelRotation ?? [0, 0, 0]}
           targetHeight={skin.modelTargetHeight ?? 1.78}
+          animationMode={animationMode}
         />
       </Suspense>
     );
   }
 
-  return <FallbackFigure accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+  return <ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
 }

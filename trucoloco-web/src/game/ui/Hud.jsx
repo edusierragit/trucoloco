@@ -66,6 +66,7 @@ function Header({ match }) {
 
 function RoleSelector({ match }) {
   const selectedRoleDef = roleDefinitions[match.selectedRole];
+  const selectedCharacter = match.selectedCharacter ?? match.activeLane.human;
   const startSelectedRole = () => {
     if (!match.canAdvance) return;
     match.startHand();
@@ -77,8 +78,9 @@ function RoleSelector({ match }) {
         <div>
           <span className="panel-kicker">{match.handClosed ? "Rol de la partida" : "Rol en juego"}</span>
           <strong>
-            {match.selectedRole}
+            {selectedCharacter.name}
           </strong>
+          <small>{match.selectedRole}</small>
         </div>
         <span className="role-spotlight-tag">{selectedRoleDef.powerName}</span>
       </section>
@@ -88,10 +90,10 @@ function RoleSelector({ match }) {
   return (
     <section className="role-selector role-selector-arcade">
       <div className="role-select-hero">
-        <span className="panel-kicker">Paso 1 · Elegi rol</span>
-        <h2>Elegí tu rol</h2>
+        <span className="panel-kicker">Paso 1 · Rol y personaje</span>
+        <h2>Elegí tu entrada</h2>
         <p>
-          Primero definís qué tipo de jugador sos. Los personajes y skins vienen después.
+          Primero definís la regla de la mano. Después marcás qué personaje del rol toma el foco.
         </p>
       </div>
 
@@ -117,12 +119,41 @@ function RoleSelector({ match }) {
         })}
       </div>
 
+      <div className="character-picker">
+        <div className="character-picker-head">
+          <span className="panel-kicker">Personaje · {match.selectedRole}</span>
+          <strong>{selectedCharacter.name}</strong>
+        </div>
+
+        <div className="character-card-row">
+          {match.selectedRoleCharacters.map((character) => {
+            const active = character.id === selectedCharacter.id;
+
+            return (
+              <button
+                key={character.id}
+                className={active ? "character-card character-card-active" : "character-card"}
+                disabled={!match.canSwitchRole && !active}
+                onClick={() => match.selectCharacter(character.id)}
+                style={{ "--character-accent": character.accent }}
+                type="button"
+              >
+                <span className="character-card-mark" aria-hidden="true" />
+                <strong>{character.name}</strong>
+                <small>{character.role}</small>
+                <em>{character.quote}</em>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <article className="role-ready-strip">
         <div>
           <span className="panel-kicker">Antes de repartir</span>
-          <strong>{selectedRoleDef.title}</strong>
+          <strong>{selectedCharacter.name} · {selectedRoleDef.title}</strong>
           <p>
-            La mesa 3v3 ya tiene orden. Sale {match.whoStartsName}. Reparte {match.dealerName}. Personajes y skins vienen despues.
+            La mesa 3v3 ya tiene orden. Sale {match.whoStartsName}. Reparte {match.dealerName}. Tu entrada queda marcada por {selectedCharacter.name}.
           </p>
         </div>
         <button
@@ -332,6 +363,14 @@ function getFocusState(match) {
         ? `${match.activeLane.human.name} ${pending.humanValue} · ${match.activeLane.rival.name} ${pending.rivalValue}. Cobra ${winnerName}.`
         : `${match.activeLane.rival.name} no quiso. Cobra ${match.activeLane.human.name}.`,
       tone: pending?.winner === "A" ? "win" : "lose"
+    };
+  }
+
+  if (match.phase === "truco-response") {
+    return {
+      badge: "Te apuran",
+      summary: `${match.activeLane.rival.name} sube a ${match.trucoPending?.label ?? "truco"}.`,
+      tone: "neutral"
     };
   }
 
@@ -629,21 +668,73 @@ function CardButton({ card, disabled, onPlay, offset }) {
         "--card-offset": offset
       }}
       type="button"
+      aria-label={`Jugar ${card.name}`}
     >
-      <span className="card-corner">
-        <span className="card-corner-number">{rankNumber}</span>
-        <small>{suitGlyph}</small>
+      <span className="card-surface">
+        <span className="card-corner">
+          <span className="card-corner-number">{rankNumber}</span>
+          <small>{suitGlyph}</small>
+        </span>
+        <span className="card-corner card-corner-bottom">
+          <span className="card-corner-number">{rankNumber}</span>
+          <small>{suitGlyph}</small>
+        </span>
+        <span className="card-badge">{suitGlyph}</span>
+        <span className="card-rank-word">{rankLabel}</span>
+        <span className="card-suit-emblem" aria-hidden="true" />
+        <span className="card-main">
+          <span className="card-main-rank">{rankNumber}</span>
+          <span className="card-main-suit">{suitGlyph}</span>
+        </span>
+        <span className="card-name">{card.name}</span>
+        <span className="card-footer">
+          <span className="card-suit-label">{card.suit}</span>
+          <span className="card-power">Fuerza {card.power}</span>
+        </span>
       </span>
-      <span className="card-corner card-corner-bottom">
-        <span className="card-corner-number">{rankNumber}</span>
-        <small>{suitGlyph}</small>
-      </span>
-      <span className="card-badge">{suitGlyph}</span>
-      <span className="card-rank-word">{rankLabel}</span>
-      <span className="card-suit-emblem" aria-hidden="true" />
-      <span className="card-name">{card.name}</span>
-      <span className="card-suit-label">{card.suit}</span>
     </button>
+  );
+}
+
+function TrucoResponsePanel({ match }) {
+  const pending = match.trucoPending;
+  const callerName = pending?.caller === "A" ? match.activeLane.human.name : match.activeLane.rival.name;
+  const raiseLabel = match.trucoResponseRaiseLabel;
+
+  if (!pending) return null;
+
+  return (
+    <footer className="bottom-dock bottom-dock-decision bottom-dock-truco">
+      <section className="decision-panel truco-response-panel">
+        <div className="decision-copy">
+          <span className="panel-kicker">Lance de truco</span>
+          <strong>{callerName} canta {pending.label}</strong>
+          <p>
+            Si querés, la mano vale {pending.acceptedBet}. Si no querés, {callerName} cobra {pending.rejectedPoints}.
+          </p>
+        </div>
+
+        <div className="truco-ladder" aria-hidden="true">
+          <span className={pending.label === "Truco" ? "truco-step truco-step-active" : "truco-step"}>Truco</span>
+          <span className={pending.label === "Retruco" ? "truco-step truco-step-active" : "truco-step"}>Retruco</span>
+          <span className={pending.label === "Vale cuatro" ? "truco-step truco-step-active" : "truco-step"}>Vale 4</span>
+        </div>
+
+        <div className="decision-action-stack truco-response-actions">
+          {raiseLabel ? (
+            <button className="action-button action-button-secondary next-hand" onClick={match.raiseTrucoResponse} type="button">
+              Quiero {raiseLabel.toLowerCase()}
+            </button>
+          ) : null}
+          <button className="action-button action-button-primary next-hand" onClick={match.acceptTruco} type="button">
+            Quiero
+          </button>
+          <button className="action-button action-button-danger next-hand" onClick={match.rejectTruco} type="button">
+            No quiero
+          </button>
+        </div>
+      </section>
+    </footer>
   );
 }
 
@@ -758,6 +849,10 @@ function BottomDock({ match, handFocus, setHandFocus }) {
         </section>
       </footer>
     );
+  }
+
+  if (match.trucoPending) {
+    return <TrucoResponsePanel match={match} />;
   }
 
   if (match.phase === "pre-rival-lead" || match.phase === "rival-leads") {
