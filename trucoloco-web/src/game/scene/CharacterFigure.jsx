@@ -62,7 +62,7 @@ function CharacterModelAsset({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
   targetHeight = 1.78,
-  animationMode = "idle",
+  animationMode = null,
   animationClipMap = {}
 }) {
   const { scene, animations = [] } = useGLTF(src);
@@ -102,11 +102,16 @@ function CharacterModelAsset({
   }, [scene, targetHeight]);
   const { actions } = useAnimations(preparedAnimations, clonedScene);
   const actionName = useMemo(() => {
+    if (!animationMode) return null;
+
     const names = Object.keys(actions);
     if (!names.length) return null;
 
-    const mappedName = animationClipMap[animationMode] ?? (animationMode === "run" ? animationClipMap.walk : null);
-    if (mappedName && actions[mappedName]) return mappedName;
+    const hasMappedMode = Object.prototype.hasOwnProperty.call(animationClipMap, animationMode);
+    const mappedName = hasMappedMode ? animationClipMap[animationMode] : animationMode === "run" ? animationClipMap.walk : null;
+    if (typeof mappedName === "string" && actions[mappedName]) return mappedName;
+
+    if (animationMode === "idle") return null;
 
     const modeWords = animationMode === "run"
       ? ["run", "jog", "sprint"]
@@ -390,7 +395,11 @@ function ProceduralCharacterFigure({ skin, accent, outfitMaterialRef, upperRef, 
   return <FallbackFigure accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
 }
 
-export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane, animationMode = "idle" }) {
+export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane, animationMode = null, forceProcedural = false }) {
+  if (forceProcedural) {
+    return <ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+  }
+
   if (skin?.modelSrc) {
     return (
       <Suspense fallback={<ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />}>

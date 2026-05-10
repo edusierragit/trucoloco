@@ -8,6 +8,12 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.72,
     modelPromptKey: "irvyn",
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.002",
+      run: "NlaTrack.003",
+      box: "NlaTrack"
+    },
     chairSeatColor: "#241711",
     chairBackColor: "#1f1410"
   },
@@ -18,6 +24,12 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.78,
     modelPromptKey: "marvyn",
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.007",
+      run: "NlaTrack.001",
+      box: "NlaTrack.006"
+    },
     chairSeatColor: "#20353a",
     chairBackColor: "#17272b"
   },
@@ -38,6 +50,12 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.72,
     modelPromptKey: "pol",
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.001",
+      run: "NlaTrack.004",
+      box: "NlaTrack.002"
+    },
     chairSeatColor: "#172217",
     chairBackColor: "#121a12"
   },

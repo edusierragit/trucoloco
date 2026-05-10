@@ -135,6 +135,7 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
   const hotspotRef = useRef(null);
   const timeRef = useRef(0);
   const motionModeRef = useRef("idle");
+  const actionUntilRef = useRef(0);
   const [motionMode, setMotionMode] = useState("idle");
 
   useEffect(() => {
@@ -152,6 +153,14 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
       if (key === "f" && hotspotRef.current) {
         event.preventDefault();
         onInteract?.(hotspotRef.current);
+        return;
+      }
+
+      if (key === "j" || key === " " || event.code === "Space") {
+        event.preventDefault();
+        actionUntilRef.current = timeRef.current + 0.85;
+        motionModeRef.current = "box";
+        setMotionMode("box");
         return;
       }
 
@@ -183,7 +192,11 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
     const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
     const moving = inputX !== 0 || inputZ !== 0;
     const speed = keys.has("shift") ? 2.9 : 1.85;
-    const nextMotionMode = moving ? keys.has("shift") ? "run" : "walk" : "idle";
+    const nextMotionMode = timeRef.current < actionUntilRef.current
+      ? "box"
+      : moving
+        ? keys.has("shift") ? "run" : "walk"
+        : "idle";
 
     if (motionModeRef.current !== nextMotionMode) {
       motionModeRef.current = nextMotionMode;

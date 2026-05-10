@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="1 de BASTO">
+  <defs>
+    <filter id="paper" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="54" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.045"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+  </defs>
+  <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
+  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5" filter="url(#paper)"/>
+  <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="#46743a" stroke-width="3"/>
+  <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
+  <g transform="translate(58 76) rotate(0)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#1c3219">1</text>
+    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#46743a">B</text>
+  </g>
+  <g transform="translate(362 544) rotate(180)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#1c3219">1</text>
+    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#46743a">B</text>
+  </g>
+  <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="#1c3219">BASTO</text>
+  <g><g transform="translate(210 314) rotate(0) scale(1.42)"><g transform="rotate(-24)">
+    <rect x="-17" y="-72" width="34" height="144" rx="15" fill="#8a5a2b" stroke="#1c3219" stroke-width="6"/>
+    <path d="M-16-34H16M-16 6H16M-16 46H16" stroke="#c68b4c" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="0" cy="-54" r="16" fill="#46743a" stroke="#1c3219" stroke-width="5"/>
+  </g></g></g>
+  
+  <text x="210" y="574" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="#7c5838">TRUCOLOCO BARAJA ESPAÑOLA</text>
+</svg>

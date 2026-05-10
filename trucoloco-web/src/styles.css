@@ -3013,6 +3013,26 @@ select {
   min-height: inherit;
 }
 
+.card-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+.card-button-image::before,
+.card-button-image::after {
+  z-index: 2;
+}
+
+.card-button-image .card-footer {
+  display: none;
+}
+
 .card-main {
   align-self: center;
   justify-self: center;

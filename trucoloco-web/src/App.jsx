@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
@@ -53,6 +53,21 @@ function getRingRead(distance, stamina) {
   return `${range} · ${air}`;
 }
 
+function getInitialPerformanceProfile() {
+  if (typeof window === "undefined") {
+    return { mode: "high", dpr: [1, 1.75], antialias: true, shadows: true, postprocessing: true };
+  }
+
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const narrowViewport = window.innerWidth < 820;
+  const highDpr = window.devicePixelRatio >= 2;
+  const lowPower = coarsePointer || narrowViewport || highDpr;
+
+  return lowPower
+    ? { mode: "low", dpr: [0.65, 1], antialias: false, shadows: false, postprocessing: false }
+    : { mode: "high", dpr: [1, 1.75], antialias: true, shadows: true, postprocessing: true };
+}
+
 function resolveCorkRoulettePull(current) {
   if (current.resolved) {
     return createDebateState({
@@ -93,6 +108,7 @@ function resolveCorkRoulettePull(current) {
 
 export default function App() {
   const match = useTrucolocoMatch();
+  const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
   const [cameraView, setCameraView] = useState("entry");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
@@ -417,10 +433,10 @@ export default function App() {
         <section className="stage-viewport">
           <Canvas
             camera={{ position: [0, 4.45, 6.15], fov: 34 }}
-            shadows={{ enabled: true, type: PCFSoftShadowMap }}
-            dpr={[1, 1.75]}
+            shadows={performanceProfile.shadows ? { enabled: true, type: PCFSoftShadowMap } : false}
+            dpr={performanceProfile.dpr}
             gl={{
-              antialias: true,
+              antialias: performanceProfile.antialias,
               outputColorSpace: SRGBColorSpace,
               powerPreference: "high-performance",
               toneMapping: ACESFilmicToneMapping,
@@ -434,15 +450,18 @@ export default function App() {
               cameraView={cameraView}
               debateAction={debateState}
               selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
+              performanceMode={performanceProfile.mode}
               walkHotspot={walkHotspot}
               onWalkHotspotChange={setWalkHotspot}
               onWalkInteract={handleWalkInteract}
             />
-            <EffectComposer multisampling={0}>
-              <Bloom intensity={0.11} luminanceThreshold={0.82} luminanceSmoothing={0.45} mipmapBlur />
-              <Vignette offset={0.18} darkness={0.31} eskil={false} />
-              <Noise opacity={0.012} blendFunction={BlendFunction.SOFT_LIGHT} />
-            </EffectComposer>
+            {performanceProfile.postprocessing ? (
+              <EffectComposer multisampling={0}>
+                <Bloom intensity={0.11} luminanceThreshold={0.82} luminanceSmoothing={0.45} mipmapBlur />
+                <Vignette offset={0.18} darkness={0.31} eskil={false} />
+                <Noise opacity={0.012} blendFunction={BlendFunction.SOFT_LIGHT} />
+              </EffectComposer>
+            ) : null}
           </Canvas>
 
           <div className="camera-dock" aria-label="Camara y movimiento por el antro">
@@ -487,9 +506,9 @@ export default function App() {
                       ? "Salís a la vista de entrada"
                       : walkHotspot === "bar"
                         ? "Lugar reservado para props y acciones"
-                        : walkHotspot === "ring"
-                          ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
-                        : "Q/E rotan cámara · Shift apura · 2 vuelve a mesa")}
+                      : walkHotspot === "ring"
+                        ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
+                        : "Q/E rotan cámara · Shift corre · J/Espacio box · 2 vuelve a mesa")}
               </small>
             </div>
           ) : null}

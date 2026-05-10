@@ -46,7 +46,7 @@ function RenderEnvironment() {
 }
 
 // Modifier-reactive ambient light — pulses color and intensity based on active modifier
-function ModifierAmbientFX({ modId, handClosed, outcomeTone }) {
+function ModifierAmbientFX({ modId, handClosed, outcomeTone, lowPower = false }) {
   const keyLightRef = useRef(null);
   const fillRedRef = useRef(null);
   const fillBlueRef = useRef(null);
@@ -127,8 +127,8 @@ function ModifierAmbientFX({ modId, handClosed, outcomeTone }) {
         angle={0.5}
         penumbra={0.7}
         color="#ffbd74"
-        castShadow
-        shadow-mapSize={[1536, 1536]}
+        castShadow={!lowPower}
+        shadow-mapSize={lowPower ? [512, 512] : [1536, 1536]}
         shadow-bias={-0.00012}
       />
       <spotLight name="Card_Focus_Warm" position={[0, 3.2, 2.4]} intensity={34} angle={0.62} penumbra={0.86} color="#ffd39a" castShadow={false} />
@@ -329,12 +329,12 @@ function TableLightCone({ isClassic }) {
   );
 }
 
-function BarAtmosphere({ active }) {
+function BarAtmosphere({ active, lowPower = false }) {
   const motesRef = useRef([]);
   const glowRef = useRef(null);
   const timeRef = useRef(0);
   const motes = useRef(
-    Array.from({ length: 28 }, (_, index) => ({
+    Array.from({ length: lowPower ? 8 : 28 }, (_, index) => ({
       x: -2.2 + ((index * 0.73) % 4.4),
       y: 0.55 + ((index * 0.37) % 1.65),
       z: -1.2 + ((index * 0.51) % 2.8),
@@ -366,7 +366,7 @@ function BarAtmosphere({ active }) {
   return (
     <group name="Bar_Atmosphere">
       <mesh ref={glowRef} position={[0, -0.47, 0.04]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.72, 2.92, 96]} />
+        <ringGeometry args={[1.72, 2.92, lowPower ? 40 : 96]} />
         <meshBasicMaterial color="#d49a4f" transparent opacity={0.07} depthWrite={false} />
       </mesh>
       {motes.map((mote, index) => (
@@ -817,11 +817,11 @@ function WalkMarker({ active, label, position, color = "#63d5c5" }) {
   );
 }
 
-function WalkHotspots({ activeHotspot }) {
+function WalkHotspots({ activeHotspot, lowPower = false }) {
   return (
     <group name="Walk_Hotspots">
       <mesh position={[0, 0.055, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.56, 2.7, 96]} />
+        <ringGeometry args={[2.56, 2.7, lowPower ? 48 : 96]} />
         <meshBasicMaterial
           color={activeHotspot === "table" ? "#f0c06a" : "#63d5c5"}
           transparent
@@ -933,7 +933,7 @@ function getCameraPose({ match, isNarrow, cameraView }) {
   };
 }
 
-export function TrucolocoScene({ match, cameraView = "table", debateAction, selectedWalkCharacter, walkHotspot, onWalkHotspotChange, onWalkInteract }) {
+export function TrucolocoScene({ match, cameraView = "table", debateAction, selectedWalkCharacter, performanceMode = "high", walkHotspot, onWalkHotspotChange, onWalkInteract }) {
   const modId = match.activeModifier?.id ?? "";
   const modTitle = match.activeModifier?.title ?? "";
   const { camera, size } = useThree();
@@ -942,6 +942,7 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
   const isNarrow = size.width < 640;
   const isWalkMode = cameraView === "walk";
   const isRingMode = cameraView === "ring";
+  const lowPower = performanceMode === "low";
   const debateTokenRef = useRef(debateAction?.token ?? 0);
   const ringShakeRef = useRef(0);
 
@@ -992,7 +993,7 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
       <RenderEnvironment />
       <ambientLight intensity={0.23} color="#9a6a45" />
       <hemisphereLight intensity={0.32} color="#d59b65" groundColor="#070b07" />
-      <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} />
+      <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} lowPower={lowPower} />
 
       <group name="Room_Runtime" position={[0, -1.35, 0.25]}>
         <RoundedBox name="Floor_Antro" args={[14, 0.4, 10]} radius={0.18} position={[0, -1.9, 0]} receiveShadow>
@@ -1021,30 +1022,32 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
 
         <BackBarDressing />
         <BarRoom />
-        <DebateEntrance />
-        <DebateRoom debateAction={debateAction} />
-        <RoomAccents />
+        {!lowPower || isWalkMode || isRingMode ? <DebateEntrance /> : null}
+        {isRingMode || !lowPower ? <DebateRoom debateAction={debateAction} /> : null}
+        {!lowPower ? <RoomAccents /> : null}
 
         {!isRingMode ? <TableLightCone isClassic={isClassic} /> : null}
-        <BarAtmosphere active={isWalkMode || isRingMode || !isRoleSelect} />
+        <BarAtmosphere active={isWalkMode || isRingMode || !isRoleSelect} lowPower={lowPower} />
 
         {!isRingMode ? (
           <>
-            <ContactShadows
-              name="Table_ContactShadows"
-              position={[0, -1.66, 0.04]}
-              scale={[7.4, 7.4]}
-              opacity={0.42}
-              blur={2.7}
-              far={3.2}
-              resolution={1024}
-              color="#050302"
-              frames={1}
-            />
+            {!lowPower ? (
+              <ContactShadows
+                name="Table_ContactShadows"
+                position={[0, -1.66, 0.04]}
+                scale={[7.4, 7.4]}
+                opacity={0.42}
+                blur={2.7}
+                far={3.2}
+                resolution={1024}
+                color="#050302"
+                frames={1}
+              />
+            ) : null}
             <Table match={match} />
             <TeamsAroundTable match={match} cameraView={cameraView} />
             {cameraView === "seat" ? <SeatViewFocus match={match} /> : null}
-            {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} /> : null}
+            {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} lowPower={lowPower} /> : null}
             <WalkablePlayer
               enabled={isWalkMode}
               character={selectedWalkCharacter}

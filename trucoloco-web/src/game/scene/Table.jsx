@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox, Text, useGLTF } from "@react-three/drei";
+import { RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
@@ -35,6 +35,17 @@ const TABLE_WOOD_DARK = "#281109";
 const TABLE_BRASS = "#b07a36";
 const FELT_BASE = "#173826";
 const FELT_DEEP = "#10251a";
+
+function CardImagePlane({ image, width, height, y = 0.036 }) {
+  const texture = useTexture(image);
+
+  return (
+    <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[width, height]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
+  );
+}
 
 function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey }) {
   const groupRef = useRef(null);
@@ -88,52 +99,58 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
       <RoundedBox args={[0.92, 0.028, 1.36]} radius={0.052} position={[0, 0.016, 0]} castShadow receiveShadow>
         <meshStandardMaterial color={CARD_FACE} roughness={0.58} />
       </RoundedBox>
-      <mesh position={[0, 0.032, -0.58]}>
-        <boxGeometry args={[0.86, 0.01, 0.09]} />
-        <meshStandardMaterial color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT} roughness={0.48} />
-      </mesh>
-      <Text
-        position={[-0.33, 0.041, -0.47]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.16}
-        color={CARD_TEXT}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {getCardRankNumber(card)}
-      </Text>
-      <Text
-        position={[-0.31, 0.041, -0.31]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.052}
-        color={CARD_TEXT_SOFT}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {getCardSuitCode(card)}
-      </Text>
-      <Text
-        position={[0, 0.04, 0.04]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.13}
-        maxWidth={0.84}
-        lineHeight={1}
-        color={CARD_TEXT}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {card.name}
-      </Text>
-      <Text
-        position={[0.31, 0.041, 0.5]}
-        rotation={[-Math.PI / 2, 0, Math.PI]}
-        fontSize={0.16}
-        color={CARD_TEXT}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {getCardRankNumber(card)}
-      </Text>
+      {card.image ? (
+        <CardImagePlane image={card.image} width={0.92} height={1.36} y={0.034} />
+      ) : (
+        <>
+          <mesh position={[0, 0.032, -0.58]}>
+            <boxGeometry args={[0.86, 0.01, 0.09]} />
+            <meshStandardMaterial color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT} roughness={0.48} />
+          </mesh>
+          <Text
+            position={[-0.33, 0.041, -0.47]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.16}
+            color={CARD_TEXT}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {getCardRankNumber(card)}
+          </Text>
+          <Text
+            position={[-0.31, 0.041, -0.31]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.052}
+            color={CARD_TEXT_SOFT}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {getCardSuitCode(card)}
+          </Text>
+          <Text
+            position={[0, 0.04, 0.04]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.13}
+            maxWidth={0.84}
+            lineHeight={1}
+            color={CARD_TEXT}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {card.name}
+          </Text>
+          <Text
+            position={[0.31, 0.041, 0.5]}
+            rotation={[-Math.PI / 2, 0, Math.PI]}
+            fontSize={0.16}
+            color={CARD_TEXT}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {getCardRankNumber(card)}
+          </Text>
+        </>
+      )}
     </group>
   );
 }
@@ -155,82 +172,94 @@ function SceneHandCard({ card, position, rotation, faceDown = false }) {
           <RoundedBox args={[0.78, 0.026, 1.18]} radius={0.045} position={[0, 0.014, 0]} castShadow receiveShadow>
             <meshStandardMaterial color={CARD_BACK} roughness={0.62} />
           </RoundedBox>
-          <mesh position={[0, 0.03, -0.32]}>
-            <boxGeometry args={[0.7, 0.008, 0.09]} />
-            <meshStandardMaterial color={CARD_BACK_LINE} roughness={0.42} />
-          </mesh>
-          <Text
-            position={[0, 0.04, 0]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.1}
-            color="#f2dfbb"
-            anchorX="center"
-            anchorY="middle"
-          >
-            TRUCO
-          </Text>
-          <Text
-            position={[0, 0.04, 0.34]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.05}
-            color="#c4975a"
-            anchorX="center"
-            anchorY="middle"
-          >
-            LA TRAICION
-          </Text>
+          {card.backImage ? (
+            <CardImagePlane image={card.backImage} width={0.78} height={1.18} y={0.032} />
+          ) : (
+            <>
+              <mesh position={[0, 0.03, -0.32]}>
+                <boxGeometry args={[0.7, 0.008, 0.09]} />
+                <meshStandardMaterial color={CARD_BACK_LINE} roughness={0.42} />
+              </mesh>
+              <Text
+                position={[0, 0.04, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.1}
+                color="#f2dfbb"
+                anchorX="center"
+                anchorY="middle"
+              >
+                TRUCO
+              </Text>
+              <Text
+                position={[0, 0.04, 0.34]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.05}
+                color="#c4975a"
+                anchorX="center"
+                anchorY="middle"
+              >
+                LA TRAICION
+              </Text>
+            </>
+          )}
         </>
       ) : (
         <>
           <RoundedBox args={[0.78, 0.026, 1.18]} radius={0.045} position={[0, 0.014, 0]} castShadow receiveShadow>
             <meshStandardMaterial color={CARD_FACE} roughness={0.58} />
           </RoundedBox>
-          <mesh position={[0, 0.03, -0.48]}>
-            <boxGeometry args={[0.72, 0.008, 0.08]} />
-            <meshStandardMaterial color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT} roughness={0.42} />
-          </mesh>
-          <Text
-            position={[-0.24, 0.04, -0.42]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.11}
-            color={CARD_TEXT}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {getCardRankNumber(card)}
-          </Text>
-          <Text
-            position={[-0.24, 0.04, -0.28]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.045}
-            color={CARD_TEXT_SOFT}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {getCardRankLabel(card).toUpperCase()}
-          </Text>
-          <Text
-            position={[0, 0.04, 0.04]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.092}
-            maxWidth={0.72}
-            lineHeight={1}
-            color={CARD_TEXT}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {card.name}
-          </Text>
-          <Text
-            position={[0, 0.04, 0.42]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.06}
-            color={CARD_TEXT_SOFT}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {suitGlyph[card.suit] ?? getCardSuitCode(card)}
-          </Text>
+          {card.image ? (
+            <CardImagePlane image={card.image} width={0.78} height={1.18} y={0.032} />
+          ) : (
+            <>
+              <mesh position={[0, 0.03, -0.48]}>
+                <boxGeometry args={[0.72, 0.008, 0.08]} />
+                <meshStandardMaterial color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT} roughness={0.42} />
+              </mesh>
+              <Text
+                position={[-0.24, 0.04, -0.42]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.11}
+                color={CARD_TEXT}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {getCardRankNumber(card)}
+              </Text>
+              <Text
+                position={[-0.24, 0.04, -0.28]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.045}
+                color={CARD_TEXT_SOFT}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {getCardRankLabel(card).toUpperCase()}
+              </Text>
+              <Text
+                position={[0, 0.04, 0.04]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.092}
+                maxWidth={0.72}
+                lineHeight={1}
+                color={CARD_TEXT}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {card.name}
+              </Text>
+              <Text
+                position={[0, 0.04, 0.42]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.06}
+                color={CARD_TEXT_SOFT}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {suitGlyph[card.suit] ?? getCardSuitCode(card)}
+              </Text>
+            </>
+          )}
         </>
       )}
     </group>

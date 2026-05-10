@@ -1,3 +1,5 @@
+const CARD_BACK_IMAGE = "/assets/cards/backs/truco-back.svg";
+
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({
   id,
   name,
@@ -6,7 +8,9 @@ const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", grou
   tone,
   lane,
   flavor,
-  group
+  group,
+  image: group === "truco" ? `/assets/cards/fronts/${id}.svg` : null,
+  backImage: CARD_BACK_IMAGE
 });
 
 const rankNumbers = {

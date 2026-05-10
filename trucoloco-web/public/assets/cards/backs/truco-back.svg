@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620">
+  <rect width="420" height="620" rx="28" fill="#4f2319"/>
+  <rect x="14" y="14" width="392" height="592" rx="22" fill="#6d3021" stroke="#e0ad5b" stroke-width="5"/>
+  <rect x="38" y="38" width="344" height="544" rx="14" fill="#2a120d" stroke="#c9974d" stroke-width="3"/>
+  <path d="M210 88C278 151 310 224 310 310S278 469 210 532C142 469 110 396 110 310S142 151 210 88Z" fill="#7a3828" stroke="#e0ad5b" stroke-width="6"/>
+  <circle cx="210" cy="310" r="86" fill="none" stroke="#e0ad5b" stroke-width="5"/>
+  <path d="M130 310H290M210 230V390" stroke="#e0ad5b" stroke-width="6" stroke-linecap="round"/>
+  <text x="210" y="300" text-anchor="middle" font-family="Georgia, serif" font-size="48" font-weight="800" fill="#f3dfb6">TRUCO</text>
+  <text x="210" y="348" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="900" letter-spacing="5" fill="#d7a65a">LA TRAICION</text>
+</svg>

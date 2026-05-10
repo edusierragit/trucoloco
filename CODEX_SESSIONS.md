@@ -53,6 +53,10 @@ Cambios:
 - `trucoloco-web/src/game/scene/world/WalkablePlayer.jsx`
   - En modo `Caminar`, el avatar usa el personaje seleccionado.
   - Cambia `animationMode` a `idle`, `walk` o `run` segun input/Shift.
+  - `J` o `Espacio` dispara animacion extra `box` por ~0.85s.
+- `trucoloco-web/src/game/data/characters.js`
+  - Mapeados clips genericos de Tripo (`NlaTrack*`) para `irvyn`, `marvyn`, `pol`.
+  - Mesa no reproduce animaciones por defecto; solo el jugador caminable usa clips.
 - `trucoloco-web/src/game/scene/Table.jsx`
   - `tablero.glb` reemplaza al hexagono central procedural.
 - `trucoloco-web/package.json`, `trucoloco-web/README.md`, `MCP_SETUP.md`
@@ -73,7 +77,7 @@ Validacion:
 
 Pendientes:
 - Revisar visualmente escala/rotacion fina de `irvyn.glb`, `marvyn.glb` y `pol-arabe.glb` despues de hard refresh.
-- Los GLB actuales no traen clips de animacion; para caminar/correr real hace falta exportar GLB/FBX con animaciones embebidas.
+- Los GLB animados ya traen clips, pero Tripo los nombra `NlaTrack*`; si alguna animacion no coincide visualmente, ajustar `animationClipMap`.
 - Revisar visualmente escala/altura de `tablero.glb`; ya se redujo el footprint a `1.74`, pero puede requerir otra pasada segun gameplay con cartas.
 - Para que Codex cargue tools MCP desde cero, abrir nueva sesion desde raiz del repo con `.codex/config.toml` activo.
 - Si se quiere que elegir Pol/Marvyn cambie tambien todos los nombres de reglas/mano, hay que agregar una capa dinamica de roster/asientos.

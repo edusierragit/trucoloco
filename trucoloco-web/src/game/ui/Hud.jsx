@@ -657,10 +657,11 @@ function CardButton({ card, disabled, onPlay, offset }) {
   const rankLabel = getCardRankLabel(card);
   const rankNumber = getCardRankNumber(card);
   const suitGlyph = getCardSuitCode(card);
+  const hasCardImage = Boolean(card.image);
 
   return (
     <button
-      className={`card-button ${getSuitClass(card)}`}
+      className={`card-button ${hasCardImage ? "card-button-image" : ""} ${getSuitClass(card)}`}
       disabled={disabled}
       onClick={() => onPlay(card.handIndex)}
       style={{
@@ -671,22 +672,28 @@ function CardButton({ card, disabled, onPlay, offset }) {
       aria-label={`Jugar ${card.name}`}
     >
       <span className="card-surface">
-        <span className="card-corner">
-          <span className="card-corner-number">{rankNumber}</span>
-          <small>{suitGlyph}</small>
-        </span>
-        <span className="card-corner card-corner-bottom">
-          <span className="card-corner-number">{rankNumber}</span>
-          <small>{suitGlyph}</small>
-        </span>
-        <span className="card-badge">{suitGlyph}</span>
-        <span className="card-rank-word">{rankLabel}</span>
-        <span className="card-suit-emblem" aria-hidden="true" />
-        <span className="card-main">
-          <span className="card-main-rank">{rankNumber}</span>
-          <span className="card-main-suit">{suitGlyph}</span>
-        </span>
-        <span className="card-name">{card.name}</span>
+        {hasCardImage ? (
+          <img className="card-art" src={card.image} alt="" draggable="false" />
+        ) : (
+          <>
+            <span className="card-corner">
+              <span className="card-corner-number">{rankNumber}</span>
+              <small>{suitGlyph}</small>
+            </span>
+            <span className="card-corner card-corner-bottom">
+              <span className="card-corner-number">{rankNumber}</span>
+              <small>{suitGlyph}</small>
+            </span>
+            <span className="card-badge">{suitGlyph}</span>
+            <span className="card-rank-word">{rankLabel}</span>
+            <span className="card-suit-emblem" aria-hidden="true" />
+            <span className="card-main">
+              <span className="card-main-rank">{rankNumber}</span>
+              <span className="card-main-suit">{suitGlyph}</span>
+            </span>
+            <span className="card-name">{card.name}</span>
+          </>
+        )}
         <span className="card-footer">
           <span className="card-suit-label">{card.suit}</span>
           <span className="card-power">Fuerza {card.power}</span>
