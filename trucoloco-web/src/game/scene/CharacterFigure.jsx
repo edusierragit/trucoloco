@@ -35,15 +35,38 @@ function getSafeObjectBounds(object) {
   return bounds.isEmpty() || !isFiniteBox(bounds) ? new Box3().setFromObject(object) : bounds;
 }
 
+function makeClipsInPlace(animations) {
+  return animations.map((clip) => {
+    const nextClip = clip.clone();
+
+    nextClip.tracks.forEach((track) => {
+      if (track.name !== "Root.position" || track.ValueTypeName !== "vector") return;
+
+      const values = track.values;
+      const originX = values[0] ?? 0;
+      const originZ = values[2] ?? 0;
+
+      for (let index = 0; index < values.length; index += 3) {
+        values[index] = originX;
+        values[index + 2] = originZ;
+      }
+    });
+
+    return nextClip;
+  });
+}
+
 function CharacterModelAsset({
   src,
   scale = 1,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
   targetHeight = 1.78,
-  animationMode = "idle"
+  animationMode = "idle",
+  animationClipMap = {}
 }) {
   const { scene, animations = [] } = useGLTF(src);
+  const preparedAnimations = useMemo(() => makeClipsInPlace(animations), [animations]);
   const { clonedScene, offset, normalizedScale } = useMemo(() => {
     const clone = cloneSkeleton(scene);
     clone.traverse((child) => {
@@ -77,20 +100,25 @@ function CharacterModelAsset({
       normalizedScale: scaleFactor
     };
   }, [scene, targetHeight]);
-  const { actions } = useAnimations(animations, clonedScene);
+  const { actions } = useAnimations(preparedAnimations, clonedScene);
   const actionName = useMemo(() => {
     const names = Object.keys(actions);
     if (!names.length) return null;
+
+    const mappedName = animationClipMap[animationMode] ?? (animationMode === "run" ? animationClipMap.walk : null);
+    if (mappedName && actions[mappedName]) return mappedName;
 
     const modeWords = animationMode === "run"
       ? ["run", "jog", "sprint"]
       : animationMode === "walk"
         ? ["walk", "walking"]
+        : animationMode === "box"
+          ? ["box", "fight", "punch"]
         : ["idle", "stand", "breath"];
     const matched = names.find((name) => modeWords.some((word) => name.toLowerCase().includes(word)));
 
     return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);
-  }, [actions, animationMode]);
+  }, [actions, animationClipMap, animationMode]);
 
   useEffect(() => {
     if (!actionName) return undefined;
@@ -373,6 +401,7 @@ export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isA
           rotation={skin.modelRotation ?? [0, 0, 0]}
           targetHeight={skin.modelTargetHeight ?? 1.78}
           animationMode={animationMode}
+          animationClipMap={skin.animationClipMap ?? {}}
         />
       </Suspense>
     );
