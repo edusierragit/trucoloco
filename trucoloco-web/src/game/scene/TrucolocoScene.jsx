@@ -389,14 +389,15 @@ function BarAtmosphere({ active, lowPower = false }) {
   );
 }
 
-function RingCharacterModel({ character, active, fallen }) {
+function RingCharacterModel({ character, active, fallen, side }) {
   const skin = character?.skinId ? characterSkins[character.skinId] : null;
   const hasBoxClip = Boolean(skin?.modelSrc && skin?.animationClipMap?.box);
+  const inwardYaw = side === "player" ? Math.PI / 2 : -Math.PI / 2;
 
   if (!character || !hasBoxClip) return null;
 
   return (
-    <group name={`Debate_Model_${character.id}`} scale={0.48} position={[0, fallen ? -0.04 : -0.02, 0.02]}>
+    <group name={`Debate_Model_${character.id}`} scale={0.48} position={[0, fallen ? -0.04 : -0.02, 0.02]} rotation={[0, inwardYaw, 0]}>
       <CharacterFigure
         skin={skin}
         accent={character.accent}
@@ -460,7 +461,7 @@ function DebateFighter({ side, action, character }) {
   const rivalWon = action?.resolved && (action?.rival ?? 0) >= (action?.player ?? 0);
   const hasFallen = isPlayer ? rivalWon : playerWon;
   const isActive = isPlayer
-    ? action?.kind === "golpe" || action?.kind === "empujon"
+    ? action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate"
     : action?.kind === "rival" || action?.kind === "rival-windup";
 
   useFrame((state, delta) => {
@@ -474,7 +475,8 @@ function DebateFighter({ side, action, character }) {
     const t = state.clock.elapsedTime;
     const impact = impactRef.current;
     const direction = isPlayer ? 1 : -1;
-    const playerAttack = action?.kind === "golpe" || action?.kind === "empujon";
+    const playerAttack = action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate";
+    const playerRemate = action?.kind === "remate";
     const rivalAttack = action?.kind === "rival";
     const playerGuard = isPlayer && action?.kind === "guardia" ? impact : 0;
     const rivalWindup = !isPlayer && action?.kind === "rival-windup" ? impact : 0;
@@ -485,11 +487,11 @@ function DebateFighter({ side, action, character }) {
     const recoil = isPlayer ? -(hitReaction * 0.2 + shove * 0.08) : -(hitReaction * 0.18 + shove * 0.16);
     const bob = Math.sin(t * 3.6 + (isPlayer ? 0 : 1.2)) * 0.018;
 
-    groupRef.current.position.x = baseX + (recoil - rivalWindup * 0.08 + vulnerable * 0.1) * direction;
+    groupRef.current.position.x = baseX + (recoil - rivalWindup * 0.08 + vulnerable * 0.1 + (isPlayer && playerRemate ? impact * 0.16 : 0)) * direction;
     groupRef.current.position.y = hasFallen ? -0.22 : bob;
     groupRef.current.position.z += ((0.05 + lane * 0.58) - groupRef.current.position.z) * 0.18;
-    groupRef.current.rotation.z = hasFallen ? direction * 1.18 : (attack * -0.28 + hitReaction * 0.36 + playerGuard * 0.18 + rivalWindup * -0.22 + vulnerable * 0.28) * direction;
-    groupRef.current.rotation.x = hasFallen ? -1.18 : attack * 0.18 - hitReaction * 0.18 + playerGuard * -0.1 + rivalWindup * 0.2 + vulnerable * 0.16;
+    groupRef.current.rotation.z = hasFallen ? direction * 1.18 : (attack * (playerRemate ? -0.54 : -0.28) + hitReaction * 0.36 + playerGuard * 0.18 + rivalWindup * -0.22 + vulnerable * 0.28) * direction;
+    groupRef.current.rotation.x = hasFallen ? -1.18 : attack * (playerRemate ? 0.34 : 0.18) - hitReaction * 0.18 + playerGuard * -0.1 + rivalWindup * 0.2 + vulnerable * 0.16;
 
     if (!hasModelFighter && headRef.current) {
       headRef.current.position.x = Math.sin(t * 2.4) * 0.012 - (isPlayer ? 0 : impact * 0.08);
@@ -509,7 +511,7 @@ function DebateFighter({ side, action, character }) {
   return (
     <group ref={groupRef} name={`Debate_Fighter_${side}`} position={[baseX, 0.16, 0.05 + lane * 0.58]} rotation={[0, isPlayer ? 0.28 : -0.28, 0]}>
       {hasModelFighter ? (
-        <RingCharacterModel character={character} active={isActive} fallen={hasFallen} />
+        <RingCharacterModel character={character} active={isActive} fallen={hasFallen} side={side} />
       ) : (
         <DebateProceduralFighter bodyColor={bodyColor} accent={accent} headRef={headRef} leftArmRef={leftArmRef} rightArmRef={rightArmRef} />
       )}
@@ -521,7 +523,9 @@ function DebateImpactFX({ action }) {
   const groupRef = useRef(null);
   const lastTokenRef = useRef(action?.token ?? 0);
   const progressRef = useRef(1);
-  const color = action?.kind === "empujon"
+  const color = action?.kind === "remate"
+    ? "#f3c172"
+    : action?.kind === "empujon"
     ? "#f3dfb6"
     : action?.kind === "rival-whiff"
       ? "#63d5c5"
@@ -545,7 +549,7 @@ function DebateImpactFX({ action }) {
 
     progressRef.current = Math.min(1, progressRef.current + delta * 2.9);
     const t = progressRef.current;
-    const scale = 0.22 + t * 1.35;
+    const scale = action?.kind === "remate" ? 0.32 + t * 1.85 : 0.22 + t * 1.35;
     const opacity = Math.max(0, 0.42 * (1 - t));
 
     groupRef.current.scale.setScalar(scale);
@@ -564,7 +568,7 @@ function DebateImpactFX({ action }) {
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 4]}>
         <ringGeometry args={[0.12, 0.16, 28]} />
-        <meshBasicMaterial color="#e06b4a" transparent opacity={0} depthWrite={false} />
+        <meshBasicMaterial color={action?.kind === "remate" ? "#f3c172" : "#e06b4a"} transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -633,6 +637,8 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
         : "APRIETA LA MESA"
       : debateAction?.kind === "rival"
         ? "TE APURAN"
+        : debateAction?.kind === "remate"
+          ? "REMATE"
         : debateAction?.kind === "rival-whiff"
           ? "QUEDO PAGANDO"
           : debateAction?.kind === "rival-guardbreak"
@@ -731,6 +737,13 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
         <mesh key={z} position={[0, 0.095, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.08 + index * 0.012, 0.095 + index * 0.012, 28]} />
           <meshBasicMaterial color={index === 1 ? "#f3dfb6" : "#d98a36"} transparent opacity={index === 1 ? 0.18 : 0.11} depthWrite={false} />
+        </mesh>
+      ))}
+
+      {Array.from({ length: Math.min(3, debateAction?.crowdHeat ?? 0) }).map((_, index) => (
+        <mesh key={`heat-${index}`} position={[0, 0.105 + index * 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.5 + index * 0.16, 0.515 + index * 0.16, 72]} />
+          <meshBasicMaterial color={index % 2 === 0 ? "#f3c172" : "#63d5c5"} transparent opacity={0.22 - index * 0.035} depthWrite={false} />
         </mesh>
       ))}
 
@@ -1050,9 +1063,9 @@ function getCameraPose({ match, isNarrow, cameraView }) {
 
   if (cameraView === "ring") {
     return {
-      position: isNarrow ? [-7.45, 0.4, 2.7] : [-7.45, -0.08, 2.42],
-      target: [-7.45, -1.02, -0.08],
-      fov: isNarrow ? 42 : 37
+      position: isNarrow ? [-7.45, 0.38, 2.1] : [-7.45, 0.18, 1.72],
+      target: [-7.45, -0.94, -0.06],
+      fov: isNarrow ? 45 : 41
     };
   }
 
