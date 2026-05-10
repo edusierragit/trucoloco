@@ -31,7 +31,9 @@ function CharacterSeat({
   isPlayerSeat,
   isSelectedCharacter,
   isSeatedView,
-  showFloatingLabel
+  isAwayFromSeat,
+  showFloatingLabel,
+  lowPower
 }) {
   const ringRef = useRef(null);
   const outerRingRef = useRef(null);
@@ -39,14 +41,17 @@ function CharacterSeat({
   const upperRef = useRef(null);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
 
-  const roleScale = character.role === "Jugador Estrella" ? 1.08 : character.role === "Negociante" ? 0.96 : 1;
   const skin = character.skinId ? characterSkins[character.skinId] : null;
+  const roleScale = skin?.modelSrc
+    ? character.role === "Jugador Estrella" ? 1.04 : character.role === "Negociante" ? 0.96 : 1
+    : character.role === "Jugador Estrella" ? 0.94 : 0.96;
   const chairSeatColor = skin?.chairSeatColor ?? "#2d1d16";
   const chairBackColor = skin?.chairBackColor ?? "#231813";
   const upperBaseY = skin?.modelSrc ? 1.28 : 1.47;
   const seatYaw = Math.atan2(-seat.position[0], -seat.position[2]);
   const chairPull = isPlayerSeat && isRoleSelect ? -0.2 : isPlayerSeat ? 0.08 : 0;
-  const chairScale = isPlayerSeat ? 1.07 : 1;
+  const chairScale = isPlayerSeat ? 1.04 : 1;
+  const useSimplifiedModel = lowPower && !isPlayerSeat && !isSelectedCharacter && !isCurrentActor;
 
   // Is this character "special" under any active modifier?
   const isGazpacho = character.id === "gazpacho";
@@ -186,13 +191,13 @@ function CharacterSeat({
       {isPlayerSeat ? (
         <group name={`SeatState_${character.name}`}>
           <mesh position={[0, 0.025, -0.03]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.72, 0.84, 36]} />
-            <meshBasicMaterial color={isSeatedView ? "#91e9f6" : "#d9b36c"} transparent opacity={isSeatedView ? 0.42 : 0.24} depthWrite={false} />
+            <ringGeometry args={[0.6, 0.7, 36]} />
+            <meshBasicMaterial color={isSeatedView ? "#91e9f6" : "#d9b36c"} transparent opacity={isSeatedView ? 0.32 : 0.16} depthWrite={false} />
           </mesh>
           <Text
             position={[0, 0.13, -0.82]}
             rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.095}
+            fontSize={0.078}
             color={isSeatedView ? "#91e9f6" : "#d9b36c"}
             anchorX="center"
             anchorY="middle"
@@ -203,15 +208,36 @@ function CharacterSeat({
         </group>
       ) : null}
 
-      <CharacterFigure
-        skin={skin}
-        accent={character.accent}
-        outfitMaterialRef={torsoRef}
-        upperRef={upperRef}
-        isActiveLane={isSelectedLane || isCurrentActor}
-      />
+      {isAwayFromSeat ? (
+        <group name={`SeatAway_${character.name}`}>
+          <mesh position={[0, 0.74, -0.05]} rotation={[0, 0, -0.08]} castShadow>
+            <boxGeometry args={[0.34, 0.08, 0.22]} />
+            <meshStandardMaterial color={character.accent} roughness={0.72} metalness={0.12} />
+          </mesh>
+          <Text
+            position={[0, 0.95, -0.5]}
+            rotation={[0, -seatYaw, 0]}
+            fontSize={0.075}
+            color="#91e9f6"
+            anchorX="center"
+            anchorY="middle"
+            letterSpacing={0.08}
+          >
+            EN EL ANTRO
+          </Text>
+        </group>
+      ) : (
+        <CharacterFigure
+          skin={skin}
+          accent={character.accent}
+          outfitMaterialRef={torsoRef}
+          upperRef={upperRef}
+          isActiveLane={isSelectedLane || isCurrentActor}
+          forceProcedural={useSimplifiedModel}
+        />
+      )}
 
-      {showFloatingLabel ? (
+      {showFloatingLabel && !isAwayFromSeat ? (
         <group position={[0, 2.02, 0]} rotation={[0, -seatYaw, 0]}>
           <Text
             fontSize={isCurrentActor ? 0.18 : isSelectedLane ? 0.16 : 0.11}
@@ -237,26 +263,27 @@ function CharacterSeat({
 
       {/* Base ring */}
       <mesh name={`Ring_${character.name}`} ref={ringRef} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.36, 0.52, 28]} />
+        <ringGeometry args={[0.32, 0.44, 28]} />
         <meshBasicMaterial color={character.accent} transparent opacity={0.44} />
       </mesh>
 
       {/* Outer ring — only visible during special states */}
       <mesh ref={outerRingRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.54, 0.64, 28]} />
+        <ringGeometry args={[0.46, 0.54, 28]} />
         <meshBasicMaterial color={character.accent} transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>
   );
 }
 
-export function TeamsAroundTable({ match, cameraView = "table" }) {
+export function TeamsAroundTable({ match, cameraView = "table", performanceMode = "high" }) {
   const modId = match.activeModifier?.id ?? "";
   const visibleRosterSeats = getVisibleRosterSeats(match);
   const isRoleSelect = match.phase === "role-select";
   const selectedCharacterId = match.selectedCharacter?.id;
   const { size } = useThree();
   const isNarrow = size.width < 640;
+  const lowPower = performanceMode === "low";
 
   return (
     <group name="Players_Ring">
@@ -266,7 +293,9 @@ export function TeamsAroundTable({ match, cameraView = "table" }) {
         const isSelectedCharacter = isRoleSelect && character.id === selectedCharacterId;
         const isPlayerSeat = seat.team === "A" && character.role === match.selectedRole;
         const isCurrentActor = match.handStarted && !match.handClosed && character.name === match.nextActorName;
-        const showFloatingLabel = isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor;
+        const isAwayFromSeat = cameraView === "walk" && character.id === selectedCharacterId;
+        // [VISUAL] Walking mode needs a cleaner cinematic read; floating roster labels clutter the table focus.
+        const showFloatingLabel = cameraView !== "walk" && (isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor);
         return (
           <CharacterSeat
             key={seat.key}
@@ -282,7 +311,9 @@ export function TeamsAroundTable({ match, cameraView = "table" }) {
             isPlayerSeat={isPlayerSeat}
             isSelectedCharacter={isSelectedCharacter}
             isSeatedView={isPlayerSeat && cameraView === "seat"}
+            isAwayFromSeat={isAwayFromSeat}
             showFloatingLabel={showFloatingLabel}
+            lowPower={lowPower}
           />
         );
       })}

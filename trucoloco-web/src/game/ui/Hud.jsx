@@ -263,14 +263,18 @@ function TableFlowPanel({ match }) {
     return null;
   }
 
+  const focusSeats = match.tableFlow.seats.filter((seat) =>
+    seat.isActing || seat.isSelectedDuel || seat.isMano || seat.isDealer
+  );
+
   return (
     <section className="table-flow-panel">
       <div className="table-flow-head">
         <span className="panel-kicker">Mesa 3v3</span>
-        <strong>Orden de ronda</strong>
+        <strong>Foco actual</strong>
       </div>
       <div className="table-flow-seats">
-        {match.tableFlow.seats.map((seat) => {
+        {focusSeats.map((seat) => {
           const className = [
             "table-flow-seat",
             seat.isSelectedDuel ? "table-flow-seat-duel" : "",
@@ -550,15 +554,7 @@ function getTableResultCopy(match, lastTrick) {
 }
 
 function TableSpotlight({ match }) {
-  if (!match.handStarted || match.phase === "role-select") {
-    return null;
-  }
-
-  return (
-    <div className="table-spotlight-layer">
-      <TableShowdown match={match} />
-    </div>
-  );
+  return null;
 }
 
 function TrickLedger({ match }) {
@@ -812,7 +808,13 @@ function BottomDock({ match, handFocus, setHandFocus }) {
     !match.handClosed &&
     match.selectedRole === "Cartachin" &&
     (match.canUseWeapon || match.activeWeapon || match.weaponUsed);
-  const showHandCards = match.handStarted && !match.handClosed && !match.matchWinner && match.canPlayCard;
+  const showHandCards = match.handStarted && !match.handClosed && !match.matchWinner && match.humanHand.length > 0;
+  const handPanelClassName = [
+    "hand-panel",
+    showHandCards ? "hand-panel-focus" : handFocus ? "hand-panel-focus" : "",
+    showHandCards && match.canPlayCard ? "hand-panel-play" : "",
+    showHandCards && !match.canPlayCard ? "hand-panel-preview" : ""
+  ].filter(Boolean).join(" ");
   const handWinnerName = getTeamLabel(match.handWinner);
   const scoringWinnerName = getTeamLabel(match.scoringWinner);
   const showResultPanel = match.handStarted && (match.handClosed || match.matchWinner);
@@ -820,42 +822,6 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
   if (match.phase === "role-select") {
     return null;
-  }
-
-  if (match.phase === "table-auto-turn" && !showWeaponsPanel) {
-    return null;
-  }
-
-  if (match.phase === "table-auto-turn" && showWeaponsPanel) {
-    return (
-      <footer className="bottom-dock bottom-dock-weapons-only">
-        <section className="weapons-panel">
-          <div className="panel-header">
-            <div>
-              <span className="panel-kicker">Armas de Cartachin</span>
-              <p>
-                {match.activeWeapon
-                  ? `Activa: ${match.activeWeapon.name}.`
-                  : match.canUseWeapon
-                    ? "Podés cargar un arma antes de que salga la primera carta."
-                    : "El arma de esta mano ya quedó definida."}
-              </p>
-            </div>
-          </div>
-
-          <div className="weapon-grid">
-            {match.weaponHand.map((weapon) => (
-              <WeaponButton
-                key={weapon.handIndex}
-                weapon={weapon}
-                disabled={!match.canUseWeapon}
-                onUse={match.useWeapon}
-              />
-            ))}
-          </div>
-        </section>
-      </footer>
-    );
   }
 
   if (match.trucoPending) {
@@ -1047,11 +1013,11 @@ function BottomDock({ match, handFocus, setHandFocus }) {
   }
 
   return (
-    <footer className={showHandCards ? "bottom-dock bottom-dock-play" : "bottom-dock"}>
-      <section className={showHandCards ? "hand-panel hand-panel-play hand-panel-focus" : handFocus ? "hand-panel hand-panel-focus" : "hand-panel"}>
+    <footer className={showHandCards && match.canPlayCard ? "bottom-dock bottom-dock-play" : "bottom-dock"}>
+      <section className={handPanelClassName}>
         <div className="panel-header">
           <div>
-            <span className="panel-kicker">{showHandCards ? "Acción disponible" : "Tu mano"}</span>
+            <span className="panel-kicker">{match.canPlayCard ? "Acción disponible" : "Tu mano"}</span>
             <p>{getHandPanelCopy(match)}</p>
           </div>
           <div className="panel-header-actions">

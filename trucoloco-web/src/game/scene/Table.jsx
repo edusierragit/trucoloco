@@ -30,11 +30,11 @@ const CARD_BACK = "#5b2d20";
 const CARD_BACK_LINE = "#b78a4e";
 const CARD_TEXT = "#23170f";
 const CARD_TEXT_SOFT = "#6c4e34";
-const TABLE_WOOD = "#4b2112";
-const TABLE_WOOD_DARK = "#281109";
-const TABLE_BRASS = "#b07a36";
-const FELT_BASE = "#173826";
-const FELT_DEEP = "#10251a";
+const TABLE_WOOD = "#3d1a0e";
+const TABLE_WOOD_DARK = "#1d0b06";
+const TABLE_BRASS = "#c08a3f";
+const FELT_BASE = "#102e20";
+const FELT_DEEP = "#091d14";
 
 function CardImagePlane({ image, width, height, y = 0.036 }) {
   const texture = useTexture(image);
@@ -55,16 +55,17 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   const fromZ = card.side === "A" ? 3.2 : -2.8;
   const fromY = 1.6;
   const initialRotX = 0.62;
+  const initialRotY = card.side === "A" ? -0.18 : 0.18;
   const initialRotZ = card.side === "A" ? -0.34 : 0.34;
 
   useEffect(() => {
     progressRef.current = 0;
     if (groupRef.current) {
       groupRef.current.position.set(fromX, fromY, fromZ);
-      groupRef.current.rotation.set(initialRotX, 0, initialRotZ);
+      groupRef.current.rotation.set(initialRotX, initialRotY, initialRotZ);
       groupRef.current.scale.setScalar(0.82);
     }
-  }, [animationKey, fromX, fromZ, card.owner, initialRotZ]);
+  }, [animationKey, fromX, fromZ, card.owner, initialRotY, initialRotZ]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) {
@@ -78,6 +79,7 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
     groupRef.current.position.y = fromY + (position[1] - fromY) * t;
     groupRef.current.position.z = fromZ + (position[2] - fromZ) * t;
     groupRef.current.rotation.x = initialRotX + (rotation[0] - initialRotX) * t;
+    groupRef.current.rotation.y = initialRotY + ((rotation[1] ?? 0) - initialRotY) * t;
     groupRef.current.rotation.z = initialRotZ + (rotation[2] - initialRotZ) * t;
     const scale = 0.82 + (1 - 0.82) * t;
     groupRef.current.scale.setScalar(scale);
@@ -93,14 +95,14 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
         <circleGeometry args={[0.78, 28]} />
         <meshBasicMaterial color="#000000" transparent opacity={0} />
       </mesh>
-      <RoundedBox name={`Card_${card.owner}_${card.id}`} args={[1.02, 0.055, 1.48]} radius={0.07} castShadow receiveShadow>
+      <RoundedBox name={`Card_${card.owner}_${card.id}`} args={[1.08, 0.055, 1.58]} radius={0.065} castShadow receiveShadow>
         <meshStandardMaterial color={CARD_EDGE} roughness={0.72} />
       </RoundedBox>
-      <RoundedBox args={[0.92, 0.028, 1.36]} radius={0.052} position={[0, 0.016, 0]} castShadow receiveShadow>
+      <RoundedBox args={[0.98, 0.028, 1.46]} radius={0.048} position={[0, 0.016, 0]} castShadow receiveShadow>
         <meshStandardMaterial color={CARD_FACE} roughness={0.58} />
       </RoundedBox>
       {card.image ? (
-        <CardImagePlane image={card.image} width={0.92} height={1.36} y={0.034} />
+        <CardImagePlane image={card.image} width={0.98} height={1.46} y={0.034} />
       ) : (
         <>
           <mesh position={[0, 0.032, -0.58]}>
@@ -324,35 +326,77 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
 }
 
 const tableCardPoses = [
-  { position: [-1.05, 0.42, 0.84], rotation: [0, 0, -0.14] },
-  { position: [0, 0.43, 1.0], rotation: [0, 0, 0] },
-  { position: [1.05, 0.42, 0.84], rotation: [0, 0, 0.14] },
-  { position: [1.05, 0.42, -0.52], rotation: [0, 0, 0.14] },
-  { position: [0, 0.43, -0.7], rotation: [0, 0, 0] },
-  { position: [-1.05, 0.42, -0.52], rotation: [0, 0, -0.14] }
+  { position: [-1.48, 0.405, 1.18], rotation: [0, -0.18, -0.035] },
+  { position: [-0.52, 0.415, 1.34], rotation: [0, -0.06, 0.012] },
+  { position: [0.62, 0.405, 1.18], rotation: [0, 0.12, 0.035] },
+  { position: [1.48, 0.405, -1.18], rotation: [0, Math.PI - 0.18, -0.035] },
+  { position: [0.52, 0.415, -1.34], rotation: [0, Math.PI - 0.06, 0.012] },
+  { position: [-0.62, 0.405, -1.18], rotation: [0, Math.PI + 0.12, 0.035] }
 ];
 
-function CardTableauGuides({ active }) {
+function CardTableauGuides({ active, playedCount }) {
   return (
     <group name="Table_CardTableauGuides">
-      {tableCardPoses.map((pose, index) => (
-        <RoundedBox
-          key={index}
-          args={[0.96, 0.012, 1.36]}
-          radius={0.045}
-          position={[pose.position[0], 0.266, pose.position[2]]}
-          rotation={[0, 0, pose.rotation[2]]}
-          receiveShadow
-        >
-          <meshStandardMaterial
-            color={active ? "#0a1711" : "#0f2017"}
-            roughness={0.94}
-            metalness={0.01}
-            transparent
-            opacity={active ? 0.7 : 0.38}
-          />
-        </RoundedBox>
-      ))}
+      {tableCardPoses.map((pose, index) => {
+        const isNext = active && index === playedCount;
+        const isPlayed = index < playedCount;
+
+        return (
+          <RoundedBox
+            key={index}
+            args={[0.98, 0.01, 1.44]}
+            radius={0.04}
+            position={[pose.position[0], 0.266, pose.position[2]]}
+            rotation={[0, pose.rotation[1] ?? 0, 0]}
+            receiveShadow
+          >
+            <meshStandardMaterial
+              color={isNext ? "#172d22" : "#0d1b14"}
+              emissive={isNext ? "#b98935" : "#000000"}
+              emissiveIntensity={isNext ? 0.08 : 0}
+              roughness={0.94}
+              metalness={0.01}
+              transparent
+              opacity={isPlayed ? 0.04 : isNext ? 0.28 : 0.105}
+            />
+          </RoundedBox>
+        );
+      })}
+    </group>
+  );
+}
+
+function LastPlayedMarker({ tableCards }) {
+  const markerRef = useRef(null);
+  const lastCard = tableCards[tableCards.length - 1];
+
+  useFrame((state) => {
+    if (!markerRef.current) return;
+    const pulse = 0.5 + Math.sin(state.clock.elapsedTime * 5.2) * 0.5;
+    markerRef.current.material.opacity = 0.18 + pulse * 0.18;
+    markerRef.current.scale.setScalar(1 + pulse * 0.08);
+  });
+
+  if (!lastCard) return null;
+
+  const pose = getTableCardPose(lastCard, tableCards.length - 1);
+
+  return (
+    <group name="Table_LastPlayedMarker" position={[pose.position[0], 0.432, pose.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={markerRef}>
+        <ringGeometry args={[0.68, 0.82, 54]} />
+        <meshBasicMaterial color={lastCard.side === "A" ? "#63d5c5" : "#d05a44"} transparent opacity={0.2} depthWrite={false} />
+      </mesh>
+      <Text
+        position={[0, 0.02, 0.92]}
+        fontSize={0.075}
+        color="#f3dfb6"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.08}
+      >
+        {lastCard.side === "A" ? "TU JUGADA" : "JUGO LA MESA"}
+      </Text>
     </group>
   );
 }
@@ -454,23 +498,26 @@ function TensionRing({ handClosed, outcomeTone, modId }) {
   );
 }
 
-function FeltInlay({ modId }) {
+function FeltInlay({ modId, lowPower = false }) {
   const accent =
     modId === "gafas-legendarias" ? "#40b0d8" :
     modId === "sustancia-x" ? "#b55bc2" :
     modId === "exodia-bolsillo" ? "#d4a020" :
     "#c89040";
+  const rings = lowPower ? [1.42] : [0.96, 1.42, 1.86];
+  const radialLines = lowPower ? [0, 2] : [0, 1, 2, 3];
+  const segments = lowPower ? 48 : 96;
 
   return (
     <group name="Felt_Inlay" position={[0, 0.255, 0]}>
-      {[0.96, 1.42, 1.86].map((radius, index) => (
+      {rings.map((radius, index) => (
         <mesh key={radius} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[radius, radius + 0.012, 96]} />
+          <ringGeometry args={[radius, radius + 0.012, segments]} />
           <meshBasicMaterial color={accent} transparent opacity={index === 1 ? 0.18 : 0.1} depthWrite={false} />
         </mesh>
       ))}
 
-      {[0, 1, 2, 3].map((index) => (
+      {radialLines.map((index) => (
         <mesh key={index} rotation={[-Math.PI / 2, 0, (Math.PI / 2) * index]}>
           <planeGeometry args={[0.016, 3.64]} />
           <meshBasicMaterial color="#d0a15d" transparent opacity={0.075} depthWrite={false} />
@@ -480,11 +527,13 @@ function FeltInlay({ modId }) {
   );
 }
 
-function BrassStuds() {
+function BrassStuds({ lowPower = false }) {
+  const studCount = lowPower ? 10 : 18;
+
   return (
     <group name="Table_BrassStuds">
-      {Array.from({ length: 18 }, (_, index) => {
-        const angle = (Math.PI * 2 * index) / 18;
+      {Array.from({ length: studCount }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / studCount;
         return (
           <mesh
             key={index}
@@ -492,8 +541,8 @@ function BrassStuds() {
             castShadow
             receiveShadow
           >
-            <sphereGeometry args={[0.035, 10, 10]} />
-            <meshStandardMaterial color={TABLE_BRASS} roughness={0.32} metalness={0.56} emissive="#4a2508" emissiveIntensity={0.03} />
+            <sphereGeometry args={[0.035, lowPower ? 8 : 10, lowPower ? 6 : 10]} />
+            <meshStandardMaterial color={TABLE_BRASS} roughness={0.26} metalness={0.68} emissive="#3a1c06" emissiveIntensity={0.025} />
           </mesh>
         );
       })}
@@ -501,22 +550,42 @@ function BrassStuds() {
   );
 }
 
-function TableUnderGlow() {
+function TableRimHighlights({ lowPower = false }) {
+  const segments = lowPower ? 64 : 112;
+
   return (
-    <group name="Table_UnderGlow">
-      <mesh position={[0, -0.29, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.62, 2.86, 72]} />
-        <meshBasicMaterial color="#d58b35" transparent opacity={0.08} depthWrite={false} />
+    <group name="Table_RimHighlights">
+      {/* [VISUAL] Thin brass lips catch the warm key light and make the mesa feel built, not primitive. */}
+      <mesh position={[0, 0.285, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+        <torusGeometry args={[2.76, 0.018, 8, segments]} />
+        <meshStandardMaterial color={TABLE_BRASS} roughness={0.24} metalness={0.72} emissive="#2a1304" emissiveIntensity={0.02} />
       </mesh>
-      <mesh position={[0, -0.46, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[3.1, 72]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.34} depthWrite={false} />
+      <mesh position={[0, 0.295, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[2.18, 0.01, 8, segments]} />
+        <meshStandardMaterial color="#7d4b22" roughness={0.36} metalness={0.28} />
       </mesh>
     </group>
   );
 }
 
-function TableProps() {
+function TableUnderGlow({ lowPower = false }) {
+  const segments = lowPower ? 40 : 72;
+
+  return (
+    <group name="Table_UnderGlow">
+      <mesh position={[0, -0.29, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.62, 2.86, segments]} />
+        <meshBasicMaterial color="#d58b35" transparent opacity={0.055} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, -0.46, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[3.1, segments]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.42} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function TableProps({ lowPower = false }) {
   const coinPositions = [
     [1.68, 0.36, 0.82],
     [1.75, 0.39, 0.86],
@@ -530,50 +599,52 @@ function TableProps() {
       <group name="Mate_Prop" position={[-1.72, 0.42, 0.88]} rotation={[0, -0.24, 0]}>
         <mesh castShadow receiveShadow>
           <cylinderGeometry args={[0.13, 0.18, 0.28, 18]} />
-          <meshStandardMaterial color="#5b2d1a" roughness={0.66} metalness={0.08} />
+          <meshStandardMaterial color="#4d2516" roughness={0.72} metalness={0.06} />
         </mesh>
         <mesh position={[0, 0.16, 0]} castShadow>
           <sphereGeometry args={[0.145, 18, 12]} />
-          <meshStandardMaterial color="#6b3a22" roughness={0.7} />
+          <meshStandardMaterial color="#5e321f" roughness={0.76} />
         </mesh>
         <mesh position={[0.11, 0.3, -0.04]} rotation={[0.82, 0.1, -0.28]} castShadow>
           <cylinderGeometry args={[0.013, 0.017, 0.52, 8]} />
-          <meshStandardMaterial color="#c7a76d" roughness={0.28} metalness={0.72} />
+          <meshStandardMaterial color="#c7a76d" roughness={0.22} metalness={0.78} />
         </mesh>
       </group>
 
       <group name="Glass_Prop_A" position={[1.72, 0.42, -0.92]} rotation={[0, 0.18, 0]}>
         <mesh castShadow receiveShadow>
           <cylinderGeometry args={[0.13, 0.1, 0.34, 20, 1, true]} />
-          <meshPhysicalMaterial color="#d7ece7" transparent opacity={0.24} roughness={0.05} transmission={0.32} />
+          <meshPhysicalMaterial color="#d7ece7" transparent opacity={0.18} roughness={0.04} transmission={0.36} />
         </mesh>
         <mesh position={[0, -0.13, 0]}>
           <cylinderGeometry args={[0.102, 0.092, 0.035, 20]} />
-          <meshStandardMaterial color="#6b2c1a" roughness={0.38} transparent opacity={0.72} />
+          <meshStandardMaterial color="#5b2415" roughness={0.46} transparent opacity={0.64} />
         </mesh>
       </group>
 
-      <group name="Ashtray_Prop" position={[-1.28, 0.35, -1.05]} rotation={[0, 0.42, 0]}>
-        <mesh castShadow receiveShadow>
-          <cylinderGeometry args={[0.24, 0.2, 0.055, 24]} />
-          <meshStandardMaterial color="#27211b" roughness={0.48} metalness={0.28} />
-        </mesh>
-        <mesh position={[0.12, 0.045, 0.02]} rotation={[0, 0.15, 0]}>
-          <boxGeometry args={[0.2, 0.018, 0.038]} />
-          <meshStandardMaterial color="#d7c6a8" roughness={0.62} />
-        </mesh>
-        <mesh position={[0.22, 0.055, 0.025]}>
-          <sphereGeometry args={[0.026, 8, 8]} />
-          <meshStandardMaterial color="#d47b35" emissive="#d47b35" emissiveIntensity={0.28} roughness={0.5} />
-        </mesh>
-      </group>
+      {!lowPower ? (
+        <group name="Ashtray_Prop" position={[-1.28, 0.35, -1.05]} rotation={[0, 0.42, 0]}>
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[0.24, 0.2, 0.055, 24]} />
+            <meshStandardMaterial color="#27211b" roughness={0.48} metalness={0.28} />
+          </mesh>
+          <mesh position={[0.12, 0.045, 0.02]} rotation={[0, 0.15, 0]}>
+            <boxGeometry args={[0.2, 0.018, 0.038]} />
+            <meshStandardMaterial color="#d7c6a8" roughness={0.62} />
+          </mesh>
+          <mesh position={[0.22, 0.055, 0.025]}>
+            <sphereGeometry args={[0.026, 8, 8]} />
+            <meshStandardMaterial color="#d47b35" emissive="#d47b35" emissiveIntensity={0.28} roughness={0.5} />
+          </mesh>
+        </group>
+      ) : null}
 
-      {coinPositions.map(([x, y, z], index) => (
+      {!lowPower ? coinPositions.map(([x, y, z], index) => (
         <mesh key={index} name={`Coin_${index + 1}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, index * 0.38]} castShadow receiveShadow>
           <cylinderGeometry args={[0.08, 0.08, 0.018, 18]} />
-          <meshStandardMaterial color="#c28a3a" roughness={0.34} metalness={0.64} />
+          <meshStandardMaterial color={TABLE_BRASS} roughness={0.25} metalness={0.72} />
         </mesh>
-      ))}
+      )) : null}
     </group>
   );
 }
@@ -824,11 +895,11 @@ function FeltSurface({ modId }) {
       const b = Math.round(0x26 + (0x3c - 0x26) * lerp);
       color = `rgb(${r},${g},${b})`;
     } else if (modId === "humo-total") {
-      color = "#1b1b19";
+      color = "#151613";
     } else if (modId === "exodia-bolsillo") {
-      color = "#292914";
+      color = "#232411";
     } else if (modId === "gafas-legendarias") {
-      color = "#173041";
+      color = "#102b3a";
     }
 
     feltRef.current.material.color.set(color);
@@ -837,36 +908,42 @@ function FeltSurface({ modId }) {
   return (
     <mesh ref={feltRef} name="Table_Felt" receiveShadow position={[0, 0.18, 0]}>
       <cylinderGeometry args={[2.15, 2.15, 0.12, 48]} />
-      <meshStandardMaterial color={FELT_BASE} roughness={0.88} metalness={0.01} />
+      <meshStandardMaterial color={FELT_BASE} roughness={0.94} metalness={0.005} />
     </mesh>
   );
 }
 
-export function Table({ match }) {
+export function Table({ match, performanceMode = "high" }) {
   const modId = match.activeModifier?.id ?? "";
   const showCurrentPair = match.tableCards.length >= 6 && !match.handClosed;
   const showActiveTableCards = match.tableCards.length > 0 && !match.handClosed;
+  const lowPower = performanceMode === "low";
 
   return (
     <group name="Table_Setup">
-      <TableUnderGlow />
+      <TableUnderGlow lowPower={lowPower} />
 
       <mesh name="Table_WoodRim" receiveShadow position={[0, 0, 0]}>
         <cylinderGeometry args={[2.8, 2.8, 0.5, 48]} />
-        <meshStandardMaterial color={TABLE_WOOD} roughness={0.54} metalness={0.08} />
+        <meshStandardMaterial color={TABLE_WOOD} roughness={0.5} metalness={0.06} />
       </mesh>
 
       <mesh name="Table_DarkLowerRim" receiveShadow position={[0, -0.22, 0]}>
         <cylinderGeometry args={[2.76, 2.62, 0.18, 48]} />
-        <meshStandardMaterial color={TABLE_WOOD_DARK} roughness={0.74} metalness={0.06} />
+        <meshStandardMaterial color={TABLE_WOOD_DARK} roughness={0.8} metalness={0.04} />
       </mesh>
 
+      <TableRimHighlights lowPower={lowPower} />
       <FeltSurface modId={modId} />
-      <FeltInlay modId={modId} />
-      <BrassStuds />
-      <TableProps />
+      <FeltInlay modId={modId} lowPower={lowPower} />
+      <BrassStuds lowPower={lowPower} />
+      <TableProps lowPower={lowPower} />
 
-      <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      {lowPower ? (
+        <HexagonHub handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      ) : (
+        <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      )}
 
       <mesh name="Table_Pedestal" castShadow receiveShadow position={[0, -1.05, 0]}>
         <cylinderGeometry args={[0.42, 0.58, 1.75, 24]} />
@@ -875,7 +952,8 @@ export function Table({ match }) {
 
       <TensionRing handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
       <TurnMarker match={match} />
-      <CardTableauGuides active={showActiveTableCards} />
+      <CardTableauGuides active={showActiveTableCards} playedCount={match.tableCards.length} />
+      <LastPlayedMarker tableCards={match.tableCards} />
 
       <ArchivedTrickCards trickHistory={match.trickHistory} showCurrentPair={showCurrentPair} handClosed={match.handClosed} />
 

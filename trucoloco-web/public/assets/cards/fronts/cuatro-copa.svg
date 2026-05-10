@@ -1,37 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="4 de COPA">
-  <defs>
-    <filter id="paper" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="56" result="noise"/>
-      <feColorMatrix in="noise" type="saturate" values="0"/>
-      <feComponentTransfer>
-        <feFuncA type="table" tableValues="0 0.045"/>
-      </feComponentTransfer>
-      <feBlend in="SourceGraphic" mode="multiply"/>
-    </filter>
-  </defs>
-  <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
-  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5" filter="url(#paper)"/>
-  <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="#a72f27" stroke-width="3"/>
-  <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
-  <g transform="translate(58 76) rotate(0)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#541614">4</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#a72f27">C</text>
-  </g>
-  <g transform="translate(362 544) rotate(180)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#541614">4</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#a72f27">C</text>
-  </g>
-  <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="#541614">COPA</text>
-  <g><g transform="translate(145 205) rotate(0) scale(0.82)"><path d="M-36-44H36L28 14C24 46-24 46-28 14Z" fill="#a72f27" stroke="#541614" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-22-25H22L18 8C15 26-15 26-18 8Z" fill="#eec7a4" opacity="0.38"/>
-  <path d="M0 42V74M-28 74H28" stroke="#541614" stroke-width="8" stroke-linecap="round"/></g><g transform="translate(275 205) rotate(180) scale(0.82)"><path d="M-36-44H36L28 14C24 46-24 46-28 14Z" fill="#a72f27" stroke="#541614" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-22-25H22L18 8C15 26-15 26-18 8Z" fill="#eec7a4" opacity="0.38"/>
-  <path d="M0 42V74M-28 74H28" stroke="#541614" stroke-width="8" stroke-linecap="round"/></g><g transform="translate(145 423) rotate(0) scale(0.82)"><path d="M-36-44H36L28 14C24 46-24 46-28 14Z" fill="#a72f27" stroke="#541614" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-22-25H22L18 8C15 26-15 26-18 8Z" fill="#eec7a4" opacity="0.38"/>
-  <path d="M0 42V74M-28 74H28" stroke="#541614" stroke-width="8" stroke-linecap="round"/></g><g transform="translate(275 423) rotate(180) scale(0.82)"><path d="M-36-44H36L28 14C24 46-24 46-28 14Z" fill="#a72f27" stroke="#541614" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-22-25H22L18 8C15 26-15 26-18 8Z" fill="#eec7a4" opacity="0.38"/>
-  <path d="M0 42V74M-28 74H28" stroke="#541614" stroke-width="8" stroke-linecap="round"/></g></g>
-  
-  <text x="210" y="574" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="#7c5838">TRUCOLOCO BARAJA ESPAÑOLA</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="644" viewBox="0 0 208 319" role="img" aria-label="4 de Copa">
+  <rect width="208" height="319" rx="10" fill="#f4ecd9"/>
+  <image href="/assets/cards/source/baraja-espanola-wikimedia.svg" x="-624" y="-319" width="2496" height="1595.0004"/>
 </svg>

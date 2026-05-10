@@ -28,6 +28,41 @@ Usalo para recordar para que se abrio cada chat, que se cambio, que quedo pendie
 
 ## Historial
 
+### 2026-05-10 - Performance mobile y controles tactiles
+
+Objetivo:
+- Reducir lag en celulares sin degradar la version desktop.
+- Hacer que el modo `Caminar` sea usable en mobile, donde no hay WASD.
+
+Cambios:
+- `trucoloco-web/src/App.jsx`
+  - Perfil automatico `low` para mobile/coarse pointer/DPR alto.
+  - Override manual de prueba: `?perf=low` o `?perf=mobile`.
+  - Controles tactiles en modo `Caminar`: pad direccional, Q/E, F, RUN y BOX.
+- `trucoloco-web/src/game/scene/TrucolocoScene.jsx`
+  - Propaga `performanceMode` y `walkTouchInput`.
+  - Reduce decoracion/FX en low-power.
+- `trucoloco-web/src/game/scene/Table.jsx`
+  - En mobile usa `HexagonHub` procedural en vez de `tablero.glb` pesado.
+  - Reduce anillos, bronces y props secundarios en low-power.
+- `trucoloco-web/src/game/scene/TeamsAroundTable.jsx`
+  - LOD mobile: GLB solo para foco/seleccion/actor/silla propia; extras pasan a figura procedural.
+- `trucoloco-web/src/game/scene/CharacterFigure.jsx`
+  - `forceProcedural` para saltear GLB cuando conviene.
+- `trucoloco-web/src/game/scene/world/WalkablePlayer.jsx`
+  - Acepta input virtual tactil junto con teclado.
+- `trucoloco-web/src/styles.css`
+  - Overlay tactil mobile compacto para caminar.
+
+Validacion:
+- `npm run check:rules`: OK.
+- `npm run build`: OK.
+- MCP se uso para comparar perfil high vs low antes del ultimo refresh; luego el bridge pidio refresh manual.
+
+Pendientes:
+- Probar en celular real despues de deploy.
+- Si sigue lag, siguiente ROI: comprimir/decimar GLB (`gltf-transform`, Draco/meshopt, texturas 512/1K) y lazy-load de personajes.
+
 ### 2026-05-09 - Seleccion de personajes y preparacion para GLB
 
 Objetivo:
@@ -54,9 +89,23 @@ Cambios:
   - En modo `Caminar`, el avatar usa el personaje seleccionado.
   - Cambia `animationMode` a `idle`, `walk` o `run` segun input/Shift.
   - `J` o `Espacio` dispara animacion extra `box` por ~0.85s.
+  - El cuerpo rota hacia el vector real de movimiento; caminar hacia atras ahora gira el personaje.
+  - Velocidades actuales de locomocion: walk `1.28`, run `2.48`.
+  - Overrides manuales de clips se guardan por personaje en `localStorage` (`trucoloco:tripo-animation-overrides:v1`).
+  - `[` y `]` ciclan clips del modo activo; `0` borra el override del modo activo.
+- `trucoloco-web/src/App.jsx`, `trucoloco-web/src/styles.css`
+  - El hint de `Caminar` muestra el modo/clip activo (`walk · NlaTrack.*`) y marca si viene de override.
 - `trucoloco-web/src/game/data/characters.js`
   - Mapeados clips genericos de Tripo (`NlaTrack*`) para `irvyn`, `marvyn`, `pol`.
   - Mesa no reproduce animaciones por defecto; solo el jugador caminable usa clips.
+  - `idle` queda en `null` para evitar piñas/carreras estando quieto.
+  - `walkFacingOffset` centraliza el frente del GLB para locomocion.
+  - Mapping observado actual:
+    - Irvyn: `walk=NlaTrack.003`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.72`.
+    - Marvyn: `walk=NlaTrack.001`, `run=NlaTrack.007`, `box=NlaTrack.002`, `walk timeScale=0.76`.
+    - Pol: `walk=NlaTrack.004`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.76`.
+  - En modo caminar, `[` y `]` ciclan clips del modo activo para calibrar rapido si Tripo cambia el orden; `0` vuelve al mapping de codigo.
+  - Nota Tripo: no confiar en nombres de animacion exportados; llegan como `NlaTrack*`. En estos assets, el clip con mas root displacement horizontal termino siendo walk; el loop corto/chico termino siendo run. Guardar mapping por asset/personaje despues de probar visualmente.
 - `trucoloco-web/src/game/scene/Table.jsx`
   - `tablero.glb` reemplaza al hexagono central procedural.
 - `trucoloco-web/package.json`, `trucoloco-web/README.md`, `MCP_SETUP.md`
@@ -72,7 +121,7 @@ Validacion:
 - `npm run check:rules`: OK.
 - `npm run build`: OK, con warning esperado de bundle grande por Three/R3F.
 - Server local detectado en `http://127.0.0.1:4173`.
-- MCP Three.js conectado en esta sesion: proxy `http://localhost:9222` hacia `http://localhost:4173`.
+- MCP Three.js se uso en una sesion previa con proxy `http://localhost:9222` hacia `http://localhost:4173`; no asumir que todos los chats tienen las tools cargadas.
 - Screenshot MCP final: vigas elevadas, Marvyn visible, `Imported_Tablero_Central` activo.
 
 Pendientes:

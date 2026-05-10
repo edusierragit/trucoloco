@@ -11,15 +11,24 @@ const ROOM_BOUNDS = {
   maxZ: 3.85
 };
 
-const TABLE_CLEAR_RADIUS = 2.25;
+const TABLE_CLEAR_RADIUS = 3.08;
 const PLAYER_Y = 0.02;
+const WALK_SPEED = 1.28;
+const RUN_SPEED = 2.48;
 const ROOM_WORLD_OFFSET = new Vector3(0, -1.35, 0.25);
+const WALK_AVATAR_SCALE = 0.94;
+const WALK_CAMERA_HEIGHT = 2.92;
+const WALK_CAMERA_DISTANCE = 3.88;
+const WALK_CAMERA_SIDE_OFFSET = 0.86;
+const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
+const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v1";
 
 const WALK_HOTSPOTS = [
   { id: "door", x: 0, z: 3.45, radius: 0.95 },
   { id: "bar", x: 0, z: -3.12, radius: 1.05 },
   { id: "ring", x: -7.45, z: -0.9, radius: 1.08 },
-  { id: "table", x: 0, z: 0, radius: 2.95 }
+  // [VISUAL] The interact ring is wider than the collision clear radius so the player reads as beside the mesa.
+  { id: "table", x: 0, z: 0, radius: 3.42 }
 ];
 
 function clamp(value, min, max) {
@@ -42,12 +51,55 @@ function getNearestHotspot(position) {
   })?.id ?? null;
 }
 
+function readStoredClipOverrides(characterId) {
+  if (!characterId || typeof window === "undefined") return {};
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(TRIPO_CALIBRATION_STORAGE_KEY) ?? "{}");
+    return parsed?.[characterId] && typeof parsed[characterId] === "object" ? parsed[characterId] : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredClipOverrides(characterId, overrides) {
+  if (!characterId || typeof window === "undefined") return;
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(TRIPO_CALIBRATION_STORAGE_KEY) ?? "{}");
+    const nextOverrides = Object.fromEntries(Object.entries(overrides).filter(([, value]) => Boolean(value)));
+    const next = { ...parsed };
+
+    if (Object.keys(nextOverrides).length) {
+      next[characterId] = nextOverrides;
+    } else {
+      delete next[characterId];
+    }
+
+    window.localStorage.setItem(TRIPO_CALIBRATION_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Calibration is a dev convenience; ignore private-mode/storage failures.
+  }
+}
+
+function getMappedClipName(character, mode, overrides = {}) {
+  const skin = character?.skinId ? characterSkins[character.skinId] : null;
+  if (!skin || !mode || mode === "idle") return null;
+
+  const override = overrides[mode];
+  if (override) return override;
+
+  const mapped = skin.animationClipMap?.[mode] ?? (mode === "run" ? skin.animationClipMap?.walk : null);
+  return typeof mapped === "string" ? mapped : null;
+}
+
 function AvatarBody({ refs, character, motionMode }) {
   const skin = character?.skinId ? characterSkins[character.skinId] : null;
+  const facingOffset = skin?.walkFacingOffset ?? 0;
 
   if (character && skin) {
     return (
-      <group name={`Walkable_AvatarBody_${character.id}`} scale={0.78}>
+      <group name={`Walkable_AvatarBody_${character.id}`} scale={WALK_AVATAR_SCALE} rotation={[0, facingOffset, 0]}>
         <CharacterFigure
           skin={skin}
           accent={character.accent}
@@ -55,10 +107,12 @@ function AvatarBody({ refs, character, motionMode }) {
           upperRef={refs.upper}
           isActiveLane
           animationMode={motionMode}
+          animationClipOverride={refs.clipOverrides[motionMode] ?? null}
+          onAnimationNames={refs.onAnimationNames}
         />
         <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.46, 0.6, 36]} />
-          <meshBasicMaterial color={character.accent ?? "#91e9f6"} transparent opacity={0.34} depthWrite={false} />
+          <ringGeometry args={[0.34, 0.46, 36]} />
+          <meshBasicMaterial color={character.accent ?? "#91e9f6"} transparent opacity={0.16} depthWrite={false} />
         </mesh>
       </group>
     );
@@ -113,7 +167,7 @@ function AvatarBody({ refs, character, motionMode }) {
   );
 }
 
-export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract }) {
+export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChange, onInteract, onAnimationDebugChange }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const leftLegRef = useRef(null);
@@ -136,7 +190,40 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
   const timeRef = useRef(0);
   const motionModeRef = useRef("idle");
   const actionUntilRef = useRef(0);
+  const animationNamesRef = useRef([]);
+  const clipOverridesRef = useRef({});
+  const virtualInputRef = useRef({ x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 });
+  const lastBoxTokenRef = useRef(0);
   const [motionMode, setMotionMode] = useState("idle");
+  const [clipOverrides, setClipOverrides] = useState({});
+  const [animationNames, setAnimationNames] = useState([]);
+
+  useEffect(() => {
+    const storedOverrides = readStoredClipOverrides(character?.id);
+    clipOverridesRef.current = storedOverrides;
+    setClipOverrides(storedOverrides);
+  }, [character?.id]);
+
+  useEffect(() => {
+    if (!enabled) {
+      onAnimationDebugChange?.(null);
+      return undefined;
+    }
+
+    onAnimationDebugChange?.({
+      characterName: character?.name ?? "Avatar",
+      mode: motionMode,
+      clip: getMappedClipName(character, motionMode, clipOverrides),
+      override: Boolean(clipOverrides[motionMode]),
+      clips: animationNames
+    });
+
+    return undefined;
+  }, [animationNames, character, clipOverrides, enabled, motionMode, onAnimationDebugChange]);
+
+  useEffect(() => {
+    virtualInputRef.current = virtualInput ?? { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 };
+  }, [virtualInput]);
 
   useEffect(() => {
     if (!enabled) {
@@ -164,6 +251,44 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
         return;
       }
 
+      if (key === "[" || key === "]") {
+        const names = animationNamesRef.current;
+        const mode = motionModeRef.current;
+
+        if (names.length && mode !== "idle") {
+          event.preventDefault();
+          const currentName = clipOverridesRef.current[mode] ?? null;
+          const currentIndex = Math.max(0, names.indexOf(currentName));
+          const direction = key === "]" ? 1 : -1;
+          const nextName = names[(currentIndex + direction + names.length) % names.length];
+          const nextOverrides = {
+            ...clipOverridesRef.current,
+            [mode]: nextName
+          };
+
+          clipOverridesRef.current = nextOverrides;
+          setClipOverrides(nextOverrides);
+          writeStoredClipOverrides(character?.id, nextOverrides);
+        }
+
+        return;
+      }
+
+      if (key === "0") {
+        const mode = motionModeRef.current;
+
+        if (mode !== "idle" && clipOverridesRef.current[mode]) {
+          event.preventDefault();
+          const nextOverrides = { ...clipOverridesRef.current };
+          delete nextOverrides[mode];
+          clipOverridesRef.current = nextOverrides;
+          setClipOverrides(nextOverrides);
+          writeStoredClipOverrides(character?.id, nextOverrides);
+        }
+
+        return;
+      }
+
       keysRef.current.add(key);
     };
 
@@ -181,21 +306,38 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
       hotspotRef.current = null;
       onHotspotChange?.(null);
     };
-  }, [enabled, onHotspotChange, onInteract]);
+  }, [character?.id, enabled, onHotspotChange, onInteract]);
 
   useFrame((_, delta) => {
     if (!enabled || !groupRef.current) return;
 
     timeRef.current += delta;
     const keys = keysRef.current;
-    const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
-    const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+    const virtual = virtualInputRef.current;
+    if (virtual.boxToken && virtual.boxToken !== lastBoxTokenRef.current) {
+      lastBoxTokenRef.current = virtual.boxToken;
+      actionUntilRef.current = timeRef.current + 0.85;
+      motionModeRef.current = "box";
+      setMotionMode("box");
+    }
+
+    const inputX = clamp(
+      (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0) + (virtual.x ?? 0),
+      -1,
+      1
+    );
+    const inputZ = clamp(
+      (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0) + (virtual.z ?? 0),
+      -1,
+      1
+    );
     const moving = inputX !== 0 || inputZ !== 0;
-    const speed = keys.has("shift") ? 2.9 : 1.85;
+    const sprinting = keys.has("shift") || Boolean(virtual.sprint);
+    const speed = sprinting ? RUN_SPEED : WALK_SPEED;
     const nextMotionMode = timeRef.current < actionUntilRef.current
       ? "box"
       : moving
-        ? keys.has("shift") ? "run" : "walk"
+        ? sprinting ? "run" : "walk"
         : "idle";
 
     if (motionModeRef.current !== nextMotionMode) {
@@ -203,7 +345,7 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
       setMotionMode(nextMotionMode);
     }
 
-    const rotateInput = (keys.has("e") ? 1 : 0) - (keys.has("q") ? 1 : 0);
+    const rotateInput = clamp((keys.has("e") ? 1 : 0) - (keys.has("q") ? 1 : 0) + (virtual.rotate ?? 0), -1, 1);
 
     if (rotateInput) {
       yawRef.current += rotateInput * Math.min(delta, 0.05) * 1.95;
@@ -225,7 +367,9 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
       positionRef.current.z = clamp(positionRef.current.z, ROOM_BOUNDS.minZ, ROOM_BOUNDS.maxZ);
       keepOutOfTable(positionRef.current);
 
-      groupRef.current.rotation.y = Math.atan2(velocityRef.current.x, velocityRef.current.z);
+      const targetYaw = Math.atan2(velocityRef.current.x, velocityRef.current.z);
+      const deltaYaw = Math.atan2(Math.sin(targetYaw - groupRef.current.rotation.y), Math.cos(targetYaw - groupRef.current.rotation.y));
+      groupRef.current.rotation.y += deltaYaw * (1 - Math.exp(-Math.min(delta, 0.08) * 12));
     }
 
     const nextHotspot = getNearestHotspot(positionRef.current);
@@ -236,7 +380,7 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
 
     groupRef.current.position.copy(positionRef.current);
 
-    const swing = moving ? Math.sin(timeRef.current * (keys.has("shift") ? 12 : 8)) : 0;
+    const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
     if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.46;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.46;
     if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.34;
@@ -244,10 +388,15 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
     groupRef.current.position.y = PLAYER_Y + (moving ? Math.abs(Math.sin(timeRef.current * 8)) * 0.025 : 0);
 
     worldPositionRef.current.copy(positionRef.current).add(ROOM_WORLD_OFFSET);
+    const tableDistance = Math.hypot(positionRef.current.x, positionRef.current.z);
+    const tableFocus = 1 - clamp((tableDistance - TABLE_CLEAR_RADIUS) / 1.25, 0, 1);
+
+    // [VISUAL] Keep full character scale, then solve table readability with camera composition instead of shrinking the player.
     desiredCameraRef.current
       .copy(worldPositionRef.current)
-      .addScaledVector(forwardRef.current, -3.2)
-      .setY(worldPositionRef.current.y + 2.45);
+      .addScaledVector(forwardRef.current, -WALK_CAMERA_DISTANCE - tableFocus * 0.44)
+      .addScaledVector(rightRef.current, WALK_CAMERA_SIDE_OFFSET + tableFocus * 0.48)
+      .setY(worldPositionRef.current.y + WALK_CAMERA_HEIGHT + tableFocus * 0.38);
 
     const desiredCamera = desiredCameraRef.current;
     desiredCamera.x = clamp(desiredCamera.x, ROOM_BOUNDS.minX + 0.3, ROOM_BOUNDS.maxX - 0.3);
@@ -256,8 +405,9 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
     camera.position.lerp(desiredCamera, 1 - Math.exp(-Math.min(delta, 0.08) * 6.5));
     cameraTargetRef.current
       .copy(worldPositionRef.current)
-      .addScaledVector(forwardRef.current, 0.95)
-      .setY(worldPositionRef.current.y + 0.95);
+      .addScaledVector(forwardRef.current, 1.08 - tableFocus * 0.52)
+      .setY(worldPositionRef.current.y + 1.16 + tableFocus * 0.2)
+      .lerp(WALK_TABLE_FOCUS_TARGET, tableFocus * 0.38);
     camera.lookAt(cameraTargetRef.current);
 
     if (camera.fov !== 47) {
@@ -279,7 +429,12 @@ export function WalkablePlayer({ enabled, character, onHotspotChange, onInteract
           leftLeg: leftLegRef,
           rightLeg: rightLegRef,
           upper: upperRef,
-          outfitMaterial: outfitMaterialRef
+          outfitMaterial: outfitMaterialRef,
+          clipOverrides,
+          onAnimationNames: (names) => {
+            animationNamesRef.current = names;
+            setAnimationNames(names);
+          }
         }}
       />
     </group>

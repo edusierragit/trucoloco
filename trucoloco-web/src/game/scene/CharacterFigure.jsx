@@ -63,10 +63,14 @@ function CharacterModelAsset({
   rotation = [0, 0, 0],
   targetHeight = 1.78,
   animationMode = null,
-  animationClipMap = {}
+  animationClipMap = {},
+  animationTimeScaleMap = {},
+  animationClipOverride = null,
+  onAnimationNames
 }) {
   const { scene, animations = [] } = useGLTF(src);
   const preparedAnimations = useMemo(() => makeClipsInPlace(animations), [animations]);
+  const animationNames = useMemo(() => preparedAnimations.map((clip) => clip.name), [preparedAnimations]);
   const { clonedScene, offset, normalizedScale } = useMemo(() => {
     const clone = cloneSkeleton(scene);
     clone.traverse((child) => {
@@ -101,11 +105,18 @@ function CharacterModelAsset({
     };
   }, [scene, targetHeight]);
   const { actions } = useAnimations(preparedAnimations, clonedScene);
+  const actionTimeScale = useMemo(() => {
+    if (!animationMode) return 1;
+    const mappedScale = animationTimeScaleMap[animationMode];
+    return Number.isFinite(mappedScale) && mappedScale > 0 ? mappedScale : 1;
+  }, [animationMode, animationTimeScaleMap]);
   const actionName = useMemo(() => {
     if (!animationMode) return null;
 
     const names = Object.keys(actions);
     if (!names.length) return null;
+
+    if (animationClipOverride && actions[animationClipOverride]) return animationClipOverride;
 
     const hasMappedMode = Object.prototype.hasOwnProperty.call(animationClipMap, animationMode);
     const mappedName = hasMappedMode ? animationClipMap[animationMode] : animationMode === "run" ? animationClipMap.walk : null;
@@ -123,15 +134,28 @@ function CharacterModelAsset({
     const matched = names.find((name) => modeWords.some((word) => name.toLowerCase().includes(word)));
 
     return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);
-  }, [actions, animationClipMap, animationMode]);
+  }, [actions, animationClipMap, animationClipOverride, animationMode]);
 
   useEffect(() => {
-    if (!actionName) return undefined;
+    if (!animationNames.length) return undefined;
+    onAnimationNames?.(animationNames);
+    return undefined;
+  }, [animationNames, onAnimationNames]);
+
+  useEffect(() => {
+    if (!actionName) {
+      Object.values(actions).forEach((action) => {
+        action.fadeOut(0.12);
+      });
+      return undefined;
+    }
 
     Object.entries(actions).forEach(([name, action]) => {
       if (name === actionName) {
+        action.timeScale = actionTimeScale;
         action.reset().fadeIn(0.18).play();
       } else {
+        action.timeScale = 1;
         action.fadeOut(0.16);
       }
     });
@@ -139,7 +163,7 @@ function CharacterModelAsset({
     return () => {
       actions[actionName]?.fadeOut(0.12);
     };
-  }, [actionName, actions]);
+  }, [actionName, actionTimeScale, actions]);
 
   return (
     <group scale={scale} position={position} rotation={rotation}>
@@ -151,17 +175,18 @@ function CharacterModelAsset({
 function CharacterBody({ skin, outfitMaterialRef, upperRef, children, isActiveLane }) {
   return (
     <>
-      <mesh position={[0, 0.3, -0.04]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.24, 0.29, 0.22, 18]} />
+      <mesh position={[0, 0.28, -0.035]} scale={[0.82, 0.58, 0.68]} castShadow receiveShadow>
+        <sphereGeometry args={[0.26, 18, 14]} />
         <meshStandardMaterial color="#25160f" roughness={0.9} />
       </mesh>
 
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[0.32, 18, 18]} />
+      <mesh position={[0, 0.52, 0]} scale={[0.7, 1, 0.56]} castShadow receiveShadow>
+        <sphereGeometry args={[0.26, 18, 16]} />
         <meshStandardMaterial color={skin.outfitColor} roughness={0.7} />
       </mesh>
 
-      <Cylinder name="Character_Torso" args={[0.24, 0.31, 0.95, 18]} position={[0, 0.86, 0]} castShadow>
+      {/* [VISUAL] Procedural figures use slimmer human proportions so they sit beside GLB characters coherently. */}
+      <Cylinder name="Character_Torso" args={[0.19, 0.25, 0.88, 18]} position={[0, 0.86, 0]} castShadow>
         <meshStandardMaterial
           ref={outfitMaterialRef}
           color={skin.shirtColor ?? skin.outfitColor}
@@ -172,17 +197,17 @@ function CharacterBody({ skin, outfitMaterialRef, upperRef, children, isActiveLa
         />
       </Cylinder>
 
-      <mesh position={[0, 1.14, 0.03]} castShadow>
-        <sphereGeometry args={[0.3, 18, 18]} />
+      <mesh position={[0, 1.15, 0.025]} scale={[0.8, 0.5, 0.58]} castShadow>
+        <sphereGeometry args={[0.27, 18, 16]} />
         <meshStandardMaterial color={skin.outfitColor} roughness={0.7} />
       </mesh>
 
-      <mesh position={[0, 1.28, 0.02]} castShadow>
-        <cylinderGeometry args={[0.09, 0.12, 0.16, 14]} />
+      <mesh position={[0, 1.31, 0.02]} castShadow>
+        <cylinderGeometry args={[0.075, 0.095, 0.15, 14]} />
         <meshStandardMaterial color={skin.skinColor} roughness={0.84} />
       </mesh>
 
-      <group ref={upperRef} position={[0, 1.28, 0.03]}>
+      <group ref={upperRef} position={[0, 1.31, 0.03]}>
         {children}
       </group>
     </>
@@ -192,18 +217,18 @@ function CharacterBody({ skin, outfitMaterialRef, upperRef, children, isActiveLa
 function NegocianteFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
   return (
     <CharacterBody skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane}>
-      <mesh position={[0, 0.24, 0]} castShadow>
-        <sphereGeometry args={[0.22, 24, 24]} />
+      <mesh position={[0, 0.22, 0]} castShadow>
+        <sphereGeometry args={[0.195, 24, 24]} />
         <meshStandardMaterial color={skin.skinColor} roughness={0.88} />
       </mesh>
 
-      <mesh position={[0, 0.09, 0.1]} castShadow>
-        <sphereGeometry args={[0.15, 18, 18]} />
+      <mesh position={[0, 0.075, 0.095]} castShadow>
+        <sphereGeometry args={[0.125, 18, 18]} />
         <meshStandardMaterial color={skin.beardColor} roughness={0.95} />
       </mesh>
 
-      <mesh position={[0, 0.02, 0.06]} scale={[0.88, 0.58, 0.72]} castShadow>
-        <sphereGeometry args={[0.18, 16, 16]} />
+      <mesh position={[0, 0.01, 0.055]} scale={[0.78, 0.48, 0.62]} castShadow>
+        <sphereGeometry args={[0.155, 16, 16]} />
         <meshStandardMaterial color={skin.beardColor} roughness={0.98} />
       </mesh>
 
@@ -238,19 +263,19 @@ function NegocianteFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
 
 function GazpachoFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
   const hairTufts = [
-    [-0.12, 0.42, 0.01, 0.06],
-    [0, 0.45, 0.04, 0.08],
-    [0.12, 0.41, 0.02, 0.06],
-    [-0.18, 0.34, 0.01, 0.05],
-    [0.18, 0.34, 0.01, 0.05],
-    [-0.06, 0.37, 0.12, 0.05],
-    [0.08, 0.36, 0.12, 0.05]
+    [-0.105, 0.37, 0.01, 0.046],
+    [0, 0.4, 0.035, 0.06],
+    [0.105, 0.36, 0.02, 0.046],
+    [-0.155, 0.3, 0.01, 0.04],
+    [0.155, 0.3, 0.01, 0.04],
+    [-0.055, 0.33, 0.105, 0.04],
+    [0.07, 0.32, 0.105, 0.04]
   ];
 
   return (
     <CharacterBody skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane}>
-      <mesh position={[0, 0.24, 0]} castShadow>
-        <sphereGeometry args={[0.22, 24, 24]} />
+      <mesh position={[0, 0.22, 0]} castShadow>
+        <sphereGeometry args={[0.195, 24, 24]} />
         <meshStandardMaterial color={skin.skinColor} roughness={0.84} />
       </mesh>
 
@@ -261,25 +286,25 @@ function GazpachoFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
         </mesh>
       ))}
 
-      <mesh position={[0, 0.06, 0.1]} castShadow>
-        <sphereGeometry args={[0.15, 18, 18]} />
+      <mesh position={[0, 0.055, 0.095]} castShadow>
+        <sphereGeometry args={[0.12, 18, 18]} />
         <meshStandardMaterial color={skin.beardColor} roughness={0.96} />
       </mesh>
 
-      <mesh position={[0, 0.12, 0.12]} scale={[0.92, 0.42, 0.54]} castShadow>
-        <sphereGeometry args={[0.15, 16, 16]} />
+      <mesh position={[0, 0.105, 0.11]} scale={[0.8, 0.36, 0.5]} castShadow>
+        <sphereGeometry args={[0.13, 16, 16]} />
         <meshStandardMaterial color={skin.beardColor} roughness={0.96} />
       </mesh>
 
-      <group position={[0, 0.2, 0.18]}>
-        <RoundedBox args={[0.2, 0.09, 0.038]} radius={0.04} position={[-0.11, 0, 0]}>
+      <group position={[0, 0.18, 0.16]}>
+        <RoundedBox args={[0.16, 0.07, 0.03]} radius={0.03} position={[-0.09, 0, 0]}>
           <meshStandardMaterial color={skin.accessoryColor} roughness={0.14} metalness={0.1} />
         </RoundedBox>
-        <RoundedBox args={[0.2, 0.09, 0.038]} radius={0.04} position={[0.11, 0, 0]}>
+        <RoundedBox args={[0.16, 0.07, 0.03]} radius={0.03} position={[0.09, 0, 0]}>
           <meshStandardMaterial color={skin.accessoryColor} roughness={0.14} metalness={0.1} />
         </RoundedBox>
         <mesh position={[0, 0, 0.008]}>
-          <boxGeometry args={[0.07, 0.02, 0.02]} />
+          <boxGeometry args={[0.052, 0.016, 0.016]} />
           <meshStandardMaterial color={skin.accessoryColor} roughness={0.16} />
         </mesh>
       </group>
@@ -305,13 +330,13 @@ function GazpachoFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
 function CartachinFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
   return (
     <CharacterBody skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane}>
-      <mesh position={[0, 0.24, 0]} castShadow>
-        <sphereGeometry args={[0.22, 24, 24]} />
+      <mesh position={[0, 0.22, 0]} castShadow>
+        <sphereGeometry args={[0.195, 24, 24]} />
         <meshStandardMaterial color={skin.skinColor} roughness={0.86} />
       </mesh>
 
-      <mesh position={[0, 0.1, 0.1]} castShadow>
-        <sphereGeometry args={[0.13, 16, 16]} />
+      <mesh position={[0, 0.085, 0.095]} castShadow>
+        <sphereGeometry args={[0.11, 16, 16]} />
         <meshStandardMaterial color={skin.beardColor} roughness={0.96} />
       </mesh>
 
@@ -326,15 +351,15 @@ function CartachinFigure({ skin, outfitMaterialRef, upperRef, isActiveLane }) {
         </mesh>
       </group>
 
-      <group position={[0, -0.22, 0.18]} rotation={[0.08, 0, 0]}>
-        <RoundedBox args={[0.78, 0.7, 0.055]} radius={0.045} castShadow receiveShadow>
+      <group position={[0, -0.18, 0.165]} rotation={[0.08, 0, 0]}>
+        <RoundedBox args={[0.58, 0.56, 0.048]} radius={0.04} castShadow receiveShadow>
           <meshStandardMaterial color={skin.ponchoColor ?? skin.outfitColor} roughness={0.92} />
         </RoundedBox>
-        <RoundedBox args={[0.18, 0.38, 0.065]} radius={0.025} position={[0, -0.02, 0.035]} castShadow>
+        <RoundedBox args={[0.15, 0.32, 0.055]} radius={0.022} position={[0, -0.02, 0.032]} castShadow>
           <meshStandardMaterial color="#17100d" roughness={0.88} />
         </RoundedBox>
-        <mesh position={[0, 0.28, 0.038]}>
-          <boxGeometry args={[0.62, 0.025, 0.02]} />
+        <mesh position={[0, 0.22, 0.034]}>
+          <boxGeometry args={[0.46, 0.02, 0.018]} />
           <meshStandardMaterial color={skin.accessoryColor} roughness={0.38} metalness={0.2} />
         </mesh>
       </group>
@@ -395,7 +420,17 @@ function ProceduralCharacterFigure({ skin, accent, outfitMaterialRef, upperRef, 
   return <FallbackFigure accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
 }
 
-export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane, animationMode = null, forceProcedural = false }) {
+export function CharacterFigure({
+  skin,
+  accent,
+  outfitMaterialRef,
+  upperRef,
+  isActiveLane,
+  animationMode = null,
+  animationClipOverride = null,
+  onAnimationNames,
+  forceProcedural = false
+}) {
   if (forceProcedural) {
     return <ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
   }
@@ -411,6 +446,9 @@ export function CharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isA
           targetHeight={skin.modelTargetHeight ?? 1.78}
           animationMode={animationMode}
           animationClipMap={skin.animationClipMap ?? {}}
+          animationTimeScaleMap={skin.animationTimeScaleMap ?? {}}
+          animationClipOverride={animationClipOverride}
+          onAnimationNames={onAnimationNames}
         />
       </Suspense>
     );

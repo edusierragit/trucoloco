@@ -1,40 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="12 de ESPADA">
-  <defs>
-    <filter id="paper" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="55" result="noise"/>
-      <feColorMatrix in="noise" type="saturate" values="0"/>
-      <feComponentTransfer>
-        <feFuncA type="table" tableValues="0 0.045"/>
-      </feComponentTransfer>
-      <feBlend in="SourceGraphic" mode="multiply"/>
-    </filter>
-  </defs>
-  <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
-  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5" filter="url(#paper)"/>
-  <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="#4f6675" stroke-width="3"/>
-  <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
-  <g transform="translate(58 76) rotate(0)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#172632">12</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#4f6675">E</text>
-  </g>
-  <g transform="translate(362 544) rotate(180)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#172632">12</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#4f6675">E</text>
-  </g>
-  <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="#172632">ESPADA</text>
-  <g><g transform="translate(210 304)">
-    <rect x="-96" y="-132" width="192" height="264" rx="18" fill="#ead4ac" stroke="#172632" stroke-width="5"/>
-    <rect x="-76" y="-111" width="152" height="222" rx="10" fill="#f5e7c8" stroke="#4f6675" stroke-width="3"/>
-    <path d="M-58-85L-28-48L0-92L28-48L58-85V-24H-58Z" fill="#d9a134" stroke="#172632" stroke-width="5" stroke-linejoin="round"/>
-    <circle cx="0" cy="-47" r="34" fill="#c58b62" stroke="#172632" stroke-width="5"/>
-    <path d="M-52 4C-42-30 42-30 52 4L66 84H-66Z" fill="#4f6675" stroke="#172632" stroke-width="6" stroke-linejoin="round"/>
-    
-    <text x="0" y="82" text-anchor="middle" font-family="Georgia, serif" font-size="74" font-weight="800" fill="#f7e8c7" stroke="#172632" stroke-width="2">R</text>
-    <g transform="translate(0 157) rotate(0) scale(0.5)"><path d="M0-72C18-36 25-7 7 22L0 34L-7 22C-25-7-18-36 0-72Z" fill="#d7dde0" stroke="#172632" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-34 32H34M0 34V78" stroke="#4f6675" stroke-width="9" stroke-linecap="round"/>
-  <circle cx="0" cy="32" r="10" fill="#172632"/></g>
-  </g></g>
-  <text x="210" y="519" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" letter-spacing="5" fill="#172632">REY</text>
-  <text x="210" y="574" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="#7c5838">TRUCOLOCO BARAJA ESPAÑOLA</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="644" viewBox="0 0 208 319" role="img" aria-label="12 de Espada">
+  <rect width="208" height="319" rx="10" fill="#f4ecd9"/>
+  <image href="/assets/cards/source/baraja-espanola-wikimedia.svg" x="-2288" y="-638" width="2496" height="1595.0004"/>
 </svg>

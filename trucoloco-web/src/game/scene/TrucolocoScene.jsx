@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
-import { PMREMGenerator } from "three";
+import { PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Table } from "./Table";
 import { TeamsAroundTable } from "./TeamsAroundTable";
-import { tableSeats } from "../data/characters";
+import { CharacterFigure } from "./CharacterFigure";
+import { characterSkins, tableSeats } from "../data/characters";
 import { BarRoom } from "./world/BarRoom";
 import { WalkablePlayer } from "./world/WalkablePlayer";
 
@@ -31,7 +32,8 @@ function RenderEnvironment() {
     const environmentMap = pmrem.fromScene(roomEnvironment, 0.035).texture;
 
     scene.environment = environmentMap;
-    scene.environmentIntensity = 0.54;
+    // [VISUAL] Lower IBL keeps the bar nocturnal and lets practical table lights drive the composition.
+    scene.environmentIntensity = 0.42;
 
     return () => {
       scene.environment = previousEnvironment;
@@ -59,34 +61,34 @@ function ModifierAmbientFX({ modId, handClosed, outcomeTone, lowPower = false })
 
     if (keyLightRef.current) {
       // Key light breathes slightly at rest, reacts on hand close
-      let intensity = 118 + Math.sin(t * 0.4) * 5;
+      let intensity = 92 + Math.sin(t * 0.4) * 4;
       if (modId === "sustancia-x") {
-        intensity = 88 + Math.sin(t * 2.6) * 12;
+        intensity = 74 + Math.sin(t * 2.6) * 10;
       } else if (modId === "exodia-bolsillo") {
-        intensity = 98 + (Math.random() > 0.96 ? 16 : 0) + Math.sin(t * 1.4) * 6;
+        intensity = 82 + (Math.random() > 0.96 ? 12 : 0) + Math.sin(t * 1.4) * 5;
       } else if (modId === "tiempo-arena") {
-        intensity = 84 + Math.sin(t * 0.8) * 7;
+        intensity = 72 + Math.sin(t * 0.8) * 6;
       } else if (handClosed && outcomeTone === "win") {
-        intensity = 106 + Math.sin(t * 5) * 10;
+        intensity = 88 + Math.sin(t * 5) * 8;
       } else if (handClosed && outcomeTone === "lose") {
-        intensity = 74 + Math.sin(t * 3) * 5;
+        intensity = 64 + Math.sin(t * 3) * 4;
       }
       keyLightRef.current.intensity = intensity;
     }
 
     if (fillRedRef.current) {
-      let intensity = 17 + Math.sin(t * 0.6) * 1.6;
-      if (modId === "sustancia-x") intensity = 20 + Math.sin(t * 2.1) * 5;
-      else if (modId === "exodia-bolsillo") intensity = 20 + Math.abs(Math.sin(t * 3)) * 6;
-      else if (handClosed && outcomeTone === "lose") intensity = 24 + Math.sin(t * 4) * 6;
+      let intensity = 10 + Math.sin(t * 0.6) * 1.1;
+      if (modId === "sustancia-x") intensity = 14 + Math.sin(t * 2.1) * 3.5;
+      else if (modId === "exodia-bolsillo") intensity = 13 + Math.abs(Math.sin(t * 3)) * 4;
+      else if (handClosed && outcomeTone === "lose") intensity = 16 + Math.sin(t * 4) * 4;
       fillRedRef.current.intensity = intensity;
     }
 
     if (fillBlueRef.current) {
-      let intensity = 15 + Math.sin(t * 0.5) * 1.2;
-      if (modId === "gafas-legendarias") intensity = 19 + Math.sin(t * 1.8) * 4;
-      else if (modId === "tiempo-arena") intensity = 16 + Math.sin(t * 0.9) * 3;
-      else if (handClosed && outcomeTone === "win") intensity = 15 + Math.sin(t * 3) * 2;
+      let intensity = 9 + Math.sin(t * 0.5) * 0.9;
+      if (modId === "gafas-legendarias") intensity = 13 + Math.sin(t * 1.8) * 3;
+      else if (modId === "tiempo-arena") intensity = 11 + Math.sin(t * 0.9) * 2;
+      else if (handClosed && outcomeTone === "win") intensity = 10 + Math.sin(t * 3) * 1.6;
       fillBlueRef.current.intensity = intensity;
     }
 
@@ -97,19 +99,19 @@ function ModifierAmbientFX({ modId, handClosed, outcomeTone, lowPower = false })
 
       if (modId === "sustancia-x") {
         color = "#c040c0";
-        intensity = 6 + Math.abs(Math.sin(t * 3.7)) * 8;
+        intensity = 4 + Math.abs(Math.sin(t * 3.7)) * 5;
       } else if (modId === "exodia-bolsillo") {
         color = "#d4a020";
-        intensity = 8 + (Math.random() > 0.93 ? 12 : 0) + Math.abs(Math.sin(t * 2)) * 4;
+        intensity = 5 + (Math.random() > 0.93 ? 8 : 0) + Math.abs(Math.sin(t * 2)) * 3;
       } else if (modId === "gafas-legendarias") {
         color = "#20c8ff";
-        intensity = 5 + Math.sin(t * 1.2) * 2;
+        intensity = 3.5 + Math.sin(t * 1.2) * 1.5;
       } else if (modId === "tiempo-arena") {
         color = "#e8a040";
-        intensity = 4 + Math.abs(Math.sin(t * 0.7)) * 5;
+        intensity = 3 + Math.abs(Math.sin(t * 0.7)) * 3.5;
       } else if (modId === "humo-total") {
         color = "#606060";
-        intensity = 3 + Math.sin(t * 0.3) * 2;
+        intensity = 2 + Math.sin(t * 0.3) * 1.4;
       }
 
       modColorRef.current.intensity = intensity;
@@ -123,19 +125,19 @@ function ModifierAmbientFX({ modId, handClosed, outcomeTone, lowPower = false })
         ref={keyLightRef}
         name="KeyLight_Antro"
         position={[0, 6.2, 1.35]}
-        intensity={118}
-        angle={0.5}
-        penumbra={0.7}
+        intensity={92}
+        angle={0.42}
+        penumbra={0.76}
         color="#ffbd74"
         castShadow={!lowPower}
         shadow-mapSize={lowPower ? [512, 512] : [1536, 1536]}
         shadow-bias={-0.00012}
       />
-      <spotLight name="Card_Focus_Warm" position={[0, 3.2, 2.4]} intensity={34} angle={0.62} penumbra={0.86} color="#ffd39a" castShadow={false} />
-      <pointLight ref={fillRedRef} name="FillLight_Rojo" position={[-4.5, 2.0, 1.25]} intensity={20} color="#b84b36" />
-      <pointLight ref={fillBlueRef} name="FillLight_Azul" position={[4.35, 2.5, 1.05]} intensity={18} color="#3dbfb3" />
-      <pointLight name="RimLight_Dorada" position={[0, 2.35, -3.15]} intensity={24} color="#d58b35" />
-      <pointLight name="RimLight_Teal" position={[3.6, 1.9, -1.6]} intensity={14} color="#58d7c8" />
+      <spotLight name="Card_Focus_Warm" position={[0, 3.35, 2.05]} intensity={42} angle={0.38} penumbra={0.9} color="#ffd39a" castShadow={false} />
+      <pointLight ref={fillRedRef} name="FillLight_Rojo" position={[-4.5, 2.0, 1.25]} intensity={10} color="#b84b36" />
+      <pointLight ref={fillBlueRef} name="FillLight_Azul" position={[4.35, 2.5, 1.05]} intensity={9} color="#3dbfb3" />
+      <pointLight name="RimLight_Dorada" position={[0, 2.35, -3.15]} intensity={16} color="#d58b35" />
+      <pointLight name="RimLight_Teal" position={[3.6, 1.9, -1.6]} intensity={9} color="#58d7c8" />
       <pointLight ref={modColorRef} name="Modifier_Accent" position={[0, 3.2, 0]} intensity={0} color="#ffffff" />
     </>
   );
@@ -278,18 +280,20 @@ function RoomAccents() {
   );
 }
 
-function BackBarDressing() {
+function BackBarDressing({ lowPower = false }) {
   const bottleColors = ["#2b4a38", "#4b231d", "#57401f", "#213a42", "#38251c", "#523428", "#1d332c"];
+  const rows = lowPower ? [0.05] : [-0.95, 0.05, 1.05];
+  const visibleBottleColors = lowPower ? bottleColors.slice(0, 4) : bottleColors;
 
   return (
     <group name="BackBar_Dressing">
-      {[-0.95, 0.05, 1.05].map((y, rowIndex) => (
+      {rows.map((y, rowIndex) => (
         <group key={y} position={[0, y, -4.0]}>
           <RoundedBox args={[5.8, 0.08, 0.18]} radius={0.018} position={[0, 0, 0]}>
             <meshStandardMaterial color="#2b1b12" roughness={0.7} metalness={0.04} />
           </RoundedBox>
-          {bottleColors.map((color, index) => {
-            const x = -2.45 + index * 0.82 + (rowIndex % 2) * 0.18;
+          {visibleBottleColors.map((color, index) => {
+            const x = lowPower ? -1.25 + index * 0.82 : -2.45 + index * 0.82 + (rowIndex % 2) * 0.18;
             const height = 0.42 + ((index + rowIndex) % 3) * 0.08;
 
             return (
@@ -307,7 +311,7 @@ function BackBarDressing() {
           })}
         </group>
       ))}
-      <RoundedBox args={[6.35, 3.05, 0.08]} radius={0.04} position={[0, 0.22, -4.08]}>
+      <RoundedBox args={[6.35, lowPower ? 2.2 : 3.05, 0.08]} radius={0.04} position={[0, 0.22, -4.08]}>
         <meshStandardMaterial color="#1a100b" roughness={0.96} transparent opacity={0.22} />
       </RoundedBox>
     </group>
@@ -319,11 +323,11 @@ function TableLightCone({ isClassic }) {
     <group name="Table_LightCone">
       <mesh position={[0, 1.72, 0.18]}>
         <cylinderGeometry args={[1.14, 0.28, 1.9, 36, 1, true]} />
-        <meshStandardMaterial color="#d48e44" transparent opacity={isClassic ? 0.018 : 0.06} side={2} depthWrite={false} />
+        <meshStandardMaterial color="#d48e44" transparent opacity={isClassic ? 0.014 : 0.045} side={2} depthWrite={false} />
       </mesh>
       <mesh position={[0, -0.54, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[3.25, 72]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.22} depthWrite={false} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.28} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -354,11 +358,11 @@ function BarAtmosphere({ active, lowPower = false }) {
       mote.position.x = config.x + Math.sin(t * config.speed + config.phase) * 0.12;
       mote.position.y = config.y + Math.sin(t * 0.33 + config.phase) * 0.08;
       mote.position.z = config.z + Math.cos(t * config.speed * 0.7 + config.phase) * 0.1;
-      mote.material.opacity = (active ? 0.22 : 0.12) + Math.sin(t * 0.7 + config.phase) * 0.035;
+      mote.material.opacity = (active ? 0.14 : 0.07) + Math.sin(t * 0.7 + config.phase) * 0.025;
     });
 
     if (glowRef.current) {
-      glowRef.current.material.opacity = active ? 0.09 + Math.sin(t * 0.9) * 0.018 : 0.045;
+      glowRef.current.material.opacity = active ? 0.06 + Math.sin(t * 0.9) * 0.014 : 0.032;
       glowRef.current.rotation.z = t * 0.035;
     }
   });
@@ -367,7 +371,7 @@ function BarAtmosphere({ active, lowPower = false }) {
     <group name="Bar_Atmosphere">
       <mesh ref={glowRef} position={[0, -0.47, 0.04]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[1.72, 2.92, lowPower ? 40 : 96]} />
-        <meshBasicMaterial color="#d49a4f" transparent opacity={0.07} depthWrite={false} />
+        <meshBasicMaterial color="#d49a4f" transparent opacity={0.045} depthWrite={false} />
       </mesh>
       {motes.map((mote, index) => (
         <mesh
@@ -378,69 +382,34 @@ function BarAtmosphere({ active, lowPower = false }) {
           position={[mote.x, mote.y, mote.z]}
         >
           <sphereGeometry args={[mote.size, 8, 6]} />
-          <meshBasicMaterial color={index % 5 === 0 ? "#91e9f6" : "#f0c06a"} transparent opacity={0.12} depthWrite={false} />
+          <meshBasicMaterial color={index % 5 === 0 ? "#91e9f6" : "#f0c06a"} transparent opacity={0.08} depthWrite={false} />
         </mesh>
       ))}
     </group>
   );
 }
 
-function DebateFighter({ side, action }) {
-  const groupRef = useRef(null);
-  const headRef = useRef(null);
-  const leftArmRef = useRef(null);
-  const rightArmRef = useRef(null);
-  const lastTokenRef = useRef(action?.token ?? 0);
-  const impactRef = useRef(0);
-  const isPlayer = side === "player";
-  const baseX = isPlayer ? -0.34 : 0.34;
-  const bodyColor = isPlayer ? "#3a2119" : "#173431";
-  const accent = isPlayer ? "#d66a3f" : "#63d5c5";
-  const lane = isPlayer ? action?.playerLane ?? -0.18 : action?.rivalLane ?? 0.18;
-  const playerWon = action?.resolved && (action?.player ?? 0) > (action?.rival ?? 0);
-  const rivalWon = action?.resolved && (action?.rival ?? 0) >= (action?.player ?? 0);
-  const hasFallen = isPlayer ? rivalWon : playerWon;
+function RingCharacterModel({ character, active, fallen }) {
+  const skin = character?.skinId ? characterSkins[character.skinId] : null;
+  const hasBoxClip = Boolean(skin?.modelSrc && skin?.animationClipMap?.box);
 
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
-
-    if (action?.token !== lastTokenRef.current) {
-      lastTokenRef.current = action?.token ?? 0;
-      impactRef.current = 1;
-    }
-
-    const t = state.clock.elapsedTime;
-    const impact = impactRef.current;
-    const direction = isPlayer ? 1 : -1;
-    const playerAttack = action?.kind === "golpe" || action?.kind === "empujon";
-    const rivalAttack = action?.kind === "rival";
-    const attack = ((isPlayer && playerAttack) || (!isPlayer && rivalAttack)) ? impact : 0;
-    const hitReaction = ((!isPlayer && playerAttack) || (isPlayer && rivalAttack)) ? impact : 0;
-    const shove = action?.kind === "empujon" ? impact : 0;
-    const recoil = isPlayer ? -(hitReaction * 0.2 + shove * 0.08) : -(hitReaction * 0.18 + shove * 0.16);
-    const bob = Math.sin(t * 3.6 + (isPlayer ? 0 : 1.2)) * 0.018;
-
-    groupRef.current.position.x = baseX + recoil * direction;
-    groupRef.current.position.y = hasFallen ? -0.22 : bob;
-    groupRef.current.position.z += ((0.05 + lane * 0.58) - groupRef.current.position.z) * 0.18;
-    groupRef.current.rotation.z = hasFallen ? direction * 1.18 : (attack * -0.28 + hitReaction * 0.36) * direction;
-    groupRef.current.rotation.x = hasFallen ? -1.18 : attack * 0.18 - hitReaction * 0.18;
-
-    if (headRef.current) {
-      headRef.current.position.x = Math.sin(t * 2.4) * 0.012 - (isPlayer ? 0 : impact * 0.08);
-      headRef.current.rotation.z = (isPlayer ? -0.08 : 0.18) * impact;
-    }
-
-    if (leftArmRef.current && rightArmRef.current) {
-      leftArmRef.current.rotation.x = isPlayer ? -0.45 - attack * 0.92 : 0.12 + impact * 0.64;
-      rightArmRef.current.rotation.x = isPlayer ? -0.18 - attack * 1.18 : 0.2 + impact * 0.74;
-    }
-
-    impactRef.current = Math.max(0, impact - delta * 2.8);
-  });
+  if (!character || !hasBoxClip) return null;
 
   return (
-    <group ref={groupRef} name={`Debate_Fighter_${side}`} position={[baseX, 0.16, 0.05 + lane * 0.58]} rotation={[0, isPlayer ? 0.28 : -0.28, 0]}>
+    <group name={`Debate_Model_${character.id}`} scale={0.48} position={[0, fallen ? -0.04 : -0.02, 0.02]}>
+      <CharacterFigure
+        skin={skin}
+        accent={character.accent}
+        isActiveLane={active}
+        animationMode={active && !fallen ? "box" : "idle"}
+      />
+    </group>
+  );
+}
+
+function DebateProceduralFighter({ bodyColor, accent, headRef, leftArmRef, rightArmRef }) {
+  return (
+    <>
       <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.13, 0.17, 0.54, 14]} />
         <meshStandardMaterial color={bodyColor} roughness={0.78} metalness={0.04} />
@@ -469,6 +438,81 @@ function DebateFighter({ side, action }) {
         <ringGeometry args={[0.2, 0.27, 28]} />
         <meshBasicMaterial color={accent} transparent opacity={0.34} depthWrite={false} />
       </mesh>
+    </>
+  );
+}
+
+function DebateFighter({ side, action, character }) {
+  const groupRef = useRef(null);
+  const headRef = useRef(null);
+  const leftArmRef = useRef(null);
+  const rightArmRef = useRef(null);
+  const lastTokenRef = useRef(action?.token ?? 0);
+  const impactRef = useRef(0);
+  const isPlayer = side === "player";
+  const baseX = isPlayer ? -0.34 : 0.34;
+  const bodyColor = isPlayer ? "#3a2119" : "#173431";
+  const accent = isPlayer ? "#d66a3f" : "#63d5c5";
+  const lane = isPlayer ? action?.playerLane ?? -0.18 : action?.rivalLane ?? 0.18;
+  const skin = character?.skinId ? characterSkins[character.skinId] : null;
+  const hasModelFighter = Boolean(skin?.modelSrc && skin?.animationClipMap?.box);
+  const playerWon = action?.resolved && (action?.player ?? 0) > (action?.rival ?? 0);
+  const rivalWon = action?.resolved && (action?.rival ?? 0) >= (action?.player ?? 0);
+  const hasFallen = isPlayer ? rivalWon : playerWon;
+  const isActive = isPlayer
+    ? action?.kind === "golpe" || action?.kind === "empujon"
+    : action?.kind === "rival" || action?.kind === "rival-windup";
+
+  useFrame((state, delta) => {
+    if (!groupRef.current) return;
+
+    if (action?.token !== lastTokenRef.current) {
+      lastTokenRef.current = action?.token ?? 0;
+      impactRef.current = 1;
+    }
+
+    const t = state.clock.elapsedTime;
+    const impact = impactRef.current;
+    const direction = isPlayer ? 1 : -1;
+    const playerAttack = action?.kind === "golpe" || action?.kind === "empujon";
+    const rivalAttack = action?.kind === "rival";
+    const playerGuard = isPlayer && action?.kind === "guardia" ? impact : 0;
+    const rivalWindup = !isPlayer && action?.kind === "rival-windup" ? impact : 0;
+    const vulnerable = !isPlayer && action?.vulnerable ? 1 : 0;
+    const attack = ((isPlayer && playerAttack) || (!isPlayer && rivalAttack)) ? impact : 0;
+    const hitReaction = ((!isPlayer && playerAttack) || (isPlayer && rivalAttack)) ? impact : 0;
+    const shove = action?.kind === "empujon" ? impact : 0;
+    const recoil = isPlayer ? -(hitReaction * 0.2 + shove * 0.08) : -(hitReaction * 0.18 + shove * 0.16);
+    const bob = Math.sin(t * 3.6 + (isPlayer ? 0 : 1.2)) * 0.018;
+
+    groupRef.current.position.x = baseX + (recoil - rivalWindup * 0.08 + vulnerable * 0.1) * direction;
+    groupRef.current.position.y = hasFallen ? -0.22 : bob;
+    groupRef.current.position.z += ((0.05 + lane * 0.58) - groupRef.current.position.z) * 0.18;
+    groupRef.current.rotation.z = hasFallen ? direction * 1.18 : (attack * -0.28 + hitReaction * 0.36 + playerGuard * 0.18 + rivalWindup * -0.22 + vulnerable * 0.28) * direction;
+    groupRef.current.rotation.x = hasFallen ? -1.18 : attack * 0.18 - hitReaction * 0.18 + playerGuard * -0.1 + rivalWindup * 0.2 + vulnerable * 0.16;
+
+    if (!hasModelFighter && headRef.current) {
+      headRef.current.position.x = Math.sin(t * 2.4) * 0.012 - (isPlayer ? 0 : impact * 0.08);
+      headRef.current.rotation.z = (isPlayer ? -0.08 : 0.18) * impact;
+    }
+
+    if (!hasModelFighter && leftArmRef.current && rightArmRef.current) {
+      leftArmRef.current.rotation.x = isPlayer ? -0.45 - attack * 0.92 - playerGuard * 0.75 : 0.12 + impact * 0.64 + rivalWindup * 0.5;
+      rightArmRef.current.rotation.x = isPlayer ? -0.18 - attack * 1.18 - playerGuard * 0.82 : 0.2 + impact * 0.74 + rivalWindup * 0.62;
+      leftArmRef.current.rotation.z = playerGuard ? -0.48 : 0;
+      rightArmRef.current.rotation.z = playerGuard ? 0.48 : 0;
+    }
+
+    impactRef.current = Math.max(0, impact - delta * 2.8);
+  });
+
+  return (
+    <group ref={groupRef} name={`Debate_Fighter_${side}`} position={[baseX, 0.16, 0.05 + lane * 0.58]} rotation={[0, isPlayer ? 0.28 : -0.28, 0]}>
+      {hasModelFighter ? (
+        <RingCharacterModel character={character} active={isActive} fallen={hasFallen} />
+      ) : (
+        <DebateProceduralFighter bodyColor={bodyColor} accent={accent} headRef={headRef} leftArmRef={leftArmRef} rightArmRef={rightArmRef} />
+      )}
     </group>
   );
 }
@@ -477,7 +521,19 @@ function DebateImpactFX({ action }) {
   const groupRef = useRef(null);
   const lastTokenRef = useRef(action?.token ?? 0);
   const progressRef = useRef(1);
-  const color = action?.kind === "empujon" ? "#f3dfb6" : action?.kind === "corchazo" ? "#e06b4a" : action?.kind?.startsWith("rival") ? "#e06b4a" : action?.kind === "move" ? "#d98a36" : "#63d5c5";
+  const color = action?.kind === "empujon"
+    ? "#f3dfb6"
+    : action?.kind === "rival-whiff"
+      ? "#63d5c5"
+      : action?.kind === "guardia"
+        ? "#91e9f6"
+        : action?.kind === "corchazo" || action?.kind === "rival-guardbreak"
+          ? "#e06b4a"
+          : action?.kind?.startsWith("rival")
+            ? "#e06b4a"
+            : action?.kind === "move"
+              ? "#d98a36"
+              : "#63d5c5";
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -564,7 +620,7 @@ function CorkRevolverStation({ side, active, trigger = 0, popped }) {
   );
 }
 
-function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }) {
+function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = [0, 0, 0], rotation = [0, 0, 0] }) {
   const isResolved = debateAction?.resolved;
   const isRoulette = debateAction?.mode === "ruleta";
   const ringVerdict = isResolved
@@ -575,11 +631,21 @@ function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }
       ? debateAction?.turn === "player"
         ? "TE TOCA APRETAR"
         : "APRIETA LA MESA"
-    : debateAction?.kind === "rival"
-      ? "TE APURAN"
-      : debateAction?.kind === "rival-move"
-        ? "TE BUSCAN"
-        : "A DOS PASOS";
+      : debateAction?.kind === "rival"
+        ? "TE APURAN"
+        : debateAction?.kind === "rival-whiff"
+          ? "QUEDO PAGANDO"
+          : debateAction?.kind === "rival-guardbreak"
+            ? "GUARDIA ROTA"
+            : debateAction?.vulnerable
+              ? "CASTIGALO"
+        : debateAction?.kind === "rival-windup"
+          ? "CARGA LA MESA"
+          : debateAction?.kind === "guardia"
+            ? "GUARDIA ARRIBA"
+            : debateAction?.kind === "rival-move"
+              ? "TE BUSCAN"
+              : "A DOS PASOS";
 
   return (
     <group name="Debate_Ring" position={position} rotation={rotation}>
@@ -668,8 +734,30 @@ function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }
         </mesh>
       ))}
 
-      <DebateFighter side="player" action={debateAction} />
-      <DebateFighter side="rival" action={debateAction} />
+      {debateAction?.rivalIntent === "windup" ? (
+        <group name="Debate_Attack_Telegraph" position={[0, 0.112, 0.05 + (debateAction.rivalTargetLane ?? 0) * 0.58]}>
+          <RoundedBox args={[1.68, 0.018, 0.1]} radius={0.012} castShadow>
+            <meshStandardMaterial
+              color={debateAction.rivalAttack === "barrida" ? "#e06b4a" : "#f3dfb6"}
+              emissive={debateAction.rivalAttack === "barrida" ? "#e06b4a" : "#d98a36"}
+              emissiveIntensity={0.44}
+              roughness={0.38}
+            />
+          </RoundedBox>
+          <Text position={[0, 0.17, 0]} fontSize={0.07} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.12}>
+            {debateAction.rivalAttack === "barrida" ? "BARRIDA: SALI DE LA LINEA" : "HOMBRO: GUARDIA O CONTRA"}
+          </Text>
+        </group>
+      ) : null}
+
+      {debateAction?.vulnerable ? (
+        <Text position={[0, 0.56, 0.42]} fontSize={0.09} color="#63d5c5" anchorX="center" anchorY="middle" letterSpacing={0.12}>
+          MESA PAGANDO · CASTIGA
+        </Text>
+      ) : null}
+
+      <DebateFighter side="player" action={debateAction} character={playerCharacter} />
+      <DebateFighter side="rival" action={debateAction} character={rivalCharacter} />
       <DebateImpactFX action={debateAction} />
 
       {isRoulette ? (
@@ -708,57 +796,93 @@ function DebateRing({ debateAction, position = [0, 0, 0], rotation = [0, 0, 0] }
   );
 }
 
-function DebateRoom({ debateAction }) {
+function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
+  const isRoulette = debateAction?.mode === "ruleta";
+
   return (
     <group name="Debate_Room" position={[-7.45, -1.14, -0.9]}>
-      <RoundedBox name="DebateRoom_Floor" args={[5.2, 0.26, 4.4]} radius={0.12} position={[0, -0.16, 0]} receiveShadow>
-        <meshStandardMaterial color="#170c09" roughness={0.9} metalness={0.04} />
+      <RoundedBox name="DebateRoom_Floor" args={[5.65, 0.26, 4.75]} radius={0.14} position={[0, -0.16, 0]} receiveShadow>
+        <meshStandardMaterial color="#160c09" roughness={0.88} metalness={0.05} />
       </RoundedBox>
-      <RoundedBox args={[5.15, 2.85, 0.22]} radius={0.08} position={[0, 1.04, -2.24]} receiveShadow>
-        <meshStandardMaterial color="#100807" roughness={0.98} />
+      <RoundedBox args={[4.95, 0.035, 4.12]} radius={0.06} position={[0, -0.005, 0.02]} receiveShadow>
+        <meshStandardMaterial color="#22120d" roughness={0.82} metalness={0.03} />
       </RoundedBox>
-      <RoundedBox args={[0.22, 2.85, 4.3]} radius={0.08} position={[-2.58, 1.04, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}>
+        <ringGeometry args={[1.42, 1.55, 96]} />
+        <meshBasicMaterial color="#d98a36" transparent opacity={0.16} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[2.05, 2.08, 96]} />
+        <meshBasicMaterial color="#63d5c5" transparent opacity={0.1} depthWrite={false} />
+      </mesh>
+      <RoundedBox args={[5.45, 2.55, 0.22]} radius={0.08} position={[0, 1.0, -2.38]} receiveShadow>
+        <meshStandardMaterial color="#0e0807" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox args={[0.22, 2.55, 4.45]} radius={0.08} position={[-2.82, 1.0, 0]} receiveShadow>
         <meshStandardMaterial color="#210f0b" roughness={0.96} />
       </RoundedBox>
-      <RoundedBox args={[0.18, 2.36, 2.56]} radius={0.08} position={[2.48, 0.82, -0.8]} receiveShadow>
-        <meshStandardMaterial color="#0c0b09" roughness={0.98} transparent opacity={0.72} />
+      <RoundedBox args={[0.16, 1.76, 1.52]} radius={0.08} position={[2.74, 0.58, -1.27]} receiveShadow>
+        <meshStandardMaterial color="#0c0b09" roughness={0.98} transparent opacity={0.58} />
       </RoundedBox>
-      <RoundedBox args={[0.18, 0.2, 3.85]} radius={0.04} position={[2.48, 2.18, 0]} receiveShadow>
+      <RoundedBox args={[0.18, 0.2, 3.95]} radius={0.04} position={[2.74, 2.0, 0]} receiveShadow>
         <meshStandardMaterial color="#b47a34" roughness={0.38} metalness={0.54} />
       </RoundedBox>
-      <RoundedBox args={[4.75, 0.12, 0.16]} radius={0.04} position={[0, 2.34, 1.84]} receiveShadow>
+      <RoundedBox args={[4.9, 0.12, 0.16]} radius={0.04} position={[0, 2.22, 1.92]} receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.72} metalness={0.1} />
       </RoundedBox>
-      <RoundedBox args={[0.18, 2.36, 1.55]} radius={0.08} position={[2.42, 0.82, 1.1]} receiveShadow>
+      <RoundedBox args={[0.18, 1.76, 1.2]} radius={0.08} position={[2.73, 0.58, 1.55]} receiveShadow>
         <meshStandardMaterial color="#1b0d0a" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox args={[1.18, 0.11, 1.38]} radius={0.055} position={[2.18, -0.045, 0.18]} rotation={[0, 0.04, 0]} receiveShadow>
+        <meshStandardMaterial color="#2c170f" roughness={0.72} metalness={0.08} />
+      </RoundedBox>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2.17, 0.02, 0.18]}>
+        <ringGeometry args={[0.48, 0.54, 48]} />
+        <meshBasicMaterial color="#e06b4a" transparent opacity={0.18} depthWrite={false} />
+      </mesh>
+      <RoundedBox args={[0.92, 0.05, 0.08]} radius={0.03} position={[2.18, 0.06, -0.36]}>
+        <meshStandardMaterial color="#d98a36" emissive="#d98a36" emissiveIntensity={0.18} roughness={0.48} />
+      </RoundedBox>
+      <RoundedBox args={[0.92, 0.05, 0.08]} radius={0.03} position={[2.18, 0.06, 0.72]}>
+        <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.12} roughness={0.48} />
       </RoundedBox>
 
       <pointLight name="DebateRoom_Practical_Red" position={[-1.35, 1.35, 0.9]} intensity={7.5} color="#c54c32" />
       <pointLight name="DebateRoom_Practical_Teal" position={[1.55, 1.15, -0.65]} intensity={6.4} color="#45c7bd" />
-      <pointLight name="DebateRoom_TopSpot" position={[0, 2.42, 0.28]} intensity={18} color="#f3c172" castShadow />
+      <pointLight name="DebateRoom_Threshold" position={[2.08, 0.58, 0.16]} intensity={5.2} color="#e06b4a" />
+      <pointLight name="DebateRoom_TopSpot" position={[0, 2.32, 0.28]} intensity={18} color="#f3c172" castShadow />
       <pointLight name="DebateRoom_TopGlow" position={[0, 2.05, 0.1]} intensity={10} color="#f3c172" />
 
-      <Text position={[0, 1.94, -2.08]} fontSize={0.105} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.16}>
+      <Text position={[0, 1.72, -2.22]} fontSize={0.12} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.18}>
         SALA DE CONFLICTO
       </Text>
-      <Text position={[2.18, 0.42, 1.08]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.08} color="#d9b36c" anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        ENTRADA DESDE EL ANTRO
+      <Text position={[0, 1.52, -2.22]} fontSize={0.055} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.18}>
+        {isRoulette ? "UN CORCHO FIRMA LA SENTENCIA" : "NO SE DISCUTE MAS EN LA MESA"}
+      </Text>
+      <Text position={[2.18, 0.16, 0.18]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.08} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        UMBRAL
       </Text>
 
-      {[-1.42, -0.72, 0.72, 1.42].map((x, index) => (
-        <group key={x} position={[x, 0.06, 1.34]}>
+      {[-1.8, -1.15, -0.5, 0.5, 1.15, 1.8].map((x, index) => (
+        <group key={x} position={[x, 0.06, 1.58]}>
           <mesh castShadow>
-            <cylinderGeometry args={[0.08, 0.1, 0.38, 12]} />
+            <cylinderGeometry args={[0.07, 0.095, 0.36, 12]} />
             <meshStandardMaterial color={index % 2 ? "#1b342f" : "#34150f"} roughness={0.72} />
           </mesh>
-          <mesh position={[0, 0.26, 0]} castShadow>
-            <sphereGeometry args={[0.12, 14, 10]} />
+          <mesh position={[0, 0.24, 0]} castShadow>
+            <sphereGeometry args={[0.105, 14, 10]} />
             <meshStandardMaterial color="#120907" roughness={0.9} />
           </mesh>
         </group>
       ))}
 
-      <DebateRing debateAction={debateAction} position={[0, 0.02, 0]} rotation={[0, -0.08, 0]} />
+      <DebateRing
+        debateAction={debateAction}
+        playerCharacter={playerCharacter}
+        rivalCharacter={rivalCharacter}
+        position={[0, 0.02, 0]}
+        rotation={[0, -0.08, 0]}
+      />
     </group>
   );
 }
@@ -766,23 +890,35 @@ function DebateRoom({ debateAction }) {
 function DebateEntrance() {
   return (
     <group name="Debate_Entrance" position={[-5.42, -1.08, -0.9]}>
-      <RoundedBox args={[0.2, 2.48, 0.16]} radius={0.04} position={[0, 1.12, -0.98]} castShadow receiveShadow>
+      <RoundedBox args={[0.24, 2.32, 0.2]} radius={0.04} position={[0, 1.02, -1.02]} castShadow receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.74} metalness={0.08} />
       </RoundedBox>
-      <RoundedBox args={[0.2, 2.48, 0.16]} radius={0.04} position={[0, 1.12, 0.98]} castShadow receiveShadow>
+      <RoundedBox args={[0.24, 2.32, 0.2]} radius={0.04} position={[0, 1.02, 1.02]} castShadow receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.74} metalness={0.08} />
       </RoundedBox>
-      <RoundedBox args={[0.2, 0.16, 2.12]} radius={0.04} position={[0, 2.38, 0]} castShadow receiveShadow>
+      <RoundedBox args={[0.24, 0.16, 2.18]} radius={0.04} position={[0, 2.22, 0]} castShadow receiveShadow>
         <meshStandardMaterial color="#b47a34" roughness={0.38} metalness={0.52} />
       </RoundedBox>
-      <mesh position={[-0.02, 0.14, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.72, 0.88, 48]} />
-        <meshBasicMaterial color="#e06b4a" transparent opacity={0.22} depthWrite={false} />
+      <RoundedBox args={[1.15, 0.08, 2.34]} radius={0.04} position={[-0.38, 0.015, 0]} receiveShadow>
+        <meshStandardMaterial color="#1d0f0a" roughness={0.82} metalness={0.06} />
+      </RoundedBox>
+      <RoundedBox args={[0.07, 0.055, 1.8]} radius={0.02} position={[-0.88, 0.085, 0]} receiveShadow>
+        <meshStandardMaterial color="#e06b4a" emissive="#e06b4a" emissiveIntensity={0.2} roughness={0.46} />
+      </RoundedBox>
+      <RoundedBox args={[0.07, 0.055, 1.8]} radius={0.02} position={[0.02, 0.085, 0]} receiveShadow>
+        <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.13} roughness={0.46} />
+      </RoundedBox>
+      <mesh position={[-0.42, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.68, 0.82, 48]} />
+        <meshBasicMaterial color="#e06b4a" transparent opacity={0.2} depthWrite={false} />
       </mesh>
-      <Text position={[-0.08, 1.84, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.12} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        CONFLICTO
+      <Text position={[-0.12, 1.66, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.105} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.13}>
+        SALA DE CONFLICTO
       </Text>
-      <pointLight position={[-0.42, 1.0, 0]} intensity={5.5} color="#e06b4a" />
+      <Text position={[-0.44, 0.055, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.07} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        PASILLO
+      </Text>
+      <pointLight position={[-0.42, 0.88, 0]} intensity={6.2} color="#e06b4a" />
     </group>
   );
 }
@@ -914,9 +1050,9 @@ function getCameraPose({ match, isNarrow, cameraView }) {
 
   if (cameraView === "ring") {
     return {
-      position: isNarrow ? [-7.45, 0.52, 2.82] : [-7.45, 0.22, 2.62],
-      target: [-7.45, -0.9, -0.12],
-      fov: isNarrow ? 42 : 34
+      position: isNarrow ? [-7.45, 0.4, 2.7] : [-7.45, -0.08, 2.42],
+      target: [-7.45, -1.02, -0.08],
+      fov: isNarrow ? 42 : 37
     };
   }
 
@@ -933,7 +1069,18 @@ function getCameraPose({ match, isNarrow, cameraView }) {
   };
 }
 
-export function TrucolocoScene({ match, cameraView = "table", debateAction, selectedWalkCharacter, performanceMode = "high", walkHotspot, onWalkHotspotChange, onWalkInteract }) {
+export function TrucolocoScene({
+  match,
+  cameraView = "table",
+  debateAction,
+  selectedWalkCharacter,
+  performanceMode = "high",
+  walkHotspot,
+  walkTouchInput,
+  onWalkHotspotChange,
+  onWalkInteract,
+  onWalkAnimationDebugChange
+}) {
   const modId = match.activeModifier?.id ?? "";
   const modTitle = match.activeModifier?.title ?? "";
   const { camera, size } = useThree();
@@ -943,8 +1090,12 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
   const isWalkMode = cameraView === "walk";
   const isRingMode = cameraView === "ring";
   const lowPower = performanceMode === "low";
+  const debatePlayerCharacter = selectedWalkCharacter ?? match.selectedCharacter ?? match.activeLane.human;
+  const debateRivalCharacter = match.activeLane.rival;
   const debateTokenRef = useRef(debateAction?.token ?? 0);
   const ringShakeRef = useRef(0);
+  const cameraTargetRef = useRef(new Vector3(0, 0.16, 0.02));
+  const targetLookAtRef = useRef(new Vector3(0, 0.16, 0.02));
 
   useFrame((state, delta) => {
     if (isWalkMode) return;
@@ -956,6 +1107,9 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
 
     const cameraPose = getCameraPose({ match, isNarrow, cameraView });
     const [targetX, targetY, targetZ] = cameraPose.position;
+    const targetLookAt = targetLookAtRef.current.set(...cameraPose.target);
+    const cameraAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * (cameraView === "seat" ? 4.7 : 3.45));
+    const targetAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * 5.2);
 
     if (
       !Number.isFinite(camera.position.x) ||
@@ -966,11 +1120,13 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
       Math.abs(camera.position.z) > 100
     ) {
       camera.position.set(targetX, targetY, targetZ);
+      cameraTargetRef.current.copy(targetLookAt);
     } else {
-      const alpha = 1 - Math.exp(-Math.min(delta, 0.12) * 3.6);
-      camera.position.x += (targetX - camera.position.x) * alpha;
-      camera.position.y += (targetY - camera.position.y) * alpha;
-      camera.position.z += (targetZ - camera.position.z) * alpha;
+      // [VISUAL] Smooth both camera position and gaze target so view changes feel intentional, not floaty.
+      camera.position.x += (targetX - camera.position.x) * cameraAlpha;
+      camera.position.y += (targetY - camera.position.y) * cameraAlpha;
+      camera.position.z += (targetZ - camera.position.z) * cameraAlpha;
+      cameraTargetRef.current.lerp(targetLookAt, targetAlpha);
     }
 
     if (cameraView === "ring" && ringShakeRef.current > 0) {
@@ -985,14 +1141,14 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
       camera.updateProjectionMatrix();
     }
 
-    camera.lookAt(...cameraPose.target);
+    camera.lookAt(cameraTargetRef.current);
   });
 
   return (
     <>
       <RenderEnvironment />
-      <ambientLight intensity={0.23} color="#9a6a45" />
-      <hemisphereLight intensity={0.32} color="#d59b65" groundColor="#070b07" />
+      <ambientLight intensity={0.15} color="#8f5f3d" />
+      <hemisphereLight intensity={0.24} color="#d59b65" groundColor="#050806" />
       <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} lowPower={lowPower} />
 
       <group name="Room_Runtime" position={[0, -1.35, 0.25]}>
@@ -1020,10 +1176,16 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
           <meshStandardMaterial color={BAR_COLORS.floorDark} roughness={0.9} />
         </RoundedBox>
 
-        <BackBarDressing />
+        <BackBarDressing lowPower={lowPower} />
         <BarRoom />
         {!lowPower || isWalkMode || isRingMode ? <DebateEntrance /> : null}
-        {isRingMode || !lowPower ? <DebateRoom debateAction={debateAction} /> : null}
+        {isRingMode || !lowPower ? (
+          <DebateRoom
+            debateAction={debateAction}
+            playerCharacter={debatePlayerCharacter}
+            rivalCharacter={debateRivalCharacter}
+          />
+        ) : null}
         {!lowPower ? <RoomAccents /> : null}
 
         {!isRingMode ? <TableLightCone isClassic={isClassic} /> : null}
@@ -1044,15 +1206,17 @@ export function TrucolocoScene({ match, cameraView = "table", debateAction, sele
                 frames={1}
               />
             ) : null}
-            <Table match={match} />
-            <TeamsAroundTable match={match} cameraView={cameraView} />
+            <Table match={match} performanceMode={performanceMode} />
+            <TeamsAroundTable match={match} cameraView={cameraView} performanceMode={performanceMode} />
             {cameraView === "seat" ? <SeatViewFocus match={match} /> : null}
             {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} lowPower={lowPower} /> : null}
             <WalkablePlayer
               enabled={isWalkMode}
               character={selectedWalkCharacter}
+              virtualInput={walkTouchInput}
               onHotspotChange={onWalkHotspotChange}
               onInteract={onWalkInteract}
+              onAnimationDebugChange={onWalkAnimationDebugChange}
             />
 
             <AnimatedLamp modId={modId} />

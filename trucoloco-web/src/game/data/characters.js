@@ -8,11 +8,17 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.72,
     modelPromptKey: "irvyn",
+    walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.002",
-      run: "NlaTrack.003",
-      box: "NlaTrack"
+      walk: "NlaTrack.003",
+      run: "NlaTrack.001",
+      box: "NlaTrack.002"
+    },
+    animationTimeScaleMap: {
+      walk: 0.72,
+      run: 0.98,
+      box: 1
     },
     chairSeatColor: "#241711",
     chairBackColor: "#1f1410"
@@ -24,11 +30,17 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.78,
     modelPromptKey: "marvyn",
+    walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.007",
-      run: "NlaTrack.001",
-      box: "NlaTrack.006"
+      walk: "NlaTrack.001",
+      run: "NlaTrack.007",
+      box: "NlaTrack.002"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1
     },
     chairSeatColor: "#20353a",
     chairBackColor: "#17272b"
@@ -50,11 +62,17 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.72,
     modelPromptKey: "pol",
+    walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.001",
-      run: "NlaTrack.004",
+      walk: "NlaTrack.004",
+      run: "NlaTrack.001",
       box: "NlaTrack.002"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1
     },
     chairSeatColor: "#172217",
     chairBackColor: "#121a12"
@@ -190,6 +208,7 @@ export const characterOptionsByRole = roleOptions.reduce((options, role) => {
 }, {});
 
 export const tableSeats = [
+  // [VISUAL] Seat anchors form a tighter oval so characters read as seated around one mesa, not scattered in the room.
   {
     seatId: "A-negociante",
     team: "A",
@@ -198,7 +217,7 @@ export const tableSeats = [
     label: "Esquina Sur",
     tableOrder: 0,
     oppositeSeatId: "B-negociante",
-    position: [-2.8, 0, -1.7]
+    position: [-2.62, 0, -1.78]
   },
   {
     seatId: "B-negociante",
@@ -208,7 +227,7 @@ export const tableSeats = [
     label: "Esquina Norte",
     tableOrder: 1,
     oppositeSeatId: "A-negociante",
-    position: [2.8, 0, -1.7]
+    position: [2.62, 0, -1.78]
   },
   {
     seatId: "A-estrella",
@@ -218,7 +237,7 @@ export const tableSeats = [
     label: "Medio Sur",
     tableOrder: 2,
     oppositeSeatId: "B-estrella",
-    position: [-3.6, 0, 1.6]
+    position: [-3.12, 0, 1.42]
   },
   {
     seatId: "B-estrella",
@@ -228,7 +247,7 @@ export const tableSeats = [
     label: "Medio Norte",
     tableOrder: 3,
     oppositeSeatId: "A-estrella",
-    position: [3.5, 0, 1.55]
+    position: [3.12, 0, 1.42]
   },
   {
     seatId: "A-cartachin",
@@ -238,7 +257,7 @@ export const tableSeats = [
     label: "Punta Sur",
     tableOrder: 4,
     oppositeSeatId: "B-cartachin",
-    position: [0, 0, -3.3]
+    position: [0, 0, -3.18]
   },
   {
     seatId: "B-cartachin",
@@ -248,6 +267,6 @@ export const tableSeats = [
     label: "Punta Norte",
     tableOrder: 5,
     oppositeSeatId: "A-cartachin",
-    position: [0, 0, 3.3]
+    position: [0, 0, 3.18]
   }
 ];

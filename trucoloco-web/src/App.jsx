@@ -24,6 +24,11 @@ const RING_START_STATE = {
   rivalLane: 0.18,
   playerStamina: 3,
   rivalStamina: 3,
+  playerGuard: 0,
+  rivalIntent: "neutral",
+  rivalAttack: "none",
+  rivalTargetLane: 0.18,
+  vulnerable: false,
   pull: 0,
   playerTrigger: 0,
   rivalTrigger: 0,
@@ -31,7 +36,7 @@ const RING_START_STATE = {
   rivalChamber: 5,
   turn: "player",
   resolved: false,
-  lastMove: "Entraste a la sala de conflicto. Alineate, guardá aire y resolvé la discusión."
+  lastMove: "Entraste a la sala de conflicto. Primero a 5 impone su versión. Movete, cubrite y pegá cuando esté a tiro."
 };
 
 function createDebateState(overrides = {}) {
@@ -53,6 +58,50 @@ function getRingRead(distance, stamina) {
   return `${range} · ${air}`;
 }
 
+function getRivalAttackName(attack) {
+  if (attack === "barrida") return "Barrida";
+  if (attack === "hombro") return "Hombro";
+  return "Carga";
+}
+
+function pickRivalAttack(token) {
+  return token % 3 === 0 ? "barrida" : "hombro";
+}
+
+function isInAttackLine(playerLane, targetLane) {
+  return Math.abs(playerLane - targetLane) <= 0.18;
+}
+
+function getDebateTitle(state) {
+  if (state.mode === "ruleta") return state.resolved ? "Corcho cantado" : "Ruleta de corchos";
+  if (state.resolved) return (state.player ?? 0) > (state.rival ?? 0) ? "Ganaste la disputa" : "La mesa te ganó";
+  if (state.vulnerable) return "La mesa quedó pagando";
+  if (state.rivalIntent === "windup") return `${getRivalAttackName(state.rivalAttack)} anunciado`;
+  return "Ring del desacuerdo";
+}
+
+function getDebateGoal(state) {
+  if (state.mode === "ruleta") {
+    if (state.resolved) return "Disputa resuelta. Podés resetear, volver al ring o salir al antro.";
+    return state.turn === "player"
+      ? "Tu turno: apretá el tambor. Si salta el corcho, perdés la discusión."
+      : "Turno de la mesa: mirá cómo aprieta y bancate el silencio.";
+  }
+
+  if (state.resolved) return "El cruce terminó. Revancha con J/K o salí con Esc.";
+  if (state.vulnerable) return "Ventana corta: castigá con J/K antes de que la mesa recomponga postura.";
+  if (state.rivalIntent === "windup") {
+    return state.rivalAttack === "barrida"
+      ? "Barrida baja: salí de la línea con A/D. Cubrirse no alcanza."
+      : "Hombro de frente: cubrite con L o cortalo con J/K si estás cerca.";
+  }
+  return "Leé la carga. Hombro se bloquea; barrida se esquiva. Castigá cuando quede pagando.";
+}
+
+function createEmptyWalkTouchInput() {
+  return { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 };
+}
+
 function getInitialPerformanceProfile() {
   if (typeof window === "undefined") {
     return { mode: "high", dpr: [1, 1.75], antialias: true, shadows: true, postprocessing: true };
@@ -61,7 +110,8 @@ function getInitialPerformanceProfile() {
   const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
   const narrowViewport = window.innerWidth < 820;
   const highDpr = window.devicePixelRatio >= 2;
-  const lowPower = coarsePointer || narrowViewport || highDpr;
+  const perfOverride = new URLSearchParams(window.location.search).get("perf");
+  const lowPower = perfOverride === "low" || perfOverride === "mobile" || (!perfOverride && (coarsePointer || narrowViewport || highDpr));
 
   return lowPower
     ? { mode: "low", dpr: [0.65, 1], antialias: false, shadows: false, postprocessing: false }
@@ -113,6 +163,8 @@ export default function App() {
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
   const [walkNotice, setWalkNotice] = useState("");
+  const [walkAnimationDebug, setWalkAnimationDebug] = useState(null);
+  const [walkTouchInput, setWalkTouchInput] = useState(() => createEmptyWalkTouchInput());
   const [debateState, setDebateState] = useState(() => createDebateState());
   const previousHandStartedRef = useRef(match.handStarted);
   const returnToTableTimerRef = useRef(null);
@@ -156,7 +208,36 @@ export default function App() {
     setIsSeatingRitual(false);
     setWalkHotspot(null);
     setWalkNotice("");
+    setWalkTouchInput((current) => ({ ...createEmptyWalkTouchInput(), boxToken: current.boxToken }));
     setCameraView(viewId);
+  }, []);
+
+  const setWalkTouchAxis = useCallback((axis, value) => {
+    setWalkTouchInput((current) => ({
+      ...current,
+      [axis]: value
+    }));
+  }, []);
+
+  const resetWalkTouchAxis = useCallback((axis, value) => {
+    setWalkTouchInput((current) => ({
+      ...current,
+      [axis]: current[axis] === value ? 0 : current[axis]
+    }));
+  }, []);
+
+  const setWalkTouchSprint = useCallback((sprint) => {
+    setWalkTouchInput((current) => ({
+      ...current,
+      sprint
+    }));
+  }, []);
+
+  const triggerWalkTouchBox = useCallback(() => {
+    setWalkTouchInput((current) => ({
+      ...current,
+      boxToken: current.boxToken + 1
+    }));
   }, []);
 
   const handleWalkInteract = useCallback((hotspot) => {
@@ -233,15 +314,33 @@ export default function App() {
       }
 
       const nextToken = current.token + 1;
+      const distance = Math.abs(current.playerLane - current.rivalLane);
+
+      if (kind === "guardia") {
+        return {
+          ...current,
+          kind: "guardia",
+          token: nextToken,
+          playerGuard: 1,
+          playerStamina: Math.min(3, current.playerStamina + 0.95),
+          lastMove: current.rivalIntent === "windup"
+            ? current.rivalAttack === "barrida"
+              ? "Levantás guardia, pero la mesa viene abajo. Si no salís de la línea, te barre."
+              : `Te cubrís justo antes del choque. Si viene hombro, queda pagando. ${getRingRead(distance, Math.min(3, current.playerStamina + 0.95))}.`
+            : `Levantás guardia y recuperás aire. ${getRingRead(distance, Math.min(3, current.playerStamina + 0.95))}.`
+        };
+      }
+
       const cost = kind === "empujon" ? 2 : 1;
       const hasAir = current.playerStamina >= cost;
       const nextStamina = hasAir ? Math.max(0, current.playerStamina - cost) : 0;
-      const distance = Math.abs(current.playerLane - current.rivalLane);
       const hitLanded = hasAir && distance <= (kind === "empujon" ? 0.42 : 0.34);
+      const interruptedWindup = hitLanded && current.rivalIntent === "windup";
+      const punishedVulnerable = hitLanded && current.vulnerable;
       const rivalCounter = hitLanded && (kind === "empujon" ? nextToken % 4 === 0 : nextToken % 3 === 0);
       const whiffPunish = !hitLanded && distance <= 0.48 && nextToken % 2 === 0;
-      const playerGain = hitLanded ? (kind === "empujon" ? 2 : 1) : 0;
-      const rivalGain = rivalCounter ? 2 : whiffPunish ? 1 : 0;
+      const playerGain = hitLanded ? (kind === "empujon" ? 2 : 1) + (interruptedWindup ? 1 : 0) + (punishedVulnerable ? 2 : 0) : 0;
+      const rivalGain = rivalCounter && !interruptedWindup && !punishedVulnerable ? 2 : whiffPunish ? 1 : 0;
       const nextPlayer = Math.min(5, current.player + playerGain);
       const nextRival = Math.min(5, current.rival + rivalGain);
       const playerWon = nextPlayer >= 5 && nextPlayer > nextRival;
@@ -260,12 +359,21 @@ export default function App() {
         rivalLane: nextRivalLane,
         playerStamina: nextStamina,
         rivalStamina: Math.min(3, current.rivalStamina + (whiffPunish ? -1 : 0.35)),
+        playerGuard: 0,
+        rivalIntent: "neutral",
+        rivalAttack: "none",
+        rivalTargetLane: current.rivalTargetLane,
+        vulnerable: false,
         resolved: playerWon || rivalWon,
         lastMove: playerWon
           ? "Ganaste el cruce. La mesa acepta tu versión aunque nadie entendió nada."
           : rivalWon
             ? "Te sacaron del eje. La mesa se ríe y pide revancha."
-            : rivalCounter
+          : punishedVulnerable
+            ? `Castigaste la ventana. La mesa quedó con cara de reglamento trucho. ${staminaRead}.`
+          : interruptedWindup
+            ? `Lo cortaste cuando venía cargando. Punto doble de orgullo. ${staminaRead}.`
+          : rivalCounter
           ? "Te contestaron con hombro. El conflicto sigue vivo."
           : !hasAir
             ? `Te quedaste sin aire y tiraste un manotazo triste. ${staminaRead}.`
@@ -306,6 +414,64 @@ export default function App() {
         const distance = Math.abs(current.playerLane - current.rivalLane);
         const directionToPlayer = Math.sign(current.playerLane - current.rivalLane || 1);
 
+        if (current.vulnerable) {
+          return {
+            ...current,
+            kind: "rival-reset",
+            token: nextToken,
+            rivalStamina: Math.min(3, current.rivalStamina + 0.55),
+            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
+            vulnerable: false,
+            rivalIntent: "neutral",
+            rivalAttack: "none",
+            lastMove: "La mesa recompone postura. Perdiste la ventana para castigar gratis."
+          };
+        }
+
+        if (current.rivalIntent === "windup") {
+          const guarded = (current.playerGuard ?? 0) > 0.25;
+          const inLine = isInAttackLine(current.playerLane, current.rivalTargetLane);
+          const isBarrida = current.rivalAttack === "barrida";
+          const dodged = !inLine;
+          const blocked = inLine && guarded && !isBarrida;
+          const guardBroken = inLine && guarded && isBarrida;
+          const cleanHit = inLine && !guarded;
+          const playerGain = dodged ? (isBarrida ? 2 : 1) : blocked ? 1 : 0;
+          const rivalGain = guardBroken ? 2 : cleanHit ? (isBarrida ? 2 : 1) : 0;
+          const nextRival = Math.min(5, current.rival + rivalGain);
+          const nextPlayer = Math.min(5, current.player + playerGain);
+          const rivalWon = nextRival >= 5 && nextRival >= nextPlayer;
+          const playerWon = nextPlayer >= 5 && nextPlayer > nextRival;
+          const nextPlayerLane = clamp(current.playerLane - directionToPlayer * 0.08, -0.72, 0.72);
+          const actionKind = dodged ? "rival-whiff" : guardBroken ? "rival-guardbreak" : "rival";
+
+          return {
+            ...current,
+            kind: actionKind,
+            token: nextToken,
+            playerLane: nextPlayerLane,
+            player: nextPlayer,
+            rival: nextRival,
+            rivalStamina: Math.max(0, current.rivalStamina - 1),
+            playerGuard: 0,
+            rivalIntent: "neutral",
+            rivalAttack: "none",
+            vulnerable: (dodged || blocked) && !playerWon && !rivalWon,
+            resolved: rivalWon || playerWon,
+            lastMove: playerWon
+              ? "Lo esperaste y se regaló. Tu versión gana por contragolpe."
+              : rivalWon
+                ? "La mesa te sacó del ring discursivo. Perdiste el conflicto, no necesariamente la dignidad."
+              : dodged
+                ? `Esquivaste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. La mesa quedó pagando: castigá ya con J/K.`
+              : guardBroken
+                ? "Te cubriste arriba y te barrieron abajo. La mesa roba dos puntos de discusión."
+              : guarded
+                ? "Bloqueaste el hombro y lo hiciste quedar pagando. Castigá ya con J/K."
+                : `Te comiste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Movete o contestá. ${getRingRead(Math.abs(nextPlayerLane - current.rivalLane), current.playerStamina)}.`
+          };
+        }
+
         if (distance > 0.36) {
           const nextRivalLane = clamp(current.rivalLane + directionToPlayer * 0.14, -0.72, 0.72);
 
@@ -315,6 +481,10 @@ export default function App() {
             token: nextToken,
             rivalLane: nextRivalLane,
             rivalStamina: Math.min(3, current.rivalStamina + 0.35),
+            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
+            rivalIntent: "neutral",
+            rivalAttack: "none",
+            vulnerable: false,
             lastMove: `La mesa te busca el cuerpo. ${getRingRead(Math.abs(current.playerLane - nextRivalLane), current.playerStamina)}.`
           };
         }
@@ -325,28 +495,33 @@ export default function App() {
             kind: "rival-breathe",
             token: nextToken,
             rivalStamina: Math.min(3, current.rivalStamina + 0.8),
+            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.25),
+            rivalIntent: "neutral",
+            rivalAttack: "none",
             lastMove: "La mesa afloja medio paso y recupera aire. Es tu ventana."
           };
         }
 
-        const nextRival = Math.min(5, current.rival + 1);
-        const rivalWon = nextRival >= 5 && nextRival >= current.player;
-        const nextPlayerLane = clamp(current.playerLane - directionToPlayer * 0.08, -0.72, 0.72);
+        if (current.rivalIntent !== "windup") {
+          const rivalAttack = pickRivalAttack(nextToken + current.rival + current.player);
 
-        return {
-          ...current,
-          kind: "rival",
-          token: nextToken,
-          playerLane: nextPlayerLane,
-          rival: nextRival,
-          rivalStamina: Math.max(0, current.rivalStamina - 1),
-          resolved: rivalWon,
-          lastMove: rivalWon
-            ? "La mesa te sacó del ring discursivo. Perdiste el conflicto, no necesariamente la dignidad."
-            : `Te apuraron con hombro. Movete o contestá. ${getRingRead(Math.abs(nextPlayerLane - current.rivalLane), current.playerStamina)}.`
-        };
+          return {
+            ...current,
+            kind: "rival-windup",
+            token: nextToken,
+            rivalIntent: "windup",
+            rivalAttack,
+            rivalTargetLane: current.playerLane,
+            rivalStamina: Math.min(3, current.rivalStamina + 0.25),
+            lastMove: rivalAttack === "barrida"
+              ? "La mesa amagó arriba y va bajo. Salí de la línea con A/D; la guardia no salva."
+              : "La mesa baja el hombro y carga de frente. Cubrite con L o cortala con J/K."
+          };
+        }
+
+        return current;
       });
-    }, 1150);
+    }, 980);
 
     return () => window.clearInterval(debateAiTimerRef.current);
   }, [cameraView]);
@@ -354,14 +529,21 @@ export default function App() {
   const moveDebatePlayer = useCallback((direction) => {
     setDebateState((current) => {
       if (current.resolved || current.mode === "ruleta") return current;
+      const nextLane = clamp(current.playerLane + direction * 0.18, -0.72, 0.72);
+      const escapedLine = current.rivalIntent === "windup" && !isInAttackLine(nextLane, current.rivalTargetLane);
 
       return {
         ...current,
         kind: "move",
         token: current.token + 1,
-        playerLane: clamp(current.playerLane + direction * 0.18, -0.72, 0.72),
+        playerLane: nextLane,
         playerStamina: Math.min(3, current.playerStamina + 0.55),
-        lastMove: direction < 0 ? "Te corrés a la izquierda y recuperás aire." : "Te corrés a la derecha y recuperás aire."
+        playerGuard: 0,
+        lastMove: escapedLine
+          ? `Saliste de la línea de ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Si la mesa falla, castigá con J/K.`
+          : direction < 0
+            ? "Te corrés a la izquierda y recuperás aire."
+            : "Te corrés a la derecha y recuperás aire."
       };
     });
   }, []);
@@ -419,6 +601,11 @@ export default function App() {
         if (key === "k") {
           event.preventDefault();
           triggerDebateAction("empujon");
+          return;
+        }
+        if (key === "l") {
+          event.preventDefault();
+          triggerDebateAction("guardia");
         }
       }
     };
@@ -440,7 +627,7 @@ export default function App() {
               outputColorSpace: SRGBColorSpace,
               powerPreference: "high-performance",
               toneMapping: ACESFilmicToneMapping,
-              toneMappingExposure: 1.22
+              toneMappingExposure: 1.12
             }}
           >
             <color attach="background" args={["#060403"]} />
@@ -452,14 +639,17 @@ export default function App() {
               selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
               performanceMode={performanceProfile.mode}
               walkHotspot={walkHotspot}
+              walkTouchInput={walkTouchInput}
               onWalkHotspotChange={setWalkHotspot}
               onWalkInteract={handleWalkInteract}
+              onWalkAnimationDebugChange={setWalkAnimationDebug}
             />
             {performanceProfile.postprocessing ? (
               <EffectComposer multisampling={0}>
-                <Bloom intensity={0.11} luminanceThreshold={0.82} luminanceSmoothing={0.45} mipmapBlur />
-                <Vignette offset={0.18} darkness={0.31} eskil={false} />
-                <Noise opacity={0.012} blendFunction={BlendFunction.SOFT_LIGHT} />
+                {/* [VISUAL] Subtle grade: less bloom, stronger vignette, cleaner nocturnal focus. */}
+                <Bloom intensity={0.075} luminanceThreshold={0.9} luminanceSmoothing={0.5} mipmapBlur />
+                <Vignette offset={0.16} darkness={0.38} eskil={false} />
+                <Noise opacity={0.008} blendFunction={BlendFunction.SOFT_LIGHT} />
               </EffectComposer>
             ) : null}
           </Canvas>
@@ -483,34 +673,135 @@ export default function App() {
           </div>
 
           {cameraView === "walk" && !isSeatingRitual ? (
-            <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
-              <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Puerta" : "Caminar"}</span>
-              <strong>
-                {walkHotspot === "table"
-                  ? "F · Sentarse en mesa"
-                  : walkHotspot === "door"
-                    ? "F · Volver a puerta"
-                    : walkHotspot === "bar"
-                      ? "F · Mirar barra"
-                      : walkHotspot === "ring"
-                        ? "F · Entrar a pelear"
-                      : "WASD / Flechas"}
-              </strong>
-              <small>
-                {walkNotice ||
-                  (walkHotspot === "table"
-                    ? match.phase === "role-select"
-                      ? "Confirmás rol y se reparten cartas"
-                      : "Entrás al duelo desde tu silla"
+            <>
+              <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
+                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Puerta" : "Caminar"}</span>
+                <strong>
+                  {walkHotspot === "table"
+                    ? "F · Sentarse en mesa"
                     : walkHotspot === "door"
-                      ? "Salís a la vista de entrada"
+                      ? "F · Volver a puerta"
                       : walkHotspot === "bar"
-                        ? "Lugar reservado para props y acciones"
-                      : walkHotspot === "ring"
-                        ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
-                        : "Q/E rotan cámara · Shift corre · J/Espacio box · 2 vuelve a mesa")}
-              </small>
-            </div>
+                        ? "F · Mirar barra"
+                        : walkHotspot === "ring"
+                          ? "F · Entrar a pelear"
+                        : "WASD / Flechas"}
+                </strong>
+                <span className="walk-hint-character">
+                  {match.selectedCharacter?.name ?? match.activeLane.human.name}
+                </span>
+                {walkAnimationDebug?.clip ? (
+                  <span className={walkAnimationDebug.override ? "walk-hint-clip walk-hint-clip-override" : "walk-hint-clip"}>
+                    {walkAnimationDebug.mode} · {walkAnimationDebug.clip}{walkAnimationDebug.override ? " · override" : ""}
+                  </span>
+                ) : null}
+                <small>
+                  {walkNotice ||
+                    (walkHotspot === "table"
+                      ? match.phase === "role-select"
+                        ? "Confirmás rol y se reparten cartas"
+                        : "Entrás al duelo desde tu silla"
+                      : walkHotspot === "door"
+                        ? "Salís a la vista de entrada"
+                        : walkHotspot === "bar"
+                          ? "Lugar reservado para props y acciones"
+                        : walkHotspot === "ring"
+                          ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
+                          : "Q/E rotan cámara · Shift corre · J/Espacio box · [/] calibran clip · 0 resetea · 2 vuelve a mesa")}
+                </small>
+              </div>
+
+              <div className="walk-touch-controls" aria-label="Controles tactiles para caminar">
+                <div className="walk-touch-pad" aria-label="Direccion">
+                  <button
+                    type="button"
+                    className="walk-touch-button walk-touch-up"
+                    aria-label="Avanzar"
+                    onPointerDown={() => setWalkTouchAxis("z", -1)}
+                    onPointerUp={() => resetWalkTouchAxis("z", -1)}
+                    onPointerCancel={() => resetWalkTouchAxis("z", -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button walk-touch-left"
+                    aria-label="Ir a la izquierda"
+                    onPointerDown={() => setWalkTouchAxis("x", -1)}
+                    onPointerUp={() => resetWalkTouchAxis("x", -1)}
+                    onPointerCancel={() => resetWalkTouchAxis("x", -1)}
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button walk-touch-right"
+                    aria-label="Ir a la derecha"
+                    onPointerDown={() => setWalkTouchAxis("x", 1)}
+                    onPointerUp={() => resetWalkTouchAxis("x", 1)}
+                    onPointerCancel={() => resetWalkTouchAxis("x", 1)}
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button walk-touch-down"
+                    aria-label="Retroceder"
+                    onPointerDown={() => setWalkTouchAxis("z", 1)}
+                    onPointerUp={() => resetWalkTouchAxis("z", 1)}
+                    onPointerCancel={() => resetWalkTouchAxis("z", 1)}
+                  >
+                    ↓
+                  </button>
+                </div>
+                <div className="walk-touch-actions" aria-label="Acciones">
+                  <button
+                    type="button"
+                    className="walk-touch-button"
+                    aria-label="Girar camara izquierda"
+                    onPointerDown={() => setWalkTouchAxis("rotate", -1)}
+                    onPointerUp={() => resetWalkTouchAxis("rotate", -1)}
+                    onPointerCancel={() => resetWalkTouchAxis("rotate", -1)}
+                  >
+                    Q
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button walk-touch-action"
+                    disabled={!walkHotspot}
+                    onClick={() => walkHotspot && handleWalkInteract(walkHotspot)}
+                  >
+                    F
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button"
+                    aria-label="Girar camara derecha"
+                    onPointerDown={() => setWalkTouchAxis("rotate", 1)}
+                    onPointerUp={() => resetWalkTouchAxis("rotate", 1)}
+                    onPointerCancel={() => resetWalkTouchAxis("rotate", 1)}
+                  >
+                    E
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button"
+                    onPointerDown={() => setWalkTouchSprint(true)}
+                    onPointerUp={() => setWalkTouchSprint(false)}
+                    onPointerCancel={() => setWalkTouchSprint(false)}
+                  >
+                    RUN
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button"
+                    onClick={triggerWalkTouchBox}
+                  >
+                    BOX
+                  </button>
+                </div>
+              </div>
+            </>
           ) : null}
 
           {cameraView === "ring" && !isSeatingRitual ? (
@@ -519,7 +810,8 @@ export default function App() {
                 <span>Conflicto</span>
                 <strong>{debateState.player} - {debateState.rival}</strong>
               </div>
-              <strong>{debateState.mode === "ruleta" ? "Ruleta de corchos" : "Sala de conflicto"}</strong>
+              <strong>{getDebateTitle(debateState)}</strong>
+              <em>{getDebateGoal(debateState)}</em>
               <p>{debateState.lastMove}</p>
               <div className="debate-meter-stack" aria-hidden="true">
                 <div className="debate-meter-row">
@@ -545,19 +837,41 @@ export default function App() {
                 ) : (
                   <>
                     <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
+                    <span>{debateState.playerGuard > 0 ? "guardia arriba" : "guardia baja"}</span>
+                    {debateState.rivalIntent === "windup" ? (
+                      <span>{getRivalAttackName(debateState.rivalAttack)} viene</span>
+                    ) : null}
+                    {debateState.vulnerable ? <span>mesa vulnerable</span> : null}
                     <span>{getRingRead(Math.abs(debateState.playerLane - debateState.rivalLane), debateState.playerStamina)}</span>
                   </>
                 )}
               </div>
-              <small>
-                {debateState.mode === "ruleta"
-                  ? debateState.resolved
-                    ? "J: otra botella · G: ring · Esc: volver"
-                    : "J/espacio: apretar · G: ring · Esc: volver"
-                  : debateState.resolved
-                    ? "J / K: revancha · R: ruleta · Esc: volver"
-                    : "A/D: moverte · J: piña · K: empujón · R: ruleta · Esc: volver"}
-              </small>
+              <div className="debate-actions" aria-label="Acciones de conflicto">
+                {debateState.mode === "ruleta" ? (
+                  <>
+                    <button type="button" onClick={() => triggerDebateAction("gatillo")} disabled={!debateState.resolved && debateState.turn !== "player"}>
+                      {debateState.resolved ? "Otra botella" : "Apretar"}
+                    </button>
+                    <button type="button" onClick={() => switchDebateMode("ring")}>Ring</button>
+                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
+                  </>
+                ) : debateState.resolved ? (
+                  <>
+                    <button type="button" onClick={() => triggerDebateAction("golpe")}>Revancha</button>
+                    <button type="button" onClick={() => switchDebateMode("ruleta")}>Ruleta</button>
+                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => triggerDebateAction("golpe")}>Piña</button>
+                    <button type="button" onClick={() => moveDebatePlayer(-1)}>← Esquive</button>
+                    <button type="button" onClick={() => moveDebatePlayer(1)}>Esquive →</button>
+                    <button type="button" onClick={() => triggerDebateAction("guardia")}>Guardia</button>
+                    <button type="button" onClick={() => triggerDebateAction("empujon")}>Empujón</button>
+                  </>
+                )}
+              </div>
+              <small>{debateState.mode === "ruleta" ? "J/espacio: apretar · G: ring · Esc: volver" : "A/D: esquivar · J: piña · K: empujón · L: guardia · R: ruleta · Esc: volver"}</small>
             </div>
           ) : null}
 
