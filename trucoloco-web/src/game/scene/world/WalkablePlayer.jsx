@@ -192,8 +192,10 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const actionUntilRef = useRef(0);
   const animationNamesRef = useRef([]);
   const clipOverridesRef = useRef({});
-  const virtualInputRef = useRef({ x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 });
+  const virtualInputRef = useRef({ x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 });
   const lastBoxTokenRef = useRef(0);
+  const lastJumpTokenRef = useRef(0);
+  const actionModeRef = useRef("box");
   const [motionMode, setMotionMode] = useState("idle");
   const [clipOverrides, setClipOverrides] = useState({});
   const [animationNames, setAnimationNames] = useState([]);
@@ -222,7 +224,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   }, [animationNames, character, clipOverrides, enabled, motionMode, onAnimationDebugChange]);
 
   useEffect(() => {
-    virtualInputRef.current = virtualInput ?? { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 };
+    virtualInputRef.current = virtualInput ?? { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 };
   }, [virtualInput]);
 
   useEffect(() => {
@@ -243,11 +245,21 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
         return;
       }
 
-      if (key === "j" || key === " " || event.code === "Space") {
+      if (key === "j") {
         event.preventDefault();
         actionUntilRef.current = timeRef.current + 0.85;
+        actionModeRef.current = "box";
         motionModeRef.current = "box";
         setMotionMode("box");
+        return;
+      }
+
+      if (key === " " || event.code === "Space") {
+        event.preventDefault();
+        actionUntilRef.current = timeRef.current + 0.72;
+        actionModeRef.current = "jump";
+        motionModeRef.current = "jump";
+        setMotionMode("jump");
         return;
       }
 
@@ -317,8 +329,16 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     if (virtual.boxToken && virtual.boxToken !== lastBoxTokenRef.current) {
       lastBoxTokenRef.current = virtual.boxToken;
       actionUntilRef.current = timeRef.current + 0.85;
+      actionModeRef.current = "box";
       motionModeRef.current = "box";
       setMotionMode("box");
+    }
+    if (virtual.jumpToken && virtual.jumpToken !== lastJumpTokenRef.current) {
+      lastJumpTokenRef.current = virtual.jumpToken;
+      actionUntilRef.current = timeRef.current + 0.72;
+      actionModeRef.current = "jump";
+      motionModeRef.current = "jump";
+      setMotionMode("jump");
     }
 
     const inputX = clamp(
@@ -335,7 +355,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     const sprinting = keys.has("shift") || Boolean(virtual.sprint);
     const speed = sprinting ? RUN_SPEED : WALK_SPEED;
     const nextMotionMode = timeRef.current < actionUntilRef.current
-      ? "box"
+      ? actionModeRef.current
       : moving
         ? sprinting ? "run" : "walk"
         : "idle";

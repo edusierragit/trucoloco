@@ -457,8 +457,8 @@ function DebateFighter({ side, action, character }) {
   const lane = isPlayer ? action?.playerLane ?? -0.18 : action?.rivalLane ?? 0.18;
   const skin = character?.skinId ? characterSkins[character.skinId] : null;
   const hasModelFighter = Boolean(skin?.modelSrc && skin?.animationClipMap?.box);
-  const playerWon = action?.resolved && (action?.player ?? 0) > (action?.rival ?? 0);
-  const rivalWon = action?.resolved && (action?.rival ?? 0) >= (action?.player ?? 0);
+  const playerWon = action?.resolved && (action?.rivalHealth ?? 100) <= 0;
+  const rivalWon = action?.resolved && (action?.playerHealth ?? 100) <= 0;
   const hasFallen = isPlayer ? rivalWon : playerWon;
   const isActive = isPlayer
     ? action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate"
@@ -627,10 +627,12 @@ function CorkRevolverStation({ side, active, trigger = 0, popped }) {
 function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = [0, 0, 0], rotation = [0, 0, 0] }) {
   const isResolved = debateAction?.resolved;
   const isRoulette = debateAction?.mode === "ruleta";
+  const playerHealth = clamp(debateAction?.playerHealth ?? 100, 0, 100);
+  const rivalHealth = clamp(debateAction?.rivalHealth ?? 100, 0, 100);
   const ringVerdict = isResolved
-    ? (debateAction?.player ?? 0) > (debateAction?.rival ?? 0)
-      ? "GANA TU VERSION"
-      : "GANA LA MESA"
+    ? rivalHealth <= 0
+      ? "KO · GANASTE"
+      : "KO · TE SACARON"
     : isRoulette
       ? debateAction?.turn === "player"
         ? "TE TOCA APRETAR"
@@ -657,6 +659,31 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
     <group name="Debate_Ring" position={position} rotation={rotation}>
       <pointLight name="DebateRing_RedFill" position={[-0.82, 1.45, 0.18]} intensity={5.8} color="#c54c32" />
       <pointLight name="DebateRing_TealFill" position={[0.82, 1.32, -0.12]} intensity={4.8} color="#45c7bd" />
+
+      {!isRoulette ? (
+        <group name="Debate_HealthBars" position={[0, 1.18, 0.98]}>
+          {[
+            { x: -0.58, label: "VOS", value: playerHealth, color: "#63d5c5" },
+            { x: 0.58, label: "MESA", value: rivalHealth, color: "#e06b4a" }
+          ].map((bar) => {
+            const width = 0.92 * (bar.value / 100);
+
+            return (
+              <group key={bar.label} position={[bar.x, 0, 0]}>
+                <Text position={[0, 0.08, 0]} fontSize={0.055} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.12}>
+                  {bar.label}
+                </Text>
+                <RoundedBox args={[0.98, 0.045, 0.055]} radius={0.015} position={[0, 0, 0]}>
+                  <meshStandardMaterial color="#140d0a" roughness={0.62} metalness={0.08} />
+                </RoundedBox>
+                <RoundedBox args={[Math.max(0.025, width), 0.05, 0.065]} radius={0.014} position={[-(0.92 - width) / 2, 0.005, 0]}>
+                  <meshStandardMaterial color={bar.color} emissive={bar.color} emissiveIntensity={0.24} roughness={0.48} />
+                </RoundedBox>
+              </group>
+            );
+          })}
+        </group>
+      ) : null}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.022, 0]}>
         <ringGeometry args={[0.88, 1.12, 72]} />

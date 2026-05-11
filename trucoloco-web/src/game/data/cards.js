@@ -1,3 +1,4 @@
+const CARD_ASSET_VERSION = "real-deck-3";
 const CARD_BACK_IMAGE = "/assets/cards/backs/truco-back.svg";
 
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({
@@ -9,7 +10,7 @@ const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", grou
   lane,
   flavor,
   group,
-  image: group === "truco" ? `/assets/cards/fronts/${id}.svg` : null,
+  image: group === "truco" ? `/assets/cards/fronts/${id}.svg?v=${CARD_ASSET_VERSION}` : null,
   backImage: CARD_BACK_IMAGE
 });
 

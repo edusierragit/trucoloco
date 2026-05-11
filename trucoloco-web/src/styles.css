@@ -3083,7 +3083,6 @@ select {
 
 .card-button:not(:disabled) {
   cursor: pointer;
-  animation: card-ready 1900ms ease-in-out infinite;
   box-shadow:
     0 30px 62px rgba(0, 0, 0, 0.58),
     0 0 0 1px color-mix(in srgb, var(--card-accent) 28%, transparent),

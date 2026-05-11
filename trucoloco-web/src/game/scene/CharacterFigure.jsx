@@ -120,7 +120,7 @@ function CharacterModelAsset({
 
     const hasMappedMode = Object.prototype.hasOwnProperty.call(animationClipMap, animationMode);
     const mappedName = hasMappedMode ? animationClipMap[animationMode] : animationMode === "run" ? animationClipMap.walk : null;
-    if (typeof mappedName === "string" && actions[mappedName]) return mappedName;
+    if (hasMappedMode) return typeof mappedName === "string" && actions[mappedName] ? mappedName : null;
 
     if (animationMode === "idle") return null;
 
@@ -130,7 +130,9 @@ function CharacterModelAsset({
         ? ["walk", "walking"]
         : animationMode === "box"
           ? ["box", "fight", "punch"]
-        : ["idle", "stand", "breath"];
+          : animationMode === "jump"
+            ? ["jump", "leap", "hop"]
+            : ["idle", "stand", "breath"];
     const matched = names.find((name) => modeWords.some((word) => name.toLowerCase().includes(word)));
 
     return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);

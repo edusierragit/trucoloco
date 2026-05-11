@@ -13,7 +13,8 @@ export const characterSkins = {
       idle: null,
       walk: "NlaTrack.003",
       run: "NlaTrack.001",
-      box: "NlaTrack.002"
+      box: "NlaTrack.002",
+      jump: null
     },
     animationTimeScaleMap: {
       walk: 0.72,
@@ -35,7 +36,8 @@ export const characterSkins = {
       idle: null,
       walk: "NlaTrack.001",
       run: "NlaTrack.007",
-      box: "NlaTrack.002"
+      box: "NlaTrack.002",
+      jump: null
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -67,7 +69,8 @@ export const characterSkins = {
       idle: null,
       walk: "NlaTrack.004",
       run: "NlaTrack.001",
-      box: "NlaTrack.002"
+      box: "NlaTrack.002",
+      jump: null
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -89,8 +92,26 @@ export const characterSkins = {
     chairBackColor: "#1f1410"
   },
   "gazpacho-star-skin": {
-    modelKind: "gazpacho",
+    modelSrc: "/assets/characters/gazpacho.glb",
+    modelScale: 1,
+    modelPosition: [0, 0.02, 0],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.74,
     modelPromptKey: "gazpacho",
+    walkFacingOffset: -Math.PI / 2,
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack",
+      run: "NlaTrack.005",
+      box: "NlaTrack.001",
+      jump: "NlaTrack.004"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1,
+      jump: 1
+    },
     outfitColor: "#493228",
     shirtColor: "#5c554e",
     skinColor: "#b57a56",
