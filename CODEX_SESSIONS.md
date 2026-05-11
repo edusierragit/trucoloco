@@ -90,6 +90,7 @@ Cambios:
   - Cambia `animationMode` a `idle`, `walk` o `run` segun input/Shift.
   - `J` dispara animacion extra `box` por ~0.85s.
   - `Espacio` dispara `jump`: siempre aplica salto fisico y, si hay clip GLB, lo reproduce encima.
+  - Calibracion localStorage subida a `trucoloco:tripo-animation-overrides:v2` por reemplazo de GLB.
   - El cuerpo rota hacia el vector real de movimiento; caminar hacia atras ahora gira el personaje.
   - Velocidades actuales de locomocion: walk `1.28`, run `2.48`.
   - Overrides manuales de clips se guardan por personaje en `localStorage` (`trucoloco:tripo-animation-overrides:v1`).
@@ -103,10 +104,11 @@ Cambios:
   - `idle` queda en `null` para evitar piñas/carreras estando quieto.
   - `walkFacingOffset` centraliza el frente del GLB para locomocion.
   - Mapping observado actual:
-    - Irvyn: `walk=NlaTrack.003`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.72`.
-    - Marvyn: `walk=NlaTrack.001`, `run=NlaTrack.007`, `box=NlaTrack.002`, `walk timeScale=0.76`.
-    - Pol: `walk=NlaTrack.004`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.76`.
-    - Gazpacho: `walk=NlaTrack`, `run=NlaTrack.005`, `box=NlaTrack.001`, `jump=NlaTrack.004`.
+    - Irvyn nuevo: `walk=NlaTrack.004`, `run=NlaTrack.001`, `box=NlaTrack.002`, `jump=NlaTrack`, `walk timeScale=0.72`.
+    - Marvyn nuevo: `walk=NlaTrack.004`, `run=NlaTrack.001`, `box=NlaTrack.002`, `jump=NlaTrack`, `walk timeScale=0.76`.
+    - Pol nuevo: `walk=NlaTrack.003`, `run=NlaTrack.001`, `box=NlaTrack.004`, `jump=NlaTrack.002`, `walk timeScale=0.76`.
+    - Gazpacho nuevo: `walk=NlaTrack.001`, `run=NlaTrack.003`, `box=NlaTrack`, `jump=NlaTrack.005`.
+    - Myke Keta nuevo: `walk=NlaTrack.002`, `run=NlaTrack.005`, `box=NlaTrack`, `jump=NlaTrack.004`.
   - En modo caminar, `[` y `]` ciclan clips del modo activo para calibrar rapido si Tripo cambia el orden; `0` vuelve al mapping de codigo.
   - Nota Tripo: no confiar en nombres de animacion exportados; llegan como `NlaTrack*`. En estos assets, el clip con mas root displacement horizontal termino siendo walk; el loop corto/chico termino siendo run. Guardar mapping por asset/personaje despues de probar visualmente.
 - `trucoloco-web/src/game/scene/Table.jsx`
@@ -117,8 +119,9 @@ Cambios:
 - `trucoloco-web/src/styles.css`
   - Estilos del picker de personajes.
 - `trucoloco-web/public/assets/characters/`
-  - Copiados desde `C:\Users\eduar\GAMES\trucoloco-info`: `irvyn.glb`, `marvyn.glb`, `pol-arabe.glb`, `tablero.glb`.
-  - Copiado tambien `gazpacho.glb`.
+  - Copiados desde `C:\Users\eduar\GAMES\trucoloco-info`: `irvyn.glb`, `marvyn.glb`, `pol.glb`, `gazpacho.glb`, `myketa.glb`, `tablero.glb`.
+  - Eliminados del public assets no usados/duplicados: `cubano.glb`, `pol-arabe.glb`.
+  - Nota asset QA: al 2026-05-11 varios GLB nuevos NO estan en 512 real: `gazpacho.glb`, `pol.glb`, `tablero.glb` traen 4096; `marvyn.glb` trae una textura 4096 y dos 2048; `irvyn.glb`, `myketa.glb`, `pocho.glb` traen 2048.
   - Irvyn, Marvyn y Pol ahora apuntan a sus GLB reales.
 
 Validacion:
