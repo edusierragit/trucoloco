@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
+import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
@@ -22,6 +21,13 @@ const RING_START_STATE = {
   rival: 0,
   playerHealth: 100,
   rivalHealth: 100,
+  lastDamageToPlayer: 0,
+  lastDamageToRival: 0,
+  hitStrength: 0,
+  playerCooldown: 0,
+  rivalCooldown: 0,
+  playerHitStun: 0,
+  rivalHitStun: 0,
   playerLane: -0.18,
   rivalLane: 0.18,
   playerStamina: 3,
@@ -130,12 +136,12 @@ function getDebateGoal(state) {
 }
 
 function createEmptyWalkTouchInput() {
-  return { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0 };
+  return { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 };
 }
 
 function getInitialPerformanceProfile() {
   if (typeof window === "undefined") {
-    return { mode: "high", dpr: [0.9, 1.35], antialias: true, shadows: true, postprocessing: true };
+    return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
   }
 
   const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
@@ -146,7 +152,7 @@ function getInitialPerformanceProfile() {
 
   return lowPower
     ? { mode: "low", dpr: [0.65, 1], antialias: false, shadows: false, postprocessing: false }
-    : { mode: "high", dpr: [0.9, 1.35], antialias: true, shadows: true, postprocessing: true };
+    : { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
 }
 
 function resolveCorkRoulettePull(current) {
@@ -239,7 +245,11 @@ export default function App() {
     setIsSeatingRitual(false);
     setWalkHotspot(null);
     setWalkNotice("");
-    setWalkTouchInput((current) => ({ ...createEmptyWalkTouchInput(), boxToken: current.boxToken }));
+    setWalkTouchInput((current) => ({
+      ...createEmptyWalkTouchInput(),
+      boxToken: current.boxToken,
+      jumpToken: current.jumpToken
+    }));
     setCameraView(viewId);
   }, []);
 
@@ -268,6 +278,13 @@ export default function App() {
     setWalkTouchInput((current) => ({
       ...current,
       boxToken: current.boxToken + 1
+    }));
+  }, []);
+
+  const triggerWalkTouchJump = useCallback(() => {
+    setWalkTouchInput((current) => ({
+      ...current,
+      jumpToken: current.jumpToken + 1
     }));
   }, []);
 
@@ -347,11 +364,28 @@ export default function App() {
       const nextToken = current.token + 1;
       const distance = Math.abs(current.playerLane - current.rivalLane);
 
+      if ((current.playerHitStun ?? 0) > 0) {
+        return {
+          ...current,
+          kind: "stun",
+          token: nextToken,
+          lastDamageToPlayer: 0,
+          lastDamageToRival: 0,
+          hitStrength: 0,
+          playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+          playerStamina: Math.min(3, current.playerStamina + 0.35),
+          lastMove: "Estas aturdido. Primero recupera postura; despues volves a pegar."
+        };
+      }
+
       if (kind === "guardia") {
         return {
           ...current,
           kind: "guardia",
           token: nextToken,
+          lastDamageToPlayer: 0,
+          lastDamageToRival: 0,
+          hitStrength: 0.18,
           playerGuard: 1,
           playerStamina: Math.min(3, current.playerStamina + 0.95),
           lastMove: current.rivalIntent === "windup"
@@ -365,20 +399,23 @@ export default function App() {
       const isRemate = kind === "remate";
       const remateReady = (current.vulnerable ?? false) && (current.crowdHeat ?? 0) >= 2;
       const cost = isRemate ? 2 : kind === "empujon" ? 2 : 1;
+      const stillRecovering = (current.playerCooldown ?? 0) > 0;
       const hasAir = current.playerStamina >= cost;
-      const nextStamina = hasAir ? Math.max(0, current.playerStamina - cost) : 0;
+      const nextStamina = !stillRecovering && hasAir ? Math.max(0, current.playerStamina - cost) : current.playerStamina;
+      const attemptCooldown = kind === "empujon" ? 2 : 1;
       const hitRange = isRemate ? 0.52 : kind === "empujon" ? 0.42 : 0.34;
-      const hitLanded = hasAir && distance <= hitRange && (!isRemate || remateReady);
+      const hitLanded = !stillRecovering && hasAir && distance <= hitRange && (!isRemate || remateReady);
       const interruptedWindup = hitLanded && current.rivalIntent === "windup";
       const punishedVulnerable = hitLanded && current.vulnerable;
-      const rivalCounter = hitLanded && (kind === "empujon" ? nextToken % 4 === 0 : nextToken % 3 === 0);
-      const whiffPunish = !hitLanded && distance <= 0.48 && nextToken % 2 === 0;
+      const rivalCounter = hitLanded && (current.rivalHitStun ?? 0) <= 0 && (kind === "empujon" ? nextToken % 4 === 0 : nextToken % 3 === 0);
+      const whiffPunish = !stillRecovering && !hitLanded && distance <= 0.48 && nextToken % 2 === 0;
       const playerDamage = hitLanded
         ? (isRemate ? 42 : kind === "empujon" ? 24 : 16) + (interruptedWindup ? 10 : 0) + (punishedVulnerable && !isRemate ? 14 : 0)
         : 0;
       const rivalDamage = rivalCounter && !interruptedWindup && !punishedVulnerable ? 24 : whiffPunish ? (isRemate ? 26 : 14) : 0;
       const nextRivalHealth = clamp((current.rivalHealth ?? 100) - playerDamage, 0, 100);
       const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
+      const hitStrength = clamp((playerDamage + rivalDamage) / 42, 0, 1);
       const nextPlayer = Math.min(5, Math.floor((100 - nextRivalHealth) / 20));
       const nextRival = Math.min(5, Math.floor((100 - nextPlayerHealth) / 20));
       const playerWon = nextRivalHealth <= 0;
@@ -397,10 +434,17 @@ export default function App() {
         rival: nextRival,
         playerHealth: nextPlayerHealth,
         rivalHealth: nextRivalHealth,
+        lastDamageToPlayer: rivalDamage,
+        lastDamageToRival: playerDamage,
+        hitStrength,
         playerLane: current.playerLane,
         rivalLane: nextRivalLane,
         playerStamina: nextStamina,
-        rivalStamina: Math.min(3, current.rivalStamina + (whiffPunish ? -1 : 0.35)),
+        rivalStamina: clamp(current.rivalStamina + (whiffPunish ? -1 : 0.35), 0, 3),
+        playerCooldown: stillRecovering ? Math.max(0, current.playerCooldown - 1) : attemptCooldown,
+        rivalCooldown: Math.max(0, current.rivalCooldown ?? 0),
+        playerHitStun: rivalDamage > 0 ? 1 : 0,
+        rivalHitStun: playerDamage >= 24 ? 1 : 0,
         playerGuard: 0,
         rivalIntent: "neutral",
         rivalAttack: "none",
@@ -419,6 +463,8 @@ export default function App() {
             ? `Lo cortaste cuando venía cargando. Punto doble de orgullo. ${staminaRead}.`
           : rivalCounter
           ? "Te contestaron con hombro. El conflicto sigue vivo."
+          : stillRecovering
+            ? "Estas recuperando el brazo. Medio segundo mas y volves a entrar."
           : !hasAir
             ? `Te quedaste sin aire y tiraste un manotazo triste. ${staminaRead}.`
           : !hitLanded
@@ -464,6 +510,13 @@ export default function App() {
             kind: "rival-reset",
             token: nextToken,
             rivalStamina: Math.min(3, current.rivalStamina + 0.55),
+            lastDamageToPlayer: 0,
+            lastDamageToRival: 0,
+            hitStrength: 0,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
             playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
             vulnerable: false,
             streak: Math.max(0, (current.streak ?? 0) - 1),
@@ -471,6 +524,24 @@ export default function App() {
             rivalIntent: "neutral",
             rivalAttack: "none",
             lastMove: "La mesa recompone postura. Perdiste la ventana para castigar gratis."
+          };
+        }
+
+        if ((current.rivalHitStun ?? 0) > 0) {
+          return {
+            ...current,
+            kind: "rival-stun",
+            token: nextToken,
+            lastDamageToPlayer: 0,
+            lastDamageToRival: 0,
+            hitStrength: 0,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
+            playerStamina: Math.min(3, current.playerStamina + 0.55),
+            rivalIntent: "neutral",
+            rivalAttack: "none",
+            lastMove: "La mesa quedo aturdida. Esa es la ventana buena para entrar."
           };
         }
 
@@ -486,6 +557,7 @@ export default function App() {
           const rivalDamage = guardBroken ? 30 : cleanHit ? (isBarrida ? 24 : 18) : 0;
           const nextRivalHealth = clamp((current.rivalHealth ?? 100) - counterDamage, 0, 100);
           const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
+          const hitStrength = clamp((counterDamage + rivalDamage) / 34, 0, 1);
           const nextPlayer = Math.min(5, Math.floor((100 - nextRivalHealth) / 20));
           const nextRival = Math.min(5, Math.floor((100 - nextPlayerHealth) / 20));
           const rivalWon = nextPlayerHealth <= 0;
@@ -503,6 +575,13 @@ export default function App() {
             rival: nextRival,
             playerHealth: nextPlayerHealth,
             rivalHealth: nextRivalHealth,
+            lastDamageToPlayer: rivalDamage,
+            lastDamageToRival: counterDamage,
+            hitStrength,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: rivalDamage > 0 ? 1 : 0,
+            playerHitStun: rivalDamage >= 18 ? 1 : 0,
+            rivalHitStun: counterDamage > 0 ? 1 : 0,
             rivalStamina: Math.max(0, current.rivalStamina - 1),
             playerGuard: 0,
             rivalIntent: "neutral",
@@ -533,6 +612,13 @@ export default function App() {
             kind: "rival-move",
             token: nextToken,
             rivalLane: nextRivalLane,
+            lastDamageToPlayer: 0,
+            lastDamageToRival: 0,
+            hitStrength: 0,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
             rivalStamina: Math.min(3, current.rivalStamina + 0.35),
             playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
             rivalIntent: "neutral",
@@ -548,6 +634,13 @@ export default function App() {
             kind: "rival-breathe",
             token: nextToken,
             rivalStamina: Math.min(3, current.rivalStamina + 0.8),
+            lastDamageToPlayer: 0,
+            lastDamageToRival: 0,
+            hitStrength: 0,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
             playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.25),
             rivalIntent: "neutral",
             rivalAttack: "none",
@@ -565,6 +658,13 @@ export default function App() {
             rivalIntent: "windup",
             rivalAttack,
             rivalTargetLane: current.playerLane,
+            lastDamageToPlayer: 0,
+            lastDamageToRival: 0,
+            hitStrength: 0,
+            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+            rivalCooldown: 1,
+            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
             rivalStamina: Math.min(3, current.rivalStamina + 0.25),
             lastMove: rivalAttack === "barrida"
               ? "La mesa amagó arriba y va bajo. Salí de la línea con A/D; la guardia no salva."
@@ -590,6 +690,13 @@ export default function App() {
         kind: "move",
         token: current.token + 1,
         playerLane: nextLane,
+        lastDamageToPlayer: 0,
+        lastDamageToRival: 0,
+        hitStrength: 0,
+        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+        rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+        playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+        rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
         playerStamina: Math.min(3, current.playerStamina + 0.55),
         playerGuard: 0,
         lastMove: escapedLine
@@ -700,9 +807,8 @@ export default function App() {
             {performanceProfile.postprocessing ? (
               <EffectComposer multisampling={0}>
                 {/* [VISUAL] Subtle grade: less bloom, stronger vignette, cleaner nocturnal focus. */}
-                <Bloom intensity={0.075} luminanceThreshold={0.9} luminanceSmoothing={0.5} mipmapBlur />
+                <Bloom intensity={0.06} luminanceThreshold={0.92} luminanceSmoothing={0.45} />
                 <Vignette offset={0.16} darkness={0.38} eskil={false} />
-                <Noise opacity={0.008} blendFunction={BlendFunction.SOFT_LIGHT} />
               </EffectComposer>
             ) : null}
           </Canvas>
@@ -760,7 +866,7 @@ export default function App() {
                           ? "Lugar reservado para props y acciones"
                         : walkHotspot === "ring"
                           ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
-                          : "Q/E rotan cámara · Shift corre · J/Espacio box · [/] calibran clip · 0 resetea · 2 vuelve a mesa")}
+                          : "Q/E rotan cámara · Shift corre · Espacio salta · J box · [/] calibran clip · 0 resetea")}
                 </small>
               </div>
 
@@ -848,6 +954,13 @@ export default function App() {
                   <button
                     type="button"
                     className="walk-touch-button"
+                    onClick={triggerWalkTouchJump}
+                  >
+                    JMP
+                  </button>
+                  <button
+                    type="button"
+                    className="walk-touch-button"
                     onClick={triggerWalkTouchBox}
                   >
                     BOX
@@ -893,8 +1006,13 @@ export default function App() {
                   </>
                 ) : (
                   <>
+                    <span>Vos {Math.round(debateState.playerHealth ?? 100)} HP</span>
+                    <span>Mesa {Math.round(debateState.rivalHealth ?? 100)} HP</span>
                     <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
                     <span>{debateState.playerGuard > 0 ? "guardia arriba" : "guardia baja"}</span>
+                    {(debateState.playerCooldown ?? 0) > 0 ? <span>recuperando brazo</span> : null}
+                    {(debateState.playerHitStun ?? 0) > 0 ? <span>aturdido</span> : null}
+                    {(debateState.rivalHitStun ?? 0) > 0 ? <span>mesa aturdida</span> : null}
                     {debateState.rivalIntent === "windup" ? (
                       <span>{getRivalAttackName(debateState.rivalAttack)} viene</span>
                     ) : null}
@@ -921,11 +1039,11 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => triggerDebateAction("golpe")}>Piña</button>
+                    <button type="button" onClick={() => triggerDebateAction("golpe")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Piña</button>
                     <button type="button" onClick={() => moveDebatePlayer(-1)}>← Esquive</button>
                     <button type="button" onClick={() => moveDebatePlayer(1)}>Esquive →</button>
                     <button type="button" onClick={() => triggerDebateAction("guardia")}>Guardia</button>
-                    <button type="button" onClick={() => triggerDebateAction("empujon")}>Empujón</button>
+                    <button type="button" onClick={() => triggerDebateAction("empujon")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Empujón</button>
                   </>
                 )}
               </div>

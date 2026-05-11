@@ -574,14 +574,14 @@ select {
   width: var(--debate-meter);
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #e06b4a, #f3dfb6);
-  box-shadow: 0 0 18px rgba(224, 107, 74, 0.42);
+  background: linear-gradient(90deg, #63d5c5, #f3dfb6);
+  box-shadow: 0 0 18px rgba(99, 213, 197, 0.32);
   transition: width 180ms ease;
 }
 
 .debate-meter-rival i {
-  background: linear-gradient(90deg, #63d5c5, #f3dfb6);
-  box-shadow: 0 0 18px rgba(99, 213, 197, 0.32);
+  background: linear-gradient(90deg, #e06b4a, #f3dfb6);
+  box-shadow: 0 0 18px rgba(224, 107, 74, 0.42);
 }
 
 .debate-readout {

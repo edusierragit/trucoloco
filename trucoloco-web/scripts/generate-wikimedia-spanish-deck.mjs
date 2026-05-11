@@ -22,9 +22,9 @@ const ranks = [
   ["cinco", "5", "5"],
   ["seis", "6", "6"],
   ["siete", "7", "7"],
-  ["sota", "jack", "10"],
-  ["caballo", "queen", "11"],
-  ["rey", "king", "12"]
+  ["sota", "10", "10"],
+  ["caballo", "jack", "11"],
+  ["rey", "queen", "12"]
 ];
 
 const suits = [
@@ -33,6 +33,13 @@ const suits = [
   ["espada", "spade", "Espada"],
   ["basto", "club", "Basto"]
 ];
+
+const fallbackSuits = {
+  oro: { label: "ORO", color: "#d6a329", dark: "#6e4311", code: "O" },
+  copa: { label: "COPA", color: "#b8342b", dark: "#5e1514", code: "C" },
+  espada: { label: "ESPADA", color: "#506a78", dark: "#172a35", code: "E" },
+  basto: { label: "BASTO", color: "#4f8b34", dark: "#1d3917", code: "B" }
+};
 
 const cardBody = {
   x: 0.5,
@@ -194,12 +201,70 @@ function extractElementById(id) {
 for (const [suitId, sourceSuit, suitLabel] of suits) {
   for (const [rankId, sourceRank, rankLabel] of ranks) {
     const sourceId = `${sourceRank}_${sourceSuit}`;
+    const isFigure = rankId === "sota" || rankId === "caballo" || rankId === "rey";
 
     writeFileSync(
       join(frontsDir, `${rankId}-${suitId}.svg`),
-      cardSvg({ sourceId, rankLabel, suitLabel })
+      isFigure
+        ? figureCardSvg({ rankId, rankLabel, suit: fallbackSuits[suitId] })
+        : cardSvg({ sourceId, rankLabel, suitLabel })
     );
   }
 }
 
 console.log("Generated self-contained Wikimedia Spanish deck front SVGs.");
+
+function figureCardSvg({ rankId, rankLabel, suit }) {
+  const title = rankId === "sota" ? "SOTA" : rankId === "caballo" ? "CABALLO" : "REY";
+  const crest = suitSymbol(suit, 1.28);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="644" viewBox="0 0 420 644" role="img" aria-label="${rankLabel} de ${suit.label}">
+  <defs>
+    <linearGradient id="paper" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="0.58" stop-color="#f4efe2"/>
+      <stop offset="1" stop-color="#e6ddc8"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#20140b" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect x="1" y="1" width="418" height="642" rx="30" fill="url(#paper)" stroke="#1b1713" stroke-width="2"/>
+  <rect x="28" y="28" width="364" height="588" fill="none" stroke="#1f1d19" stroke-width="2"/>
+  <path d="M80 28h54M194 28h54M308 28h54M80 616h54M194 616h54M308 616h54" stroke="#1f1d19" stroke-width="3" stroke-linecap="square"/>
+  ${corner(rankLabel, suit, 50, 70, 0)}
+  ${corner(rankLabel, suit, 370, 574, 180)}
+  <g filter="url(#softShadow)">
+    <rect x="116" y="124" width="188" height="356" rx="24" fill="#f8f1df" stroke="${suit.dark}" stroke-width="4"/>
+    <rect x="136" y="146" width="148" height="312" rx="16" fill="#ffffff" stroke="${suit.color}" stroke-width="3" opacity="0.84"/>
+    <g transform="translate(210 255)">
+      ${crest}
+    </g>
+    <path d="M149 358C166 326 254 326 271 358L286 431H134Z" fill="${suit.color}" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M165 385H255M171 414H249" stroke="#f7e5bd" stroke-width="5" stroke-linecap="round" opacity="0.66"/>
+    <text x="210" y="433" text-anchor="middle" font-family="Georgia, serif" font-size="58" font-weight="800" fill="#fff1cd" stroke="${suit.dark}" stroke-width="2">${rankLabel}</text>
+  </g>
+  <text x="210" y="538" text-anchor="middle" font-family="Georgia, serif" font-size="31" font-weight="800" fill="${suit.dark}" letter-spacing="4">${title}</text>
+  <text x="210" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="${suit.color}" letter-spacing="5">${suit.label}</text>
+</svg>
+`;
+}
+
+function corner(rankLabel, suit, x, y, rotation) {
+  return `<g transform="translate(${x} ${y}) rotate(${rotation})">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#111">${rankLabel}</text>
+    <text x="0" y="28" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="900" fill="${suit.color}">${suit.code}</text>
+  </g>`;
+}
+
+function suitSymbol(suit, scale = 1) {
+  const symbols = {
+    ORO: `<circle cx="0" cy="0" r="44" fill="#f3ca32" stroke="${suit.dark}" stroke-width="6"/><circle cx="0" cy="0" r="24" fill="#ffe777" stroke="#8f5a12" stroke-width="3"/><path d="M-24 0H24M0-24V24" stroke="#8f5a12" stroke-width="5" stroke-linecap="round"/>`,
+    COPA: `<path d="M-38-42H38L29 18C24 50-24 50-29 18Z" fill="${suit.color}" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/><path d="M0 44V78M-30 78H30" stroke="${suit.dark}" stroke-width="8" stroke-linecap="round"/><path d="M-22-23H22L16 12C13 27-13 27-16 12Z" fill="#f0d4a6" opacity="0.38"/>`,
+    ESPADA: `<path d="M0-74C21-35 25-4 8 25L0 38L-8 25C-25-4-21-35 0-74Z" fill="#dbe2e2" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/><path d="M-36 36H36M0 38V82" stroke="${suit.color}" stroke-width="9" stroke-linecap="round"/><circle cx="0" cy="36" r="10" fill="${suit.dark}"/>`,
+    BASTO: `<g transform="rotate(-24)"><rect x="-17" y="-76" width="34" height="152" rx="16" fill="#75a51f" stroke="${suit.dark}" stroke-width="6"/><path d="M-10-50L10 54" stroke="#ffe45a" stroke-width="8" stroke-linecap="round"/><path d="M-17-34H17M-17 8H17M-17 48H17" stroke="#17300d" stroke-width="4" stroke-linecap="round" opacity="0.55"/></g>`
+  };
+
+  return `<g transform="scale(${scale})">${symbols[suit.label]}</g>`;
+}

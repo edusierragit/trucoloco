@@ -1,4 +1,4 @@
-const CARD_ASSET_VERSION = "real-deck-3";
+const CARD_ASSET_VERSION = "real-deck-4";
 const CARD_BACK_IMAGE = "/assets/cards/backs/truco-back.svg";
 
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({

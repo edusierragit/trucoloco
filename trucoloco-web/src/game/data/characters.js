@@ -11,15 +11,16 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.003",
+      walk: "NlaTrack.004",
       run: "NlaTrack.001",
       box: "NlaTrack.002",
-      jump: null
+      jump: "NlaTrack"
     },
     animationTimeScaleMap: {
       walk: 0.72,
       run: 0.98,
-      box: 1
+      box: 1,
+      jump: 1
     },
     chairSeatColor: "#241711",
     chairBackColor: "#1f1410"
@@ -34,15 +35,16 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.001",
-      run: "NlaTrack.007",
+      walk: "NlaTrack.004",
+      run: "NlaTrack.001",
       box: "NlaTrack.002",
-      jump: null
+      jump: "NlaTrack"
     },
     animationTimeScaleMap: {
       walk: 0.76,
       run: 0.98,
-      box: 1
+      box: 1,
+      jump: 1
     },
     chairSeatColor: "#20353a",
     chairBackColor: "#17272b"
@@ -58,7 +60,7 @@ export const characterSkins = {
     chairBackColor: "#1f1410"
   },
   "pol-cartachin-glb": {
-    modelSrc: "/assets/characters/pol-arabe.glb",
+    modelSrc: "/assets/characters/pol.glb",
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
@@ -67,15 +69,16 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.004",
+      walk: "NlaTrack.003",
       run: "NlaTrack.001",
-      box: "NlaTrack.002",
-      jump: null
+      box: "NlaTrack.004",
+      jump: "NlaTrack.002"
     },
     animationTimeScaleMap: {
       walk: 0.76,
       run: 0.98,
-      box: 1
+      box: 1,
+      jump: 1
     },
     chairSeatColor: "#172217",
     chairBackColor: "#121a12"
@@ -101,10 +104,10 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack",
-      run: "NlaTrack.005",
-      box: "NlaTrack.001",
-      jump: "NlaTrack.004"
+      walk: "NlaTrack.001",
+      run: "NlaTrack.003",
+      box: "NlaTrack",
+      jump: "NlaTrack.005"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -122,8 +125,26 @@ export const characterSkins = {
     chairBackColor: "#22120c"
   },
   "myke-keta-star-skin": {
-    modelKind: "gazpacho",
+    modelSrc: "/assets/characters/myketa.glb",
+    modelScale: 1,
+    modelPosition: [0, 0.02, 0],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.74,
     modelPromptKey: "myke-keta",
+    walkFacingOffset: -Math.PI / 2,
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.002",
+      run: "NlaTrack.005",
+      box: "NlaTrack",
+      jump: "NlaTrack.004"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1,
+      jump: 1
+    },
     outfitColor: "#242238",
     shirtColor: "#171622",
     skinColor: "#a96f4e",

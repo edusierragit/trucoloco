@@ -88,7 +88,8 @@ Cambios:
 - `trucoloco-web/src/game/scene/world/WalkablePlayer.jsx`
   - En modo `Caminar`, el avatar usa el personaje seleccionado.
   - Cambia `animationMode` a `idle`, `walk` o `run` segun input/Shift.
-  - `J` o `Espacio` dispara animacion extra `box` por ~0.85s.
+  - `J` dispara animacion extra `box` por ~0.85s.
+  - `Espacio` dispara `jump`: siempre aplica salto fisico y, si hay clip GLB, lo reproduce encima.
   - El cuerpo rota hacia el vector real de movimiento; caminar hacia atras ahora gira el personaje.
   - Velocidades actuales de locomocion: walk `1.28`, run `2.48`.
   - Overrides manuales de clips se guardan por personaje en `localStorage` (`trucoloco:tripo-animation-overrides:v1`).
@@ -97,6 +98,7 @@ Cambios:
   - El hint de `Caminar` muestra el modo/clip activo (`walk · NlaTrack.*`) y marca si viene de override.
 - `trucoloco-web/src/game/data/characters.js`
   - Mapeados clips genericos de Tripo (`NlaTrack*`) para `irvyn`, `marvyn`, `pol`.
+  - `Gazpacho` integrado con `gazpacho.glb`.
   - Mesa no reproduce animaciones por defecto; solo el jugador caminable usa clips.
   - `idle` queda en `null` para evitar piñas/carreras estando quieto.
   - `walkFacingOffset` centraliza el frente del GLB para locomocion.
@@ -104,6 +106,7 @@ Cambios:
     - Irvyn: `walk=NlaTrack.003`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.72`.
     - Marvyn: `walk=NlaTrack.001`, `run=NlaTrack.007`, `box=NlaTrack.002`, `walk timeScale=0.76`.
     - Pol: `walk=NlaTrack.004`, `run=NlaTrack.001`, `box=NlaTrack.002`, `walk timeScale=0.76`.
+    - Gazpacho: `walk=NlaTrack`, `run=NlaTrack.005`, `box=NlaTrack.001`, `jump=NlaTrack.004`.
   - En modo caminar, `[` y `]` ciclan clips del modo activo para calibrar rapido si Tripo cambia el orden; `0` vuelve al mapping de codigo.
   - Nota Tripo: no confiar en nombres de animacion exportados; llegan como `NlaTrack*`. En estos assets, el clip con mas root displacement horizontal termino siendo walk; el loop corto/chico termino siendo run. Guardar mapping por asset/personaje despues de probar visualmente.
 - `trucoloco-web/src/game/scene/Table.jsx`
@@ -115,6 +118,7 @@ Cambios:
   - Estilos del picker de personajes.
 - `trucoloco-web/public/assets/characters/`
   - Copiados desde `C:\Users\eduar\GAMES\trucoloco-info`: `irvyn.glb`, `marvyn.glb`, `pol-arabe.glb`, `tablero.glb`.
+  - Copiado tambien `gazpacho.glb`.
   - Irvyn, Marvyn y Pol ahora apuntan a sus GLB reales.
 
 Validacion:

@@ -130,7 +130,7 @@ function ModifierAmbientFX({ modId, handClosed, outcomeTone, lowPower = false })
         penumbra={0.76}
         color="#ffbd74"
         castShadow={!lowPower}
-        shadow-mapSize={lowPower ? [512, 512] : [1536, 1536]}
+        shadow-mapSize={lowPower ? [512, 512] : [1024, 1024]}
         shadow-bias={-0.00012}
       />
       <spotLight name="Card_Focus_Warm" position={[0, 3.35, 2.05]} intensity={42} angle={0.38} penumbra={0.9} color="#ffd39a" castShadow={false} />
@@ -338,7 +338,7 @@ function BarAtmosphere({ active, lowPower = false }) {
   const glowRef = useRef(null);
   const timeRef = useRef(0);
   const motes = useRef(
-    Array.from({ length: lowPower ? 8 : 28 }, (_, index) => ({
+    Array.from({ length: lowPower ? 8 : 18 }, (_, index) => ({
       x: -2.2 + ((index * 0.73) % 4.4),
       y: 0.55 + ((index * 0.37) % 1.65),
       z: -1.2 + ((index * 0.51) % 2.8),
@@ -370,7 +370,7 @@ function BarAtmosphere({ active, lowPower = false }) {
   return (
     <group name="Bar_Atmosphere">
       <mesh ref={glowRef} position={[0, -0.47, 0.04]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.72, 2.92, lowPower ? 40 : 96]} />
+        <ringGeometry args={[1.72, 2.92, lowPower ? 40 : 64]} />
         <meshBasicMaterial color="#d49a4f" transparent opacity={0.045} depthWrite={false} />
       </mesh>
       {motes.map((mote, index) => (
@@ -443,6 +443,37 @@ function DebateProceduralFighter({ bodyColor, accent, headRef, leftArmRef, right
   );
 }
 
+function FighterHealthBar({ side, health, damage, active }) {
+  const isPlayer = side === "player";
+  const fillColor = isPlayer ? "#63d5c5" : "#e06b4a";
+  const width = 0.48 * (clamp(health, 0, 100) / 100);
+  const lowHealth = health <= 32;
+
+  return (
+    <group name={`Debate_Fighter_HP_${side}`} position={[0, 1.08, 0.02]} rotation={[0, isPlayer ? -0.28 : 0.28, 0]}>
+      <Text position={[0, 0.11, 0]} fontSize={0.05} color={active ? "#f3dfb6" : "#caa875"} anchorX="center" anchorY="middle" letterSpacing={0.12}>
+        {isPlayer ? "VOS" : "MESA"} · {Math.round(health)} HP
+      </Text>
+      <RoundedBox args={[0.54, 0.045, 0.035]} radius={0.014} position={[0, 0.035, 0]}>
+        <meshStandardMaterial color="#100908" roughness={0.72} metalness={0.08} />
+      </RoundedBox>
+      <RoundedBox args={[Math.max(0.018, width), 0.052, 0.043]} radius={0.014} position={[-(0.48 - width) / 2, 0.038, 0.006]}>
+        <meshStandardMaterial
+          color={lowHealth ? "#f05b45" : fillColor}
+          emissive={lowHealth ? "#f05b45" : fillColor}
+          emissiveIntensity={lowHealth ? 0.48 : 0.28}
+          roughness={0.45}
+        />
+      </RoundedBox>
+      {damage > 0 ? (
+        <Text position={[0.02, 0.24, 0.02]} fontSize={0.085} color="#ffddb8" anchorX="center" anchorY="middle" letterSpacing={0.05}>
+          -{Math.round(damage)}
+        </Text>
+      ) : null}
+    </group>
+  );
+}
+
 function DebateFighter({ side, action, character }) {
   const groupRef = useRef(null);
   const headRef = useRef(null);
@@ -460,6 +491,8 @@ function DebateFighter({ side, action, character }) {
   const playerWon = action?.resolved && (action?.rivalHealth ?? 100) <= 0;
   const rivalWon = action?.resolved && (action?.playerHealth ?? 100) <= 0;
   const hasFallen = isPlayer ? rivalWon : playerWon;
+  const health = isPlayer ? action?.playerHealth ?? 100 : action?.rivalHealth ?? 100;
+  const damageTaken = isPlayer ? action?.lastDamageToPlayer ?? 0 : action?.lastDamageToRival ?? 0;
   const isActive = isPlayer
     ? action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate"
     : action?.kind === "rival" || action?.kind === "rival-windup";
@@ -482,12 +515,15 @@ function DebateFighter({ side, action, character }) {
     const rivalWindup = !isPlayer && action?.kind === "rival-windup" ? impact : 0;
     const vulnerable = !isPlayer && action?.vulnerable ? 1 : 0;
     const attack = ((isPlayer && playerAttack) || (!isPlayer && rivalAttack)) ? impact : 0;
-    const hitReaction = ((!isPlayer && playerAttack) || (isPlayer && rivalAttack)) ? impact : 0;
+    const hitReaction = damageTaken > 0 ? impact : 0;
     const shove = action?.kind === "empujon" ? impact : 0;
-    const recoil = isPlayer ? -(hitReaction * 0.2 + shove * 0.08) : -(hitReaction * 0.18 + shove * 0.16);
+    const damageRecoil = clamp(damageTaken / 34, 0, 1);
+    const recoil = isPlayer
+      ? -(hitReaction * (0.2 + damageRecoil * 0.22) + shove * 0.08)
+      : -(hitReaction * (0.18 + damageRecoil * 0.28) + shove * 0.16);
     const bob = Math.sin(t * 3.6 + (isPlayer ? 0 : 1.2)) * 0.018;
 
-    groupRef.current.position.x = baseX + (recoil - rivalWindup * 0.08 + vulnerable * 0.1 + (isPlayer && playerRemate ? impact * 0.16 : 0)) * direction;
+    groupRef.current.position.x = baseX + (recoil - rivalWindup * 0.08 + vulnerable * 0.1 + attack * 0.08 + (isPlayer && playerRemate ? impact * 0.16 : 0)) * direction;
     groupRef.current.position.y = hasFallen ? -0.22 : bob;
     groupRef.current.position.z += ((0.05 + lane * 0.58) - groupRef.current.position.z) * 0.18;
     groupRef.current.rotation.z = hasFallen ? direction * 1.18 : (attack * (playerRemate ? -0.54 : -0.28) + hitReaction * 0.36 + playerGuard * 0.18 + rivalWindup * -0.22 + vulnerable * 0.28) * direction;
@@ -515,6 +551,7 @@ function DebateFighter({ side, action, character }) {
       ) : (
         <DebateProceduralFighter bodyColor={bodyColor} accent={accent} headRef={headRef} leftArmRef={leftArmRef} rightArmRef={rightArmRef} />
       )}
+      <FighterHealthBar side={side} health={health} damage={damageTaken} active={isActive || action?.vulnerable} />
     </group>
   );
 }
@@ -523,6 +560,7 @@ function DebateImpactFX({ action }) {
   const groupRef = useRef(null);
   const lastTokenRef = useRef(action?.token ?? 0);
   const progressRef = useRef(1);
+  const hitStrength = clamp(action?.hitStrength ?? 0, 0, 1);
   const color = action?.kind === "remate"
     ? "#f3c172"
     : action?.kind === "empujon"
@@ -549,8 +587,8 @@ function DebateImpactFX({ action }) {
 
     progressRef.current = Math.min(1, progressRef.current + delta * 2.9);
     const t = progressRef.current;
-    const scale = action?.kind === "remate" ? 0.32 + t * 1.85 : 0.22 + t * 1.35;
-    const opacity = Math.max(0, 0.42 * (1 - t));
+    const scale = action?.kind === "remate" ? 0.32 + t * (1.85 + hitStrength * 0.85) : 0.22 + t * (1.35 + hitStrength * 0.7);
+    const opacity = Math.max(0, (0.34 + hitStrength * 0.34) * (1 - t));
 
     groupRef.current.scale.setScalar(scale);
     groupRef.current.children.forEach((child) => {
@@ -570,6 +608,12 @@ function DebateImpactFX({ action }) {
         <ringGeometry args={[0.12, 0.16, 28]} />
         <meshBasicMaterial color={action?.kind === "remate" ? "#f3c172" : "#e06b4a"} transparent opacity={0} depthWrite={false} />
       </mesh>
+      {hitStrength > 0 ? (
+        <mesh rotation={[0, 0, -Math.PI / 4]}>
+          <ringGeometry args={[0.05, 0.075, 18]} />
+          <meshBasicMaterial color="#ffddb8" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ) : null}
     </group>
   );
 }
@@ -1090,9 +1134,9 @@ function getCameraPose({ match, isNarrow, cameraView }) {
 
   if (cameraView === "ring") {
     return {
-      position: isNarrow ? [-7.45, 0.38, 2.1] : [-7.45, 0.18, 1.72],
-      target: [-7.45, -0.94, -0.06],
-      fov: isNarrow ? 45 : 41
+      position: isNarrow ? [-7.45, 0.7, 0.9] : [-7.45, 0.62, 0.74],
+      target: [-7.45, -0.9, -0.88],
+      fov: isNarrow ? 47 : 43
     };
   }
 
@@ -1142,7 +1186,7 @@ export function TrucolocoScene({
 
     if (cameraView === "ring" && debateAction?.token !== debateTokenRef.current) {
       debateTokenRef.current = debateAction?.token ?? 0;
-      ringShakeRef.current = debateAction?.kind === "empujon" ? 0.16 : debateAction?.kind === "golpe" ? 0.09 : 0;
+      ringShakeRef.current = (debateAction?.hitStrength ?? 0) * 0.16;
     }
 
     const cameraPose = getCameraPose({ match, isNarrow, cameraView });
@@ -1218,7 +1262,7 @@ export function TrucolocoScene({
 
         <BackBarDressing lowPower={lowPower} />
         <BarRoom />
-        {!lowPower || isWalkMode || isRingMode ? <DebateEntrance /> : null}
+        {!isRingMode && (!lowPower || isWalkMode) ? <DebateEntrance /> : null}
         {isRingMode || !lowPower ? (
           <DebateRoom
             debateAction={debateAction}
@@ -1241,7 +1285,7 @@ export function TrucolocoScene({
                 opacity={0.42}
                 blur={2.7}
                 far={3.2}
-                resolution={1024}
+                resolution={512}
                 color="#050302"
                 frames={1}
               />

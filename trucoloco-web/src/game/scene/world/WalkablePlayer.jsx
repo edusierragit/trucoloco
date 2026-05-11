@@ -15,13 +15,15 @@ const TABLE_CLEAR_RADIUS = 3.08;
 const PLAYER_Y = 0.02;
 const WALK_SPEED = 1.28;
 const RUN_SPEED = 2.48;
+const JUMP_DURATION = 0.82;
+const JUMP_HEIGHT = 0.58;
 const ROOM_WORLD_OFFSET = new Vector3(0, -1.35, 0.25);
 const WALK_AVATAR_SCALE = 0.94;
 const WALK_CAMERA_HEIGHT = 2.92;
 const WALK_CAMERA_DISTANCE = 3.88;
 const WALK_CAMERA_SIDE_OFFSET = 0.86;
 const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
-const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v1";
+const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v2";
 
 const WALK_HOTSPOTS = [
   { id: "door", x: 0, z: 3.45, radius: 0.95 },
@@ -196,6 +198,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const lastBoxTokenRef = useRef(0);
   const lastJumpTokenRef = useRef(0);
   const actionModeRef = useRef("box");
+  const jumpStartedAtRef = useRef(-1);
   const [motionMode, setMotionMode] = useState("idle");
   const [clipOverrides, setClipOverrides] = useState({});
   const [animationNames, setAnimationNames] = useState([]);
@@ -256,7 +259,8 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
       if (key === " " || event.code === "Space") {
         event.preventDefault();
-        actionUntilRef.current = timeRef.current + 0.72;
+        jumpStartedAtRef.current = timeRef.current;
+        actionUntilRef.current = timeRef.current + JUMP_DURATION;
         actionModeRef.current = "jump";
         motionModeRef.current = "jump";
         setMotionMode("jump");
@@ -265,7 +269,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
       if (key === "[" || key === "]") {
         const names = animationNamesRef.current;
-        const mode = motionModeRef.current;
+        const mode = motionModeRef.current === "idle" ? actionModeRef.current : motionModeRef.current;
 
         if (names.length && mode !== "idle") {
           event.preventDefault();
@@ -335,7 +339,8 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     }
     if (virtual.jumpToken && virtual.jumpToken !== lastJumpTokenRef.current) {
       lastJumpTokenRef.current = virtual.jumpToken;
-      actionUntilRef.current = timeRef.current + 0.72;
+      jumpStartedAtRef.current = timeRef.current;
+      actionUntilRef.current = timeRef.current + JUMP_DURATION;
       actionModeRef.current = "jump";
       motionModeRef.current = "jump";
       setMotionMode("jump");
@@ -401,11 +406,15 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     groupRef.current.position.copy(positionRef.current);
 
     const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
+    const jumpProgress = actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current
+      ? clamp((timeRef.current - jumpStartedAtRef.current) / JUMP_DURATION, 0, 1)
+      : 1;
+    const jumpLift = jumpProgress < 1 ? Math.sin(jumpProgress * Math.PI) * JUMP_HEIGHT : 0;
     if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.46;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.46;
     if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.34;
     if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.34;
-    groupRef.current.position.y = PLAYER_Y + (moving ? Math.abs(Math.sin(timeRef.current * 8)) * 0.025 : 0);
+    groupRef.current.position.y = PLAYER_Y + (moving ? Math.abs(Math.sin(timeRef.current * 8)) * 0.025 : 0) + jumpLift;
 
     worldPositionRef.current.copy(positionRef.current).add(ROOM_WORLD_OFFSET);
     const tableDistance = Math.hypot(positionRef.current.x, positionRef.current.z);
