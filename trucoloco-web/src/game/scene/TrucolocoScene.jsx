@@ -452,7 +452,7 @@ function FighterHealthBar({ side, health, damage, active }) {
   return (
     <group name={`Debate_Fighter_HP_${side}`} position={[0, 1.08, 0.02]} rotation={[0, isPlayer ? -0.28 : 0.28, 0]}>
       <Text position={[0, 0.11, 0]} fontSize={0.05} color={active ? "#f3dfb6" : "#caa875"} anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        {isPlayer ? "VOS" : "MESA"} · {Math.round(health)} HP
+        {isPlayer ? "VOS" : "RIVAL"} · {Math.round(health)} HP
       </Text>
       <RoundedBox args={[0.54, 0.045, 0.035]} radius={0.014} position={[0, 0.035, 0]}>
         <meshStandardMaterial color="#100908" roughness={0.72} metalness={0.08} />
@@ -493,9 +493,10 @@ function DebateFighter({ side, action, character }) {
   const hasFallen = isPlayer ? rivalWon : playerWon;
   const health = isPlayer ? action?.playerHealth ?? 100 : action?.rivalHealth ?? 100;
   const damageTaken = isPlayer ? action?.lastDamageToPlayer ?? 0 : action?.lastDamageToRival ?? 0;
+  const rivalManualAttack = action?.kind === "rival-golpe" || action?.kind === "rival-empujon" || action?.kind === "rival-remate";
   const isActive = isPlayer
     ? action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate"
-    : action?.kind === "rival" || action?.kind === "rival-windup";
+    : action?.kind === "rival" || action?.kind === "rival-windup" || rivalManualAttack;
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -510,9 +511,9 @@ function DebateFighter({ side, action, character }) {
     const direction = isPlayer ? 1 : -1;
     const playerAttack = action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate";
     const playerRemate = action?.kind === "remate";
-    const rivalAttack = action?.kind === "rival";
+    const rivalAttack = action?.kind === "rival" || rivalManualAttack;
     const playerGuard = isPlayer && action?.kind === "guardia" ? impact : 0;
-    const rivalWindup = !isPlayer && action?.kind === "rival-windup" ? impact : 0;
+    const rivalWindup = !isPlayer && (action?.kind === "rival-windup" || action?.kind === "rival-remate") ? impact : 0;
     const vulnerable = !isPlayer && action?.vulnerable ? 1 : 0;
     const attack = ((isPlayer && playerAttack) || (!isPlayer && rivalAttack)) ? impact : 0;
     const hitReaction = damageTaken > 0 ? impact : 0;
@@ -563,6 +564,8 @@ function DebateImpactFX({ action }) {
   const hitStrength = clamp(action?.hitStrength ?? 0, 0, 1);
   const color = action?.kind === "remate"
     ? "#f3c172"
+    : action?.kind === "rival-remate"
+      ? "#f3c172"
     : action?.kind === "empujon"
     ? "#f3dfb6"
     : action?.kind === "rival-whiff"
@@ -680,11 +683,15 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
     : isRoulette
       ? debateAction?.turn === "player"
         ? "TE TOCA APRETAR"
-        : "APRIETA LA MESA"
+        : "APRIETA EL RIVAL"
       : debateAction?.kind === "rival"
         ? "TE APURAN"
         : debateAction?.kind === "remate"
           ? "REMATE"
+        : debateAction?.kind === "rival-remate"
+          ? "REMATE RIVAL"
+        : debateAction?.kind === "rival-golpe" || debateAction?.kind === "rival-empujon"
+          ? "CONTRA RIVAL"
         : debateAction?.kind === "rival-whiff"
           ? "QUEDO PAGANDO"
           : debateAction?.kind === "rival-guardbreak"
@@ -692,7 +699,7 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
             : debateAction?.vulnerable
               ? "CASTIGALO"
         : debateAction?.kind === "rival-windup"
-          ? "CARGA LA MESA"
+          ? "CARGA RIVAL"
           : debateAction?.kind === "guardia"
             ? "GUARDIA ARRIBA"
             : debateAction?.kind === "rival-move"
@@ -708,7 +715,7 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
         <group name="Debate_HealthBars" position={[0, 1.18, 0.98]}>
           {[
             { x: -0.58, label: "VOS", value: playerHealth, color: "#63d5c5" },
-            { x: 0.58, label: "MESA", value: rivalHealth, color: "#e06b4a" }
+            { x: 0.58, label: "RIVAL", value: rivalHealth, color: "#e06b4a" }
           ].map((bar) => {
             const width = 0.92 * (bar.value / 100);
 
@@ -836,7 +843,7 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
 
       {debateAction?.vulnerable ? (
         <Text position={[0, 0.56, 0.42]} fontSize={0.09} color="#63d5c5" anchorX="center" anchorY="middle" letterSpacing={0.12}>
-          MESA PAGANDO · CASTIGA
+          RIVAL PAGANDO · CASTIGA
         </Text>
       ) : null}
 

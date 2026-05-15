@@ -33,6 +33,7 @@ const RING_START_STATE = {
   playerStamina: 3,
   rivalStamina: 3,
   playerGuard: 0,
+  rivalGuard: 0,
   rivalIntent: "neutral",
   rivalAttack: "none",
   rivalTargetLane: 0.18,
@@ -109,6 +110,18 @@ function isInAttackLine(playerLane, targetLane) {
   return Math.abs(playerLane - targetLane) <= 0.18;
 }
 
+function getCombatActionConfig(kind) {
+  if (kind === "remate") {
+    return { label: "Remate", cost: 2.35, cooldown: 4, range: 0.55, damage: 36, stunDamage: 26 };
+  }
+
+  if (kind === "empujon") {
+    return { label: "Empujón", cost: 1.75, cooldown: 2, range: 0.43, damage: 24, stunDamage: 20 };
+  }
+
+  return { label: "Piña", cost: 0.85, cooldown: 1, range: 0.34, damage: 15, stunDamage: 22 };
+}
+
 function getDebateTitle(state) {
   if (state.mode === "ruleta") return state.resolved ? "Corcho cantado" : "Ruleta de corchos";
   if (state.resolved) return (state.rivalHealth ?? 100) <= 0 ? "KO: ganaste la disputa" : "KO: la mesa te sacó";
@@ -125,14 +138,14 @@ function getDebateGoal(state) {
       : "Turno de la mesa: mirá cómo aprieta y bancate el silencio.";
   }
 
-  if (state.resolved) return "La pelea terminó. Revancha con J o volvé al antro con Esc.";
-  if (state.vulnerable) return "Ventana corta: pegá o empujá antes de que recompongan postura.";
+  if (state.resolved) return "La pelea terminó. Revancha con Q o volvé al antro con Esc.";
+  if (state.vulnerable) return "Ventana corta: pegá, empujá o tirá remate antes de que recompongan postura.";
   if (state.rivalIntent === "windup") {
     return state.rivalAttack === "barrida"
       ? "Barrida baja: salí de la línea con A/D. Cubrirse no alcanza."
-      : "Hombro de frente: cubrite con L o cortalo con J/K si estás cerca.";
+      : "Hombro de frente: cubrite con F o cortalo con Q/E si estás cerca.";
   }
-  return "Bajá la vida rival. Hombro se bloquea; barrida se esquiva. Pegá cuando quede pagando.";
+  return "PvP local: A usa Q/E/R/F. B puede contestar con U/I/O/P. No spamees: aire y cooldown mandan.";
 }
 
 function createEmptyWalkTouchInput() {
@@ -396,23 +409,34 @@ export default function App() {
         };
       }
 
+      const actionConfig = getCombatActionConfig(kind);
       const isRemate = kind === "remate";
-      const remateReady = (current.vulnerable ?? false) && (current.crowdHeat ?? 0) >= 2;
-      const cost = isRemate ? 2 : kind === "empujon" ? 2 : 1;
+      const rivalGuarded = (current.rivalGuard ?? 0) > 0.25 && !isRemate;
+      const remateBonus = isRemate && (current.vulnerable ?? false) ? 10 : 0;
+      const cost = actionConfig.cost;
       const stillRecovering = (current.playerCooldown ?? 0) > 0;
       const hasAir = current.playerStamina >= cost;
       const nextStamina = !stillRecovering && hasAir ? Math.max(0, current.playerStamina - cost) : current.playerStamina;
-      const attemptCooldown = kind === "empujon" ? 2 : 1;
-      const hitRange = isRemate ? 0.52 : kind === "empujon" ? 0.42 : 0.34;
-      const hitLanded = !stillRecovering && hasAir && distance <= hitRange && (!isRemate || remateReady);
+      const attemptCooldown = actionConfig.cooldown;
+      const hitRange = actionConfig.range;
+      const hitLanded = !stillRecovering && hasAir && distance <= hitRange;
       const interruptedWindup = hitLanded && current.rivalIntent === "windup";
       const punishedVulnerable = hitLanded && current.vulnerable;
       const rivalCounter = hitLanded && (current.rivalHitStun ?? 0) <= 0 && (kind === "empujon" ? nextToken % 4 === 0 : nextToken % 3 === 0);
       const whiffPunish = !stillRecovering && !hitLanded && distance <= 0.48 && nextToken % 2 === 0;
       const playerDamage = hitLanded
-        ? (isRemate ? 42 : kind === "empujon" ? 24 : 16) + (interruptedWindup ? 10 : 0) + (punishedVulnerable && !isRemate ? 14 : 0)
+        ? Math.max(
+          rivalGuarded ? 5 : 0,
+          actionConfig.damage + remateBonus + (interruptedWindup ? 10 : 0) + (punishedVulnerable && !isRemate ? 14 : 0) - (rivalGuarded ? 18 : 0)
+        )
         : 0;
-      const rivalDamage = rivalCounter && !interruptedWindup && !punishedVulnerable ? 24 : whiffPunish ? (isRemate ? 26 : 14) : 0;
+      const rivalDamage = rivalGuarded
+        ? (isRemate ? 0 : 6)
+        : rivalCounter && !interruptedWindup && !punishedVulnerable
+          ? 24
+          : whiffPunish
+            ? (isRemate ? 26 : 14)
+            : 0;
       const nextRivalHealth = clamp((current.rivalHealth ?? 100) - playerDamage, 0, 100);
       const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
       const hitStrength = clamp((playerDamage + rivalDamage) / 42, 0, 1);
@@ -444,8 +468,9 @@ export default function App() {
         playerCooldown: stillRecovering ? Math.max(0, current.playerCooldown - 1) : attemptCooldown,
         rivalCooldown: Math.max(0, current.rivalCooldown ?? 0),
         playerHitStun: rivalDamage > 0 ? 1 : 0,
-        rivalHitStun: playerDamage >= 24 ? 1 : 0,
+        rivalHitStun: playerDamage >= actionConfig.stunDamage ? 1 : 0,
         playerGuard: 0,
+        rivalGuard: Math.max(0, (current.rivalGuard ?? 0) - 0.55),
         rivalIntent: "neutral",
         rivalAttack: "none",
         rivalTargetLane: current.rivalTargetLane,
@@ -461,6 +486,8 @@ export default function App() {
             ? `Castigaste la ventana. ${getRingTableLine("punish", nextToken)} ${staminaRead}.`
           : interruptedWindup
             ? `Lo cortaste cuando venía cargando. Punto doble de orgullo. ${staminaRead}.`
+          : rivalGuarded
+            ? `Te le fuiste encima, pero el rival cerró guardia. Entró poco daño y te raspó de contra. ${staminaRead}.`
           : rivalCounter
           ? "Te contestaron con hombro. El conflicto sigue vivo."
           : stillRecovering
@@ -471,7 +498,108 @@ export default function App() {
             ? `${getRingTableLine("fail", nextToken)} ${whiffPunish ? "Te puntearon de vuelta." : "Quedaste pagando."} ${staminaRead}.`
           : kind === "empujon"
             ? `Empujón sucio, efectivo y poco reglamentario. ${staminaRead}.`
+            : kind === "remate"
+              ? `${getRingTableLine("remate", nextToken)} ${staminaRead}.`
             : `${getRingTableLine("hit", nextToken)} ${staminaRead}.`
+      };
+    });
+  }, []);
+
+  const triggerRivalDebateAction = useCallback((kind) => {
+    setDebateState((current) => {
+      if (current.resolved || current.mode === "ruleta") return current;
+
+      const nextToken = current.token + 1;
+
+      if ((current.rivalHitStun ?? 0) > 0) {
+        return {
+          ...current,
+          kind: "rival-stun",
+          token: nextToken,
+          lastDamageToPlayer: 0,
+          lastDamageToRival: 0,
+          hitStrength: 0,
+          rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
+          rivalStamina: Math.min(3, current.rivalStamina + 0.35),
+          lastMove: "Jugador B quedó aturdido. Tiene que recuperar postura antes de contestar."
+        };
+      }
+
+      if (kind === "guardia") {
+        return {
+          ...current,
+          kind: "rival-guard",
+          token: nextToken,
+          lastDamageToPlayer: 0,
+          lastDamageToRival: 0,
+          hitStrength: 0.18,
+          rivalGuard: 1,
+          rivalStamina: Math.min(3, current.rivalStamina + 0.85),
+          lastMove: "Jugador B levanta guardia. Si le tirás golpe básico o empujón, absorbe gran parte del daño."
+        };
+      }
+
+      const actionConfig = getCombatActionConfig(kind);
+      const distance = Math.abs(current.playerLane - current.rivalLane);
+      const stillRecovering = (current.rivalCooldown ?? 0) > 0;
+      const hasAir = current.rivalStamina >= actionConfig.cost;
+      const guarded = (current.playerGuard ?? 0) > 0.25;
+      const hitLanded = !stillRecovering && hasAir && distance <= actionConfig.range;
+      const guardReduced = hitLanded && guarded && kind !== "remate";
+      const guardBroken = hitLanded && guarded && kind === "remate";
+      const rivalDamage = hitLanded
+        ? guardReduced
+          ? Math.max(4, actionConfig.damage - 17)
+          : actionConfig.damage + (guardBroken ? 8 : 0)
+        : 0;
+      const counterDamage = guardReduced ? 7 : 0;
+      const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
+      const nextRivalHealth = clamp((current.rivalHealth ?? 100) - counterDamage, 0, 100);
+      const hitStrength = clamp((rivalDamage + counterDamage) / 42, 0, 1);
+      const playerWon = nextRivalHealth <= 0;
+      const rivalWon = nextPlayerHealth <= 0;
+      const directionToRival = Math.sign(current.rivalLane - current.playerLane || 1);
+
+      return {
+        ...current,
+        kind: kind === "remate" ? "rival-remate" : kind === "empujon" ? "rival-empujon" : "rival-golpe",
+        token: nextToken,
+        player: Math.min(5, Math.floor((100 - nextRivalHealth) / 20)),
+        rival: Math.min(5, Math.floor((100 - nextPlayerHealth) / 20)),
+        playerHealth: nextPlayerHealth,
+        rivalHealth: nextRivalHealth,
+        lastDamageToPlayer: rivalDamage,
+        lastDamageToRival: counterDamage,
+        hitStrength,
+        playerLane: hitLanded ? clamp(current.playerLane - directionToRival * 0.1, -0.72, 0.72) : current.playerLane,
+        rivalLane: current.rivalLane,
+        playerStamina: Math.min(3, current.playerStamina + (counterDamage > 0 ? 0.45 : 0.18)),
+        rivalStamina: hasAir && !stillRecovering ? Math.max(0, current.rivalStamina - actionConfig.cost) : current.rivalStamina,
+        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+        rivalCooldown: stillRecovering ? Math.max(0, current.rivalCooldown - 1) : actionConfig.cooldown,
+        playerHitStun: rivalDamage >= actionConfig.stunDamage ? 1 : 0,
+        rivalHitStun: counterDamage > 0 ? 1 : 0,
+        playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.6),
+        rivalGuard: 0,
+        rivalIntent: "neutral",
+        rivalAttack: "none",
+        vulnerable: false,
+        resolved: playerWon || rivalWon,
+        lastMove: rivalWon
+          ? "KO. Jugador B cerró el conflicto y te dejó mirando la baranda."
+          : playerWon
+            ? "KO. Bloqueaste y contestaste lo justo: Jugador B cae."
+            : stillRecovering
+              ? "Jugador B quiso repetir demasiado rápido. Cooldown manda."
+              : !hasAir
+                ? "Jugador B se quedó sin aire y amagó al vacío."
+                : !hitLanded
+                  ? `Jugador B tiró ${actionConfig.label.toLowerCase()} fuera de rango. ${getRingRead(distance, current.playerStamina)}.`
+                  : guardBroken
+                    ? "Jugador B rompió tu guardia con remate. La defensa no aguanta todo."
+                    : guardReduced
+                      ? "Bloqueaste parte del ataque de Jugador B y devolviste un raspón."
+                      : `Jugador B conectó ${actionConfig.label.toLowerCase()}. La pelea ya es local y de a dos.`
       };
     });
   }, []);
@@ -595,11 +723,11 @@ export default function App() {
               : rivalWon
                 ? "KO. La mesa te sacó del ring; respawn al antro cuando salgas."
               : dodged
-                ? `Esquivaste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. La mesa quedó abierta: castigá con J/K.`
+                ? `Esquivaste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. La mesa quedó abierta: castigá con Q/E/R.`
               : guardBroken
                 ? "Te cubriste arriba y te barrieron abajo. Te bajaron vida: esquivá las barridas."
               : guarded
-                ? "Bloqueaste el hombro y lo dejaste abierto. Castigá con J/K."
+                ? "Bloqueaste el hombro y lo dejaste abierto. Castigá con Q/E/R."
                 : `Te comiste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Movete o contestá. ${getRingRead(Math.abs(nextPlayerLane - current.rivalLane), current.playerStamina)}.`
           };
         }
@@ -668,7 +796,7 @@ export default function App() {
             rivalStamina: Math.min(3, current.rivalStamina + 0.25),
             lastMove: rivalAttack === "barrida"
               ? "La mesa amagó arriba y va bajo. Salí de la línea con A/D; la guardia no salva."
-              : "La mesa baja el hombro y carga de frente. Cubrite con L o cortala con J/K."
+              : "La mesa baja el hombro y carga de frente. Cubrite con F o cortala con Q/E."
           };
         }
 
@@ -700,10 +828,36 @@ export default function App() {
         playerStamina: Math.min(3, current.playerStamina + 0.55),
         playerGuard: 0,
         lastMove: escapedLine
-          ? `Saliste de la línea de ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Si la mesa falla, castigá con J/K.`
+          ? `Saliste de la línea de ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Si la mesa falla, castigá con Q/E/R.`
           : direction < 0
             ? "Te corrés a la izquierda y recuperás aire."
             : "Te corrés a la derecha y recuperás aire."
+      };
+    });
+  }, []);
+
+  const moveDebateRival = useCallback((direction) => {
+    setDebateState((current) => {
+      if (current.resolved || current.mode === "ruleta") return current;
+      const nextLane = clamp(current.rivalLane + direction * 0.18, -0.72, 0.72);
+
+      return {
+        ...current,
+        kind: "rival-move",
+        token: current.token + 1,
+        rivalLane: nextLane,
+        lastDamageToPlayer: 0,
+        lastDamageToRival: 0,
+        hitStrength: 0,
+        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
+        rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
+        playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
+        rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
+        rivalStamina: Math.min(3, current.rivalStamina + 0.55),
+        rivalGuard: 0,
+        lastMove: direction < 0
+          ? "Jugador B se corre a su izquierda y recupera aire."
+          : "Jugador B se corre a su derecha y recupera aire."
       };
     });
   }, []);
@@ -733,14 +887,24 @@ export default function App() {
           handleCameraViewChange("walk");
           return;
         }
-        if (key === "a" || event.key === "ArrowLeft") {
+        if (key === "a") {
           event.preventDefault();
           moveDebatePlayer(-1);
           return;
         }
-        if (key === "d" || event.key === "ArrowRight") {
+        if (key === "d") {
           event.preventDefault();
           moveDebatePlayer(1);
+          return;
+        }
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          moveDebateRival(-1);
+          return;
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          moveDebateRival(1);
           return;
         }
         if (key === "g") {
@@ -748,31 +912,70 @@ export default function App() {
           switchDebateMode("ring");
           return;
         }
-        if (key === "r") {
+        if (key === "t") {
           event.preventDefault();
           switchDebateMode("ruleta");
           return;
         }
-        if (event.code === "Space" || key === "j") {
+        if (key === "q" || (debateState.mode === "ruleta" && (event.code === "Space" || key === "j"))) {
           event.preventDefault();
           triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
           return;
         }
-        if (key === "k") {
+        if (key === "e") {
           event.preventDefault();
           triggerDebateAction("empujon");
           return;
         }
-        if (key === "l") {
+        if (key === "r") {
+          event.preventDefault();
+          triggerDebateAction("remate");
+          return;
+        }
+        if (event.code === "Space" || key === "f") {
           event.preventDefault();
           triggerDebateAction("guardia");
+          return;
+        }
+        if (key === "u") {
+          event.preventDefault();
+          triggerRivalDebateAction("golpe");
+          return;
+        }
+        if (key === "i") {
+          event.preventDefault();
+          triggerRivalDebateAction("empujon");
+          return;
+        }
+        if (key === "o") {
+          event.preventDefault();
+          triggerRivalDebateAction("remate");
+          return;
+        }
+        if (key === "p") {
+          event.preventDefault();
+          triggerRivalDebateAction("guardia");
+          return;
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cameraView, debateState.mode, handleCameraViewChange, moveDebatePlayer, switchDebateMode, triggerDebateAction]);
+  }, [cameraView, debateState.mode, handleCameraViewChange, moveDebatePlayer, moveDebateRival, switchDebateMode, triggerDebateAction, triggerRivalDebateAction]);
+
+  useEffect(() => {
+    if (cameraView !== "ring") return undefined;
+
+    const handlePointerDown = (event) => {
+      if (event.button !== 0) return;
+      if (event.target?.closest?.(".debate-hint")) return;
+      triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [cameraView, debateState.mode, triggerDebateAction]);
 
   return (
     <div className="app-shell">
@@ -991,7 +1194,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="debate-meter-row">
-                  <span>Mesa</span>
+                    <span>Rival</span>
                   <div className="debate-meter debate-meter-rival">
                     <i style={{ "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.rivalTrigger / 6) * 100) : Math.max(0, debateState.rivalHealth ?? 100)}%` }} />
                   </div>
@@ -1001,22 +1204,25 @@ export default function App() {
                 {debateState.mode === "ruleta" ? (
                   <>
                     <span>Vos {debateState.playerTrigger}/6</span>
-                    <span>Mesa {debateState.rivalTrigger}/6</span>
-                    <span>{debateState.turn === "player" ? "tu tambor" : "tambor de la mesa"}</span>
+                    <span>Rival {debateState.rivalTrigger}/6</span>
+                    <span>{debateState.turn === "player" ? "tu tambor" : "tambor rival"}</span>
                   </>
                 ) : (
                   <>
                     <span>Vos {Math.round(debateState.playerHealth ?? 100)} HP</span>
-                    <span>Mesa {Math.round(debateState.rivalHealth ?? 100)} HP</span>
+                    <span>Rival {Math.round(debateState.rivalHealth ?? 100)} HP</span>
                     <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
+                    <span>Aire B {Math.round(debateState.rivalStamina * 10) / 10}/3</span>
                     <span>{debateState.playerGuard > 0 ? "guardia arriba" : "guardia baja"}</span>
+                    {debateState.rivalGuard > 0 ? <span>guardia rival</span> : null}
                     {(debateState.playerCooldown ?? 0) > 0 ? <span>recuperando brazo</span> : null}
+                    {(debateState.rivalCooldown ?? 0) > 0 ? <span>rival recupera</span> : null}
                     {(debateState.playerHitStun ?? 0) > 0 ? <span>aturdido</span> : null}
-                    {(debateState.rivalHitStun ?? 0) > 0 ? <span>mesa aturdida</span> : null}
+                    {(debateState.rivalHitStun ?? 0) > 0 ? <span>rival aturdido</span> : null}
                     {debateState.rivalIntent === "windup" ? (
                       <span>{getRivalAttackName(debateState.rivalAttack)} viene</span>
                     ) : null}
-                    {debateState.vulnerable ? <span>mesa vulnerable</span> : null}
+                    {debateState.vulnerable ? <span>rival vulnerable</span> : null}
                     {(debateState.streak ?? 0) > 0 ? <span>racha {debateState.streak}</span> : null}
                     <span>{getRingRead(Math.abs(debateState.playerLane - debateState.rivalLane), debateState.playerStamina)}</span>
                   </>
@@ -1039,15 +1245,16 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => triggerDebateAction("golpe")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Piña</button>
+                    <button type="button" onClick={() => triggerDebateAction("golpe")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Q Piña</button>
                     <button type="button" onClick={() => moveDebatePlayer(-1)}>← Esquive</button>
                     <button type="button" onClick={() => moveDebatePlayer(1)}>Esquive →</button>
-                    <button type="button" onClick={() => triggerDebateAction("guardia")}>Guardia</button>
-                    <button type="button" onClick={() => triggerDebateAction("empujon")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Empujón</button>
+                    <button type="button" onClick={() => triggerDebateAction("guardia")}>F Guardia</button>
+                    <button type="button" onClick={() => triggerDebateAction("empujon")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>E Empujón</button>
+                    <button type="button" onClick={() => triggerDebateAction("remate")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0 || (debateState.playerStamina ?? 0) < 2.35}>R Remate</button>
                   </>
                 )}
               </div>
-              <small>{debateState.mode === "ruleta" ? "J/espacio: apretar · G: ring · Esc: volver" : "A/D: esquivar · J: piña · K: empujón · L: guardia · R: ruleta · Esc: volver"}</small>
+              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : "A: A/D + Q/E/R/F + click · B: ←/→ + U/I/O/P · T: ruleta · Esc: volver"}</small>
             </div>
           ) : null}
 
