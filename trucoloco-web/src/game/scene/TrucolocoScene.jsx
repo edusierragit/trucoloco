@@ -558,6 +558,21 @@ function DebateFighter({ side, action, character }) {
 
   return (
     <group ref={groupRef} name={`Debate_Fighter_${side}`} position={[targetX, 0.2, targetZ]} rotation={[0, targetFacing, 0]}>
+      <mesh name={`Debate_FighterMarker_${side}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}>
+        <ringGeometry args={[0.28, 0.4, 40]} />
+        <meshBasicMaterial color={isPlayer ? "#f3c172" : "#63d5c5"} transparent opacity={isActive || isMoving ? 0.48 : 0.26} depthWrite={false} />
+      </mesh>
+      <Text
+        position={[0, 0.032, isPlayer ? 0.42 : -0.42]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={0.085}
+        color={isPlayer ? "#f3dfb6" : "#91e9f6"}
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.12}
+      >
+        {isPlayer ? "P1" : "P2"}
+      </Text>
       {hasModelFighter ? (
         <RingCharacterModel character={character} active={isActive} fallen={hasFallen} moving={isMoving} />
       ) : (
@@ -723,8 +738,8 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
 
   return (
     <group name="Debate_Ring" position={position} rotation={rotation}>
-      <pointLight name="DebateRing_RedFill" position={[-0.82, 1.45, 0.18]} intensity={2.8} color="#c54c32" />
-      <pointLight name="DebateRing_TealFill" position={[0.82, 1.32, -0.12]} intensity={2.4} color="#45c7bd" />
+      <pointLight name="DebateRing_RedFill" position={[-0.82, 1.45, 0.18]} intensity={2.1} color="#c54c32" />
+      <pointLight name="DebateRing_TealFill" position={[0.82, 1.32, -0.12]} intensity={1.9} color="#45c7bd" />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.022, 0]}>
         <ringGeometry args={[0.88, 1.12, 72]} />
@@ -908,8 +923,8 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
       <RoundedBox args={[0.18, 0.2, 3.95]} radius={0.04} position={[2.74, 2.0, 0]} receiveShadow>
         <meshStandardMaterial color="#b47a34" roughness={0.38} metalness={0.54} />
       </RoundedBox>
-      <RoundedBox args={[4.9, 0.12, 0.16]} radius={0.04} position={[0, 2.22, 1.92]} receiveShadow>
-        <meshStandardMaterial color="#2b160d" roughness={0.72} metalness={0.1} />
+      <RoundedBox args={[4.65, 0.045, 0.065]} radius={0.025} position={[0, 2.42, 1.98]} receiveShadow>
+        <meshStandardMaterial color="#d98a36" emissive="#d98a36" emissiveIntensity={0.08} roughness={0.52} metalness={0.22} transparent opacity={0.62} />
       </RoundedBox>
       <RoundedBox args={[0.18, 1.76, 1.2]} radius={0.08} position={[2.73, 0.58, 1.55]} receiveShadow>
         <meshStandardMaterial color="#1b0d0a" roughness={0.98} />
@@ -928,11 +943,11 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
         <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.12} roughness={0.48} />
       </RoundedBox>
 
-      <pointLight name="DebateRoom_Practical_Red" position={[-1.35, 1.35, 0.9]} intensity={4.6} color="#c54c32" />
-      <pointLight name="DebateRoom_Practical_Teal" position={[1.55, 1.15, -0.65]} intensity={4.2} color="#45c7bd" />
-      <pointLight name="DebateRoom_Threshold" position={[2.08, 0.58, 0.16]} intensity={2.8} color="#e06b4a" />
-      <pointLight name="DebateRoom_TopSpot" position={[0, 2.32, 0.28]} intensity={9.2} color="#f3c172" castShadow />
-      <pointLight name="DebateRoom_TopGlow" position={[0, 2.05, 0.1]} intensity={3.8} color="#f3c172" />
+      <pointLight name="DebateRoom_Practical_Red" position={[-1.35, 1.35, 0.9]} intensity={3.2} color="#c54c32" />
+      <pointLight name="DebateRoom_Practical_Teal" position={[1.55, 1.15, -0.65]} intensity={3} color="#45c7bd" />
+      <pointLight name="DebateRoom_Threshold" position={[2.08, 0.58, 0.16]} intensity={1.8} color="#e06b4a" />
+      <pointLight name="DebateRoom_TopSpot" position={[0, 2.32, 0.28]} intensity={5.6} color="#f3c172" castShadow />
+      <pointLight name="DebateRoom_TopGlow" position={[0, 2.05, 0.1]} intensity={2.2} color="#f3c172" />
 
       <Text position={[0, 1.72, -2.22]} fontSize={0.12} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.18}>
         SALA DE CONFLICTO
@@ -1140,9 +1155,9 @@ function getCameraPose({ match, isNarrow, cameraView }) {
 
   if (cameraView === "ring") {
     return {
-      position: isNarrow ? [-5.5, -0.52, 0.95] : [-5.32, -0.46, 1.08],
-      target: [-7.45, -2.08, -0.78],
-      fov: isNarrow ? 58 : 55
+      position: isNarrow ? [-7.45, 0.3, 0.92] : [-7.45, 0.42, 0.74],
+      target: [-7.45, -2.12, -0.62],
+      fov: isNarrow ? 52 : 48
     };
   }
 

@@ -74,7 +74,7 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-const RING_BOUNDS = { x: 1.42, z: 1.04 };
+const RING_BOUNDS = { x: 1.5, z: 1.12 };
 
 function clampRingPos(pos) {
   return {
@@ -174,14 +174,14 @@ function isInAttackLine(playerLane, targetLane) {
 
 function getCombatActionConfig(kind) {
   if (kind === "remate") {
-    return { label: "Especial", cost: 2.1, cooldown: 1.25, range: 0.82, damage: 34, stunDamage: 26, knockback: 0.34 };
+    return { label: "Especial", cost: 2.1, cooldown: 1.1, range: 0.92, damage: 34, stunDamage: 26, knockback: 0.36 };
   }
 
   if (kind === "empujon") {
-    return { label: "Fuerte", cost: 1.35, cooldown: 0.72, range: 0.68, damage: 22, stunDamage: 18, knockback: 0.28 };
+    return { label: "Fuerte", cost: 1.35, cooldown: 0.62, range: 0.78, damage: 22, stunDamage: 18, knockback: 0.3 };
   }
 
-  return { label: "Piña", cost: 0.55, cooldown: 0.34, range: 0.55, damage: 12, stunDamage: 20, knockback: 0.14 };
+  return { label: "Piña", cost: 0.55, cooldown: 0.28, range: 0.64, damage: 12, stunDamage: 20, knockback: 0.16 };
 }
 
 function getDebateTitle(state) {
@@ -437,17 +437,17 @@ function stepArenaCombat(current, keys, dt) {
       next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
     }
   } else if ((next.playerEngaged ?? false) && rivalCanMove && (next.rivalCooldown ?? 0) <= 0.12) {
-    if (toPlayer.distance > 0.54) {
+    if (toPlayer.distance > 0.62) {
       const strafe = Math.sin((next.token ?? 0) * 0.47) * 0.42;
       const moveX = toPlayer.x + -toPlayer.z * strafe;
       const moveZ = toPlayer.z + toPlayer.x * strafe;
       const moveLength = Math.hypot(moveX, moveZ) || 1;
       next = withActorPos(next, "rival", {
-        x: currentRivalPos.x + (moveX / moveLength) * 0.46 * safeDt,
-        z: currentRivalPos.z + (moveZ / moveLength) * 0.46 * safeDt
+        x: currentRivalPos.x + (moveX / moveLength) * 0.72 * safeDt,
+        z: currentRivalPos.z + (moveZ / moveLength) * 0.72 * safeDt
       }, currentPlayerPos);
       next.rivalMoving = 0.18;
-    } else if (toPlayer.distance <= 0.5 && (next.rivalStamina ?? 0) >= 0.55) {
+    } else if (toPlayer.distance <= 0.62 && (next.rivalStamina ?? 0) >= 0.55) {
       const aiKind = (next.token ?? 0) % 5 === 0 ? "empujon" : "golpe";
       next = applyCombatAction(next, "rival", aiKind, { ai: true });
     }
