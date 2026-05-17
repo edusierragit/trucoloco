@@ -516,15 +516,7 @@ function getTableResultCopy(match, lastTrick) {
 }
 
 function TableSpotlight({ match }) {
-  if (match.phase === "role-select" || match.phase === "trick-closed" || match.handClosed || !match.tableCards.length) {
-    return null;
-  }
-
-  return (
-    <div className="table-spotlight-layer">
-      <TableShowdown match={match} />
-    </div>
-  );
+  return null;
 }
 
 function TrickLedger({ match }) {

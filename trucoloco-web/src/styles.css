@@ -4159,3 +4159,131 @@ select {
     font-size: 0.84rem;
   }
 }
+
+/* Final cockpit overrides for desktop table play. Keep these last so older layout rules cannot re-expand the HUD. */
+@media (min-width: 1101px) {
+  .stage-shell:not(.stage-walk-mode):not(.stage-ring-mode) .stage-overlay,
+  .table-spotlight-layer,
+  .hud-hand-active .status-strip,
+  .hud-hand-active .table-flow-panel {
+    display: none;
+  }
+
+  .hud {
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) minmax(250px, 300px);
+    grid-template-areas:
+      "top top top"
+      ". . right"
+      ". hand .";
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .hud::before {
+    display: none;
+  }
+
+  .hud-center {
+    width: min(300px, 22vw);
+    max-height: calc(100vh - 170px);
+    gap: 8px;
+  }
+
+  .role-lock {
+    max-width: 300px;
+    justify-self: end;
+  }
+
+  .action-focus {
+    padding: 12px;
+  }
+
+  .focus-badge,
+  .role-table-name {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+
+  .focus-actions {
+    min-width: 118px;
+  }
+
+  .focus-actions .action-button {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 0.84rem;
+  }
+
+  .bottom-dock,
+  .bottom-dock-play,
+  .bottom-dock:has(.hand-panel-focus) {
+    width: min(620px, 42vw);
+    max-width: min(620px, calc(100vw - 700px));
+  }
+
+  .hand-panel,
+  .hand-panel-play,
+  .hand-panel-preview {
+    padding: 9px 10px 7px;
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 36%, rgba(0, 0, 0, 0.18)),
+      linear-gradient(180deg, rgba(14, 14, 12, 0.72), rgba(6, 6, 5, 0.54));
+    backdrop-filter: blur(10px) saturate(1.02);
+  }
+
+  .hand-panel .panel-header {
+    align-items: center;
+  }
+
+  .hand-panel .panel-header p {
+    margin-top: 2px;
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .duel-chip {
+    max-width: 128px;
+    padding: 6px 8px;
+    overflow: hidden;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+  }
+
+  .hand-panel-play .hand-fan,
+  .hand-panel-focus .hand-fan,
+  .hand-fan {
+    min-height: 118px;
+    padding: 4px 8px 0;
+  }
+
+  .hand-panel-play .card-button,
+  .hand-panel-focus .card-button,
+  .card-button {
+    width: clamp(76px, 5.2vw, 96px);
+    min-width: 76px;
+    min-height: 112px;
+    margin: 0 -7px;
+    border-radius: 8px;
+  }
+
+  .hand-panel-play .card-name,
+  .card-name {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    line-height: 1.04;
+  }
+
+  .card-footer,
+  .card-meta,
+  .card-power,
+  .card-suit-label {
+    font-size: 0.58rem;
+  }
+
+  .next-hand {
+    min-height: 58px;
+    border-radius: 16px;
+    font-size: 0.92rem;
+  }
+}
