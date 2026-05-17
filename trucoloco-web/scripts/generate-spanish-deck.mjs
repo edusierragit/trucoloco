@@ -25,7 +25,7 @@ const ranks = [
 const suits = {
   oro: { label: "ORO", color: "#b77a13", dark: "#5d3510", code: "O" },
   copa: { label: "COPA", color: "#a72f27", dark: "#541614", code: "C" },
-  espada: { label: "ESPADA", color: "#4f6675", dark: "#172632", code: "E" },
+  espada: { label: "ESPADA", color: "#33596b", dark: "#101f2a", code: "E" },
   basto: { label: "BASTO", color: "#46743a", dark: "#1c3219", code: "B" }
 };
 
@@ -37,18 +37,8 @@ function cardFrame({ rank, suit }) {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="${rank} de ${suit.label}">
-  <defs>
-    <filter id="paper" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="${rank.charCodeAt(0) + suit.label.length}" result="noise"/>
-      <feColorMatrix in="noise" type="saturate" values="0"/>
-      <feComponentTransfer>
-        <feFuncA type="table" tableValues="0 0.045"/>
-      </feComponentTransfer>
-      <feBlend in="SourceGraphic" mode="multiply"/>
-    </filter>
-  </defs>
   <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
-  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5" filter="url(#paper)"/>
+  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5"/>
   <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="${suit.color}" stroke-width="3"/>
   <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
   ${corner(rank, suit, 58, 76, 0)}
@@ -56,7 +46,6 @@ function cardFrame({ rank, suit }) {
   <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="${suit.dark}">${suit.label}</text>
   <g>${pips}</g>
   ${isFigure ? `<text x="210" y="519" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" letter-spacing="5" fill="${suit.dark}">${figureName}</text>` : ""}
-  <text x="210" y="574" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="#7c5838">TRUCOLOCO BARAJA ESPAÑOLA</text>
 </svg>`;
 }
 
@@ -105,9 +94,11 @@ function copaSymbol(suit) {
 }
 
 function espadaSymbol(suit) {
-  return `<path d="M0-72C18-36 25-7 7 22L0 34L-7 22C-25-7-18-36 0-72Z" fill="#d7dde0" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M-34 32H34M0 34V78" stroke="${suit.color}" stroke-width="9" stroke-linecap="round"/>
-  <circle cx="0" cy="32" r="10" fill="${suit.dark}"/>`;
+  return `<path d="M0-78C22-42 30-9 9 25L0 39L-9 25C-30-9-22-42 0-78Z" fill="#8fb0bd" stroke="${suit.dark}" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M0-60C12-31 14-8 3 17" fill="none" stroke="#f4eedb" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
+  <path d="M-38 35H38M0 39V84" stroke="${suit.dark}" stroke-width="10" stroke-linecap="round"/>
+  <path d="M-25 34H25M0 43V77" stroke="${suit.color}" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="0" cy="35" r="12" fill="#d7c594" stroke="${suit.dark}" stroke-width="4"/>`;
 }
 
 function bastoSymbol(suit) {
@@ -124,13 +115,17 @@ function figureSymbol(suit, rank) {
   const horse = rank === "11" ? `<path d="M-56 36C-30 8-6-6 33-3C58-1 68 19 53 43C33 27 8 29-18 56Z" fill="#d9c4a3" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/>` : "";
 
   return `<g transform="translate(210 304)">
-    <rect x="-96" y="-132" width="192" height="264" rx="18" fill="#ead4ac" stroke="${suit.dark}" stroke-width="5"/>
-    <rect x="-76" y="-111" width="152" height="222" rx="10" fill="#f5e7c8" stroke="${suit.color}" stroke-width="3"/>
+    <rect x="-100" y="-136" width="200" height="272" rx="18" fill="#ead4ac" stroke="${suit.dark}" stroke-width="6"/>
+    <rect x="-78" y="-113" width="156" height="226" rx="10" fill="#f5e7c8" stroke="${suit.color}" stroke-width="4"/>
     ${crown}
-    <circle cx="0" cy="-47" r="34" fill="#c58b62" stroke="${suit.dark}" stroke-width="5"/>
-    <path d="M-52 4C-42-30 42-30 52 4L66 84H-66Z" fill="${suit.color}" stroke="${suit.dark}" stroke-width="6" stroke-linejoin="round"/>
+    <circle cx="0" cy="-48" r="36" fill="#c58b62" stroke="${suit.dark}" stroke-width="6"/>
+    <path d="M-18-54C-8-68 14-67 24-52" fill="none" stroke="#3b2118" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="-12" cy="-47" r="4" fill="#1d110c"/>
+    <circle cx="12" cy="-47" r="4" fill="#1d110c"/>
+    <path d="M-52 4C-42-30 42-30 52 4L68 88H-68Z" fill="${suit.color}" stroke="${suit.dark}" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M-40 14H40M-50 45H50" stroke="#f5e7c8" stroke-width="5" stroke-linecap="round" opacity="0.46"/>
     ${horse}
-    <text x="0" y="82" text-anchor="middle" font-family="Georgia, serif" font-size="74" font-weight="800" fill="#f7e8c7" stroke="${suit.dark}" stroke-width="2">${label}</text>
+    <text x="0" y="85" text-anchor="middle" font-family="Georgia, serif" font-size="78" font-weight="800" fill="#f7e8c7" stroke="${suit.dark}" stroke-width="3">${label}</text>
     ${pipSymbol(suit, 0, 157, 0.5)}
   </g>`;
 }

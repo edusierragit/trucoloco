@@ -1,9 +1,8 @@
-# Spanish Deck Fronts
+# Spanish Deck Assets
 
-The card fronts in `fronts/` are SVG crops generated from:
+The active card fronts in `fronts/` are lightweight original SVGs generated locally for gameplay readability and performance.
 
-- `baraja-espanola-wikimedia.svg`
+The repository also keeps `source/baraja-espanola-wikimedia.svg` as a reference asset:
+
 - Source: https://commons.wikimedia.org/wiki/File:Baraja_espa%C3%B1ola.svg
 - License: Creative Commons Attribution-Share Alike 3.0 Unported
-
-The generated crop files are used to present a recognizable Spanish deck for Truco gameplay.

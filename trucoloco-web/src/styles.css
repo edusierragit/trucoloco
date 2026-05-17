@@ -95,9 +95,9 @@ select {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 45%, transparent 0%, transparent 48%, rgba(0, 0, 0, 0.3) 78%, rgba(0, 0, 0, 0.56) 100%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.04), transparent 20%, transparent 68%, rgba(0, 0, 0, 0.36)),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 26%, transparent 72%, rgba(0, 0, 0, 0.45));
+    radial-gradient(ellipse at 50% 45%, transparent 0%, transparent 54%, rgba(0, 0, 0, 0.18) 80%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02), transparent 22%, transparent 70%, rgba(0, 0, 0, 0.24)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 28%, transparent 74%, rgba(0, 0, 0, 0.32));
   z-index: 1;
 }
 
@@ -503,6 +503,15 @@ select {
     0 24px 80px rgba(214, 106, 63, 0.18);
 }
 
+.stage-ring-mode .debate-hint:not(.debate-hint-resolved) {
+  pointer-events: none;
+}
+
+.stage-ring-mode .debate-hint:not(.debate-hint-resolved) .debate-actions {
+  display: none;
+  pointer-events: none;
+}
+
 .debate-hint-header {
   display: flex;
   align-items: center;
@@ -590,6 +599,10 @@ select {
   gap: 7px;
 }
 
+.stage-ring-mode .debate-hint:not(.debate-hint-resolved) .debate-readout {
+  display: none;
+}
+
 .debate-readout span {
   padding: 5px 8px;
   border: 1px solid rgba(243, 223, 182, 0.12);
@@ -611,6 +624,19 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
   gap: 7px;
   pointer-events: auto;
+}
+
+.debate-actions span {
+  padding: 8px 10px;
+  border: 1px solid rgba(243, 223, 182, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f3dfb6;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .debate-actions button {
@@ -876,9 +902,10 @@ select {
 
 .table-spotlight-layer {
   position: absolute;
-  left: clamp(540px, 43vw, 820px);
-  top: clamp(330px, 36vh, 390px);
-  width: min(620px, 34vw);
+  left: 50%;
+  top: auto;
+  bottom: clamp(118px, 13vh, 164px);
+  width: min(700px, 42vw);
   margin: 0;
   z-index: 4;
   pointer-events: none;
@@ -1917,18 +1944,18 @@ select {
 
 .table-showdown {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 16px;
+  gap: 8px;
+  margin-top: 0;
+  padding: 10px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(212, 154, 52, 0.12);
 }
 
 .table-spotlight-layer .table-showdown {
   margin-top: 0;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 14px;
   border-color: rgba(213, 139, 53, 0.34);
   background:
     linear-gradient(90deg, rgba(99, 213, 197, 0.1), transparent 24%, transparent 76%, rgba(208, 90, 68, 0.1)),
@@ -1978,13 +2005,14 @@ select {
 }
 
 .table-card-row-six {
-  grid-template-columns: repeat(6, minmax(72px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  gap: 7px;
 }
 
 .table-card-row-six .table-card {
-  min-height: 104px;
-  padding: 8px;
+  aspect-ratio: 0.68;
+  min-height: 0;
+  padding: 5px;
 }
 
 .table-card-row-six .table-card strong {
@@ -2024,6 +2052,66 @@ select {
     0 16px 28px rgba(0, 0, 0, 0.28),
     inset 0 0 0 4px rgba(113, 80, 50, 0.08),
     inset 0 0 0 8px rgba(255, 246, 220, 0.22);
+}
+
+.table-card-image {
+  min-height: 0;
+  padding: 6px;
+  background: #f4ecd9;
+}
+
+.table-card-order {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(19, 12, 7, 0.34);
+  border-radius: 999px;
+  background: rgba(247, 235, 206, 0.92);
+  color: #24160d;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.table-card-art {
+  position: absolute;
+  inset: 5px;
+  z-index: 1;
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.table-card-image .table-card-owner {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(21, 13, 8, 0.68);
+  color: #f7ebce;
+  font-size: 0.5rem;
+}
+
+.table-card-image .table-card-force {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(141, 48, 36, 0.78);
+  color: #fff2d5;
 }
 
 .table-card::before,
@@ -2094,8 +2182,7 @@ select {
 }
 
 .table-spotlight-layer .table-card {
-  min-height: 142px;
-  padding: 14px;
+  padding: 5px;
   box-shadow:
     0 20px 42px rgba(0, 0, 0, 0.38),
     0 0 0 1px rgba(69, 39, 18, 0.14),
@@ -2170,29 +2257,6 @@ select {
   color: #8d3024;
   font-style: normal;
   font-weight: 700;
-}
-
-.table-card-empty {
-  place-items: center;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
-    rgba(8, 8, 7, 0.62);
-  border: 1px dashed rgba(240, 221, 180, 0.28);
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.table-card-empty span,
-.table-card-empty small {
-  position: relative;
-  z-index: 1;
-}
-
-.table-card-empty small {
-  color: rgba(240, 221, 180, 0.56);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 @keyframes table-spotlight-enter {
@@ -2707,6 +2771,9 @@ select {
 .table-result-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 180px;
+  grid-template-areas:
+    "cards action"
+    "copy action";
   gap: 14px;
   align-items: stretch;
   padding: 14px;
@@ -2722,6 +2789,7 @@ select {
 }
 
 .table-result-copy {
+  grid-area: copy;
   display: grid;
   align-content: center;
   gap: 6px;
@@ -2752,10 +2820,11 @@ select {
 }
 
 .table-result-panel .table-showdown {
+  grid-area: cards;
   margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  padding: 8px;
+  border-color: rgba(99, 213, 197, 0.16);
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .table-result-panel .table-showdown-head {
@@ -2774,6 +2843,7 @@ select {
 }
 
 .table-result-panel .next-hand {
+  grid-area: action;
   min-width: 180px;
   min-height: 100%;
 }
@@ -3540,14 +3610,15 @@ select {
   }
 
   .table-spotlight-layer {
-    top: clamp(300px, 34vh, 350px);
-    left: clamp(500px, 42vw, 760px);
-    width: min(560px, 32vw);
+    top: auto;
+    bottom: clamp(112px, 13vh, 152px);
+    left: 50%;
+    width: min(620px, 40vw);
     margin: 0;
   }
 
   .table-spotlight-layer .table-card {
-    min-height: 86px;
+    min-height: 0;
   }
 
   .table-spotlight-layer .table-showdown {
@@ -3559,7 +3630,7 @@ select {
   }
 
   .table-card-row-six {
-    grid-template-columns: repeat(6, minmax(54px, 1fr));
+    grid-template-columns: repeat(6, minmax(48px, 1fr));
   }
 
   .table-card-row-six .table-card strong {
@@ -3778,6 +3849,10 @@ select {
     align-self: end;
     width: min(520px, 100%);
     margin: 0 0 10px auto;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
   }
 
   .hand-result-panel {
@@ -3795,6 +3870,10 @@ select {
 
   .table-result-panel {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "cards"
+      "copy"
+      "action";
   }
 
   .table-result-panel .next-hand {

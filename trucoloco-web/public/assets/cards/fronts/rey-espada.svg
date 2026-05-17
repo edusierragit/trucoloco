@@ -1,36 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="644" viewBox="0 0 420 644" role="img" aria-label="12 de ESPADA">
-  <defs>
-    <linearGradient id="paper" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#fffdf7"/>
-      <stop offset="0.58" stop-color="#f4efe2"/>
-      <stop offset="1" stop-color="#e6ddc8"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#20140b" flood-opacity="0.22"/>
-    </filter>
-  </defs>
-  <rect x="1" y="1" width="418" height="642" rx="30" fill="url(#paper)" stroke="#1b1713" stroke-width="2"/>
-  <rect x="28" y="28" width="364" height="588" fill="none" stroke="#1f1d19" stroke-width="2"/>
-  <path d="M80 28h54M194 28h54M308 28h54M80 616h54M194 616h54M308 616h54" stroke="#1f1d19" stroke-width="3" stroke-linecap="square"/>
-  <g transform="translate(50 70) rotate(0)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#111">12</text>
-    <text x="0" y="28" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="900" fill="#506a78">E</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="12 de ESPADA">
+  <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
+  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5"/>
+  <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="#33596b" stroke-width="3"/>
+  <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
+  <g transform="translate(58 76) rotate(0)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#101f2a">12</text>
+    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#33596b">E</text>
   </g>
-  <g transform="translate(370 574) rotate(180)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#111">12</text>
-    <text x="0" y="28" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="900" fill="#506a78">E</text>
+  <g transform="translate(362 544) rotate(180)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#101f2a">12</text>
+    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#33596b">E</text>
   </g>
-  <g filter="url(#softShadow)">
-    <rect x="116" y="124" width="188" height="356" rx="24" fill="#f8f1df" stroke="#172a35" stroke-width="4"/>
-    <rect x="136" y="146" width="148" height="312" rx="16" fill="#ffffff" stroke="#506a78" stroke-width="3" opacity="0.84"/>
-    <g transform="translate(210 255)">
-      <g transform="scale(1.28)"><path d="M0-74C21-35 25-4 8 25L0 38L-8 25C-25-4-21-35 0-74Z" fill="#dbe2e2" stroke="#172a35" stroke-width="6" stroke-linejoin="round"/><path d="M-36 36H36M0 38V82" stroke="#506a78" stroke-width="9" stroke-linecap="round"/><circle cx="0" cy="36" r="10" fill="#172a35"/></g>
-    </g>
-    <path d="M149 358C166 326 254 326 271 358L286 431H134Z" fill="#506a78" stroke="#172a35" stroke-width="6" stroke-linejoin="round"/>
-    <path d="M165 385H255M171 414H249" stroke="#f7e5bd" stroke-width="5" stroke-linecap="round" opacity="0.66"/>
-    <text x="210" y="433" text-anchor="middle" font-family="Georgia, serif" font-size="58" font-weight="800" fill="#fff1cd" stroke="#172a35" stroke-width="2">12</text>
-  </g>
-  <text x="210" y="538" text-anchor="middle" font-family="Georgia, serif" font-size="31" font-weight="800" fill="#172a35" letter-spacing="4">REY</text>
-  <text x="210" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="#506a78" letter-spacing="5">ESPADA</text>
+  <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="#101f2a">ESPADA</text>
+  <g><g transform="translate(210 304)">
+    <rect x="-100" y="-136" width="200" height="272" rx="18" fill="#ead4ac" stroke="#101f2a" stroke-width="6"/>
+    <rect x="-78" y="-113" width="156" height="226" rx="10" fill="#f5e7c8" stroke="#33596b" stroke-width="4"/>
+    <path d="M-58-85L-28-48L0-92L28-48L58-85V-24H-58Z" fill="#d9a134" stroke="#101f2a" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="0" cy="-48" r="36" fill="#c58b62" stroke="#101f2a" stroke-width="6"/>
+    <path d="M-18-54C-8-68 14-67 24-52" fill="none" stroke="#3b2118" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="-12" cy="-47" r="4" fill="#1d110c"/>
+    <circle cx="12" cy="-47" r="4" fill="#1d110c"/>
+    <path d="M-52 4C-42-30 42-30 52 4L68 88H-68Z" fill="#33596b" stroke="#101f2a" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M-40 14H40M-50 45H50" stroke="#f5e7c8" stroke-width="5" stroke-linecap="round" opacity="0.46"/>
+
+    <text x="0" y="85" text-anchor="middle" font-family="Georgia, serif" font-size="78" font-weight="800" fill="#f7e8c7" stroke="#101f2a" stroke-width="3">R</text>
+    <g transform="translate(0 157) rotate(0) scale(0.5)"><path d="M0-78C22-42 30-9 9 25L0 39L-9 25C-30-9-22-42 0-78Z" fill="#8fb0bd" stroke="#101f2a" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M0-60C12-31 14-8 3 17" fill="none" stroke="#f4eedb" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
+  <path d="M-38 35H38M0 39V84" stroke="#101f2a" stroke-width="10" stroke-linecap="round"/>
+  <path d="M-25 34H25M0 43V77" stroke="#33596b" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="0" cy="35" r="12" fill="#d7c594" stroke="#101f2a" stroke-width="4"/></g>
+  </g></g>
+  <text x="210" y="519" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" letter-spacing="5" fill="#101f2a">REY</text>
 </svg>

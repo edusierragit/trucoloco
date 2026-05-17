@@ -84,6 +84,7 @@ Cada vez que el usuario aclare una regla real, un nombre canonico, un flujo impo
 - Tiene sentido empezar a cargar modelos reales cuando el loop jugable ya pida identidad visual, no antes
 - El `ring de conflicto` no debe sentirse como un boton de interfaz: debe existir como habitacion fisica separada del antro/mesa, a la que se entra caminando cuando una discusion de reglas o mesa necesita resolverse de forma absurda
 - La mecanica futura del ring apunta a pelea fisica graciosa tipo muñecos torpes/borrachos, no a paneles de texto; el MVP puede prototipar movimiento, empujones y golpes simples
+- La Sala del Conflicto debe ser combate de arena en tiempo real, no por turnos: movimiento libre, golpes, bloqueo/esquive, HP, cooldowns, feedback de impacto y KO sin usar reglas de truco/cartas
 - El chat de voz es parte importante de la fantasia social de Trucoloco, pero tecnicamente no lo resuelve Three.js: la escena lo acompaña visualmente; la voz real deberia integrarse con WebRTC/Web Audio y signaling cuando exista multiplayer
 
 ## Reglas del slice actual
@@ -195,6 +196,9 @@ Cada vez que el usuario aclare una regla real, un nombre canonico, un flujo impo
 
 ## Assets y personajes
 
-- El usuario paso una foto para usar como base de `Gazpacho`
-- Todavia no hay un modelo real importado en Three.js
-- Antes de meter modelado serio, conviene cerrar el slice clasico entendible
+- Los GLB actuales vienen de Tripo y viven como fuente en `C:\Users\eduar\GAMES\trucoloco-info`; la app carga copias desde `trucoloco-web/public/assets/characters`.
+- Tripo exporta acciones como `NlaTrack`, `NlaTrack.001`, etc. No confiar en el nombre: auditar duraciones y probar con el debug `[` / `]`.
+- Convencion practica actual: caminar suele ser el clip de `2.375s`, correr `2.792s`, salto/accion corta `1.292s`, box/accion extra suele rondar `2.542s`.
+- `Animation stay in Place` debe quedar prendido en Tripo; Three mueve el avatar y el GLB solo pone la pose.
+- `Bottom Center Pivot` conviene prendido; igual `CharacterFigure` centra y escala por bounds para evitar offsets graves.
+- La calibracion local de clips usa `trucoloco:tripo-animation-overrides:v3`; si un browser quedo raro, borrar ese localStorage o apretar `0` en el modo actual.

@@ -24,10 +24,21 @@ const RING_START_STATE = {
   lastDamageToPlayer: 0,
   lastDamageToRival: 0,
   hitStrength: 0,
+  fightIntro: 1.85,
   playerCooldown: 0,
   rivalCooldown: 0,
   playerHitStun: 0,
   rivalHitStun: 0,
+  playerPos: { x: -0.72, z: 0.18 },
+  rivalPos: { x: 0.72, z: -0.18 },
+  playerFacing: 0,
+  rivalFacing: Math.PI,
+  playerDash: 0,
+  rivalDash: 0,
+  playerMoving: 0,
+  rivalMoving: 0,
+  playerEngaged: false,
+  rivalControlled: false,
   playerLane: -0.18,
   rivalLane: 0.18,
   playerStamina: 3,
@@ -47,7 +58,7 @@ const RING_START_STATE = {
   rivalChamber: 5,
   turn: "player",
   resolved: false,
-  lastMove: "Entraste al ring. Bajá la vida de la mesa a cero y volvés al antro con la discusión ganada."
+  lastMove: "Entraste al ring. WASD mueve, click/Q pega, E fuerte, R especial, Shift esquiva y F bloquea."
 };
 
 function createDebateState(overrides = {}) {
@@ -63,8 +74,59 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+const RING_BOUNDS = { x: 1.42, z: 1.04 };
+
+function clampRingPos(pos) {
+  return {
+    x: clamp(pos?.x ?? 0, -RING_BOUNDS.x, RING_BOUNDS.x),
+    z: clamp(pos?.z ?? 0, -RING_BOUNDS.z, RING_BOUNDS.z)
+  };
+}
+
+function getCombatPos(state, actor) {
+  const fallbackX = actor === "player" ? -0.72 : 0.72;
+  const fallbackLane = actor === "player" ? state.playerLane ?? -0.18 : state.rivalLane ?? 0.18;
+  return clampRingPos(actor === "player"
+    ? state.playerPos ?? { x: fallbackX, z: fallbackLane * 0.84 }
+    : state.rivalPos ?? { x: fallbackX, z: fallbackLane * 0.84 });
+}
+
+function getCombatVector(from, to) {
+  const dx = (to?.x ?? 0) - (from?.x ?? 0);
+  const dz = (to?.z ?? 0) - (from?.z ?? 0);
+  const distance = Math.hypot(dx, dz) || 0.0001;
+  return { x: dx / distance, z: dz / distance, distance };
+}
+
+function getFacing(from, to) {
+  return Math.atan2((to?.x ?? 0) - (from?.x ?? 0), (to?.z ?? 0) - (from?.z ?? 0));
+}
+
+function laneFromPos(pos) {
+  return clamp((pos?.z ?? 0) / 0.84, -0.72, 0.72);
+}
+
+function withActorPos(state, actor, pos, facingTarget) {
+  const nextPos = clampRingPos(pos);
+  const facing = facingTarget ? getFacing(nextPos, facingTarget) : actor === "player" ? state.playerFacing : state.rivalFacing;
+
+  return actor === "player"
+    ? {
+      ...state,
+      playerPos: nextPos,
+      playerLane: laneFromPos(nextPos),
+      playerFacing: Number.isFinite(facing) ? facing : state.playerFacing
+    }
+    : {
+      ...state,
+      rivalPos: nextPos,
+      rivalLane: laneFromPos(nextPos),
+      rivalFacing: Number.isFinite(facing) ? facing : state.rivalFacing
+    };
+}
+
 function getRingRead(distance, stamina) {
-  const range = distance <= 0.22 ? "encimados" : distance <= 0.38 ? "a tiro" : "mal perfilados";
+  const range = distance <= 0.5 ? "encimados" : distance <= 0.78 ? "a tiro" : "fuera de rango";
   const air = stamina >= 2.5 ? "aire lleno" : stamina >= 1 ? "aire justo" : "sin aire";
   return `${range} · ${air}`;
 }
@@ -112,22 +174,30 @@ function isInAttackLine(playerLane, targetLane) {
 
 function getCombatActionConfig(kind) {
   if (kind === "remate") {
-    return { label: "Remate", cost: 2.35, cooldown: 4, range: 0.55, damage: 36, stunDamage: 26 };
+    return { label: "Especial", cost: 2.1, cooldown: 1.25, range: 0.82, damage: 34, stunDamage: 26, knockback: 0.34 };
   }
 
   if (kind === "empujon") {
-    return { label: "Empujón", cost: 1.75, cooldown: 2, range: 0.43, damage: 24, stunDamage: 20 };
+    return { label: "Fuerte", cost: 1.35, cooldown: 0.72, range: 0.68, damage: 22, stunDamage: 18, knockback: 0.28 };
   }
 
-  return { label: "Piña", cost: 0.85, cooldown: 1, range: 0.34, damage: 15, stunDamage: 22 };
+  return { label: "Piña", cost: 0.55, cooldown: 0.34, range: 0.55, damage: 12, stunDamage: 20, knockback: 0.14 };
 }
 
 function getDebateTitle(state) {
   if (state.mode === "ruleta") return state.resolved ? "Corcho cantado" : "Ruleta de corchos";
   if (state.resolved) return (state.rivalHealth ?? 100) <= 0 ? "KO: ganaste la disputa" : "KO: la mesa te sacó";
-  if (state.vulnerable) return "La mesa quedó pagando";
-  if (state.rivalIntent === "windup") return `${getRivalAttackName(state.rivalAttack)} anunciado`;
-  return "Pelea de conflicto";
+  if ((state.fightIntro ?? 0) > 0) return "Entrás al ring";
+  if ((state.playerHitStun ?? 0) > 0) return "Te tambalearon";
+  if ((state.rivalHitStun ?? 0) > 0) return "El rival quedó abierto";
+  if ((state.playerDash ?? 0) > 0) return "Esquive";
+  if ((state.playerGuard ?? 0) > 0) return "Guardia";
+  if (state.kind === "remate") return "Especial conectado";
+  if (state.kind === "empujon") return "Fuerte conectado";
+  if (state.kind === "golpe") return "Piña conectada";
+  if (state.kind?.startsWith("rival")) return "Te atacan";
+  if (!state.playerEngaged) return "Probá el cuerpo";
+  return "Arena libre: pegá con click";
 }
 
 function getDebateGoal(state) {
@@ -139,13 +209,253 @@ function getDebateGoal(state) {
   }
 
   if (state.resolved) return "La pelea terminó. Revancha con Q o volvé al antro con Esc.";
-  if (state.vulnerable) return "Ventana corta: pegá, empujá o tirá remate antes de que recompongan postura.";
-  if (state.rivalIntent === "windup") {
-    return state.rivalAttack === "barrida"
-      ? "Barrida baja: salí de la línea con A/D. Cubrirse no alcanza."
-      : "Hombro de frente: cubrite con F o cortalo con Q/E si estás cerca.";
+  if ((state.fightIntro ?? 0) > 0) return "P1: WASD + click/Q/E/R/F. P2 local: IJKL + H/U/O/P.";
+  if (!state.playerEngaged) return "El rival espera. Movete con WASD o tirá la primera piña con click. P2 puede entrar con IJKL.";
+  if (state.playerGuard > 0) return "Estás bloqueando. Soltá F o movete para volver a pegar.";
+  if ((state.playerDash ?? 0) > 0) return "Esquive activo: reposicionate y entrá con click o Q.";
+  return state.rivalControlled
+    ? "Arena local P1 vs P2: los dos se mueven y pegan en tiempo real."
+    : "Arena real-time: movete libre, entrá al rango, pegá y salí antes de que te contesten.";
+}
+
+function applyCombatAction(current, actor, kind, options = {}) {
+  const isPlayer = actor === "player";
+  const playerStarted = isPlayer ? { playerEngaged: true } : {};
+  const rivalStarted = !isPlayer ? { rivalControlled: true, playerEngaged: true } : {};
+  const attacker = isPlayer ? "player" : "rival";
+  const defender = isPlayer ? "rival" : "player";
+  const attackerPos = getCombatPos(current, attacker);
+  const defenderPos = getCombatPos(current, defender);
+  const vector = getCombatVector(attackerPos, defenderPos);
+  const nextToken = (current.token ?? 0) + 1;
+  const attackerCooldownKey = isPlayer ? "playerCooldown" : "rivalCooldown";
+  const defenderCooldownKey = isPlayer ? "rivalCooldown" : "playerCooldown";
+  const attackerStaminaKey = isPlayer ? "playerStamina" : "rivalStamina";
+  const defenderStaminaKey = isPlayer ? "rivalStamina" : "playerStamina";
+  const attackerGuardKey = isPlayer ? "playerGuard" : "rivalGuard";
+  const defenderGuardKey = isPlayer ? "rivalGuard" : "playerGuard";
+  const attackerHitStunKey = isPlayer ? "playerHitStun" : "rivalHitStun";
+  const defenderHitStunKey = isPlayer ? "rivalHitStun" : "playerHitStun";
+  const attackerHealthKey = isPlayer ? "playerHealth" : "rivalHealth";
+  const defenderHealthKey = isPlayer ? "rivalHealth" : "playerHealth";
+  const attackerDashKey = isPlayer ? "playerDash" : "rivalDash";
+
+  if ((current[attackerHitStunKey] ?? 0) > 0 && kind !== "guardia") {
+    return {
+      ...current,
+      ...playerStarted,
+      ...rivalStarted,
+      kind: isPlayer ? "stun" : "rival-stun",
+      token: nextToken,
+      lastDamageToPlayer: 0,
+      lastDamageToRival: 0,
+      hitStrength: 0,
+      lastMove: isPlayer ? "Estás aturdido. Movete para recuperar postura." : "El rival quedó aturdido."
+    };
   }
-  return "PvP local: A usa Q/E/R/F. B puede contestar con U/I/O/P. No spamees: aire y cooldown mandan.";
+
+  if (kind === "guardia") {
+    return {
+      ...current,
+      ...playerStarted,
+      ...rivalStarted,
+      kind: isPlayer ? "guardia" : "rival-guard",
+      token: nextToken,
+      [attackerGuardKey]: 0.55,
+      [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) + 0.25, 0, 3),
+      lastDamageToPlayer: 0,
+      lastDamageToRival: 0,
+      hitStrength: 0.08,
+      lastMove: isPlayer ? "Guardia arriba. Reducís daño frontal, pero si te rodean te la cobran." : "El rival levanta guardia."
+    };
+  }
+
+  if (kind === "esquive") {
+    const away = getCombatVector(defenderPos, attackerPos);
+    const dashPos = clampRingPos({
+      x: attackerPos.x + away.x * 0.54,
+      z: attackerPos.z + away.z * 0.54
+    });
+    const withPos = withActorPos(current, attacker, dashPos, defenderPos);
+
+    return {
+      ...withPos,
+      ...playerStarted,
+      ...rivalStarted,
+      kind: isPlayer ? "dash" : "rival-dash",
+      token: nextToken,
+      [attackerDashKey]: 0.28,
+      [attackerGuardKey]: 0,
+      [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) - 0.55, 0, 3),
+      lastDamageToPlayer: 0,
+      lastDamageToRival: 0,
+      hitStrength: 0,
+      lastMove: isPlayer ? "Esquive corto. Saliste del eje: entrá con click si quedó cerca." : "El rival esquiva y busca otro ángulo."
+    };
+  }
+
+  const actionConfig = getCombatActionConfig(kind);
+  const cooldown = current[attackerCooldownKey] ?? 0;
+  const stamina = current[attackerStaminaKey] ?? 3;
+  const hasAir = stamina >= actionConfig.cost;
+  const canAttack = cooldown <= 0 && hasAir;
+  const hitLanded = canAttack && vector.distance <= actionConfig.range;
+  const defenderGuard = current[defenderGuardKey] ?? 0;
+  const guarded = hitLanded && defenderGuard > 0.05 && kind !== "remate";
+  const guardBroken = hitLanded && defenderGuard > 0.05 && kind === "remate";
+  const rawDamage = hitLanded
+    ? guarded
+      ? Math.max(3, Math.round(actionConfig.damage * 0.34))
+      : actionConfig.damage + (guardBroken ? 8 : 0)
+    : 0;
+  const damage = options.ai ? Math.max(1, Math.round(rawDamage * 0.38)) : rawDamage;
+  const counterDamage = guarded ? 4 : 0;
+  const nextDefenderHealth = clamp((current[defenderHealthKey] ?? 100) - damage, 0, 100);
+  const nextAttackerHealth = clamp((current[attackerHealthKey] ?? 100) - counterDamage, 0, 100);
+  const defenderKnockback = damage > 0 ? actionConfig.knockback * (guarded ? 0.45 : 1) : 0;
+  const nextDefenderPos = damage > 0
+    ? clampRingPos({
+      x: defenderPos.x + vector.x * defenderKnockback,
+      z: defenderPos.z + vector.z * defenderKnockback
+    })
+    : defenderPos;
+  const nextStateWithDefenderPos = withActorPos(current, defender, nextDefenderPos, attackerPos);
+  const attackerWon = nextDefenderHealth <= 0;
+  const defenderWon = nextAttackerHealth <= 0;
+  const kindPrefix = isPlayer ? "" : "rival-";
+  const actionKind = `${kindPrefix}${kind}`;
+
+  return {
+    ...nextStateWithDefenderPos,
+    ...playerStarted,
+    ...rivalStarted,
+    kind: actionKind,
+    token: nextToken,
+    [attackerHealthKey]: nextAttackerHealth,
+    [defenderHealthKey]: nextDefenderHealth,
+    [attackerStaminaKey]: clamp(stamina - (canAttack ? actionConfig.cost : 0), 0, 3),
+    [defenderStaminaKey]: clamp((current[defenderStaminaKey] ?? 3) + (guarded ? 0.12 : 0), 0, 3),
+    [attackerCooldownKey]: canAttack ? actionConfig.cooldown * (options.ai ? 2.55 : 1) : Math.max(0.06, cooldown),
+    [defenderCooldownKey]: Math.max(0, current[defenderCooldownKey] ?? 0),
+    [attackerGuardKey]: 0,
+    [defenderGuardKey]: guarded ? Math.max(0, defenderGuard - 0.34) : 0,
+    [defenderHitStunKey]: damage >= actionConfig.stunDamage ? 0.22 : damage > 0 ? 0.08 : Math.max(0, current[defenderHitStunKey] ?? 0),
+    [attackerHitStunKey]: counterDamage > 0 ? 0.08 : Math.max(0, current[attackerHitStunKey] ?? 0),
+    lastDamageToPlayer: isPlayer ? counterDamage : damage,
+    lastDamageToRival: isPlayer ? damage : counterDamage,
+    hitStrength: clamp((damage + counterDamage) / 34, 0, 1),
+    player: Math.min(5, Math.floor((100 - (isPlayer ? nextDefenderHealth : nextAttackerHealth)) / 20)),
+    rival: Math.min(5, Math.floor((100 - (isPlayer ? nextAttackerHealth : nextDefenderHealth)) / 20)),
+    resolved: attackerWon || defenderWon,
+    lastMove: attackerWon
+      ? (isPlayer ? "KO. Lo sacaste del ring: tu versión gana el conflicto." : "KO. El rival te sacó del ring.")
+      : defenderWon
+        ? (isPlayer ? "KO. Te contestaron y caíste." : "KO. El rival cayó por contra.")
+        : !canAttack
+          ? !hasAir
+            ? (isPlayer ? "Sin aire: corré, esquivá o bloqueá para recuperar." : "El rival se quedó sin aire.")
+            : (isPlayer ? "Cooldown: el golpe todavía no salió." : "El rival quiso repetir demasiado rápido.")
+          : hitLanded
+            ? guarded
+              ? (isPlayer ? "Pegaste sobre guardia. Hizo daño menor y te devolvió un raspón." : "Bloqueaste parte del golpe rival.")
+              : guardBroken
+                ? (isPlayer ? "Especial rompe guardia. Entró fuerte." : "El rival rompió tu guardia con especial.")
+                : (isPlayer ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.` : `El rival conectó ${actionConfig.label.toLowerCase()}.`)
+            : (isPlayer ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.` : "El rival pegó al aire.")
+  };
+}
+
+function stepArenaCombat(current, keys, dt) {
+  if (current.resolved || current.mode === "ruleta") return current;
+
+  const safeDt = Math.min(0.05, Math.max(0.001, dt));
+  let next = {
+    ...current,
+    playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - safeDt),
+    rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - safeDt),
+    playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - safeDt),
+    rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - safeDt),
+    fightIntro: Math.max(0, (current.fightIntro ?? 0) - safeDt),
+    playerGuard: keys.has("f") || keys.has("rightclick") ? 0.38 : Math.max(0, (current.playerGuard ?? 0) - safeDt * 1.45),
+    rivalGuard: keys.has("p") ? 0.38 : Math.max(0, (current.rivalGuard ?? 0) - safeDt * 1.25),
+    playerDash: Math.max(0, (current.playerDash ?? 0) - safeDt),
+    rivalDash: Math.max(0, (current.rivalDash ?? 0) - safeDt),
+    playerMoving: Math.max(0, (current.playerMoving ?? 0) - safeDt),
+    rivalMoving: Math.max(0, (current.rivalMoving ?? 0) - safeDt),
+    playerStamina: clamp((current.playerStamina ?? 3) + safeDt * ((current.playerGuard ?? 0) > 0 ? 0.45 : 0.82), 0, 3),
+    rivalStamina: clamp((current.rivalStamina ?? 3) + safeDt * 0.72, 0, 3),
+    lastDamageToPlayer: Math.max(0, (current.lastDamageToPlayer ?? 0) - safeDt * 32),
+    lastDamageToRival: Math.max(0, (current.lastDamageToRival ?? 0) - safeDt * 32)
+  };
+
+  const playerPos = getCombatPos(next, "player");
+  const rivalPos = getCombatPos(next, "rival");
+  const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
+  const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+  const inputLength = Math.hypot(inputX, inputZ) || 1;
+  const playerCanMove = (next.playerHitStun ?? 0) <= 0;
+
+  if (playerCanMove && (inputX || inputZ)) {
+    const sprint = keys.has("shift");
+    const speed = sprint && (next.playerStamina ?? 0) > 0.12 ? 1.92 : 1.38;
+    const nextPlayerPos = clampRingPos({
+      x: playerPos.x + (inputX / inputLength) * speed * safeDt,
+      z: playerPos.z + (inputZ / inputLength) * speed * safeDt
+    });
+    next = withActorPos(next, "player", nextPlayerPos, getCombatPos(next, "rival"));
+    next.playerEngaged = true;
+    next.playerMoving = 0.18;
+    if (sprint) next.playerStamina = clamp((next.playerStamina ?? 3) - safeDt * 0.55, 0, 3);
+  } else {
+    next.playerFacing = getFacing(getCombatPos(next, "player"), getCombatPos(next, "rival"));
+  }
+
+  const currentPlayerPos = getCombatPos(next, "player");
+  const currentRivalPos = getCombatPos(next, "rival");
+  const toPlayer = getCombatVector(currentRivalPos, currentPlayerPos);
+  const rivalCanMove = (next.rivalHitStun ?? 0) <= 0;
+  const rivalInputX = (keys.has("l") ? 1 : 0) - (keys.has("j") ? 1 : 0);
+  const rivalInputZ = (keys.has("k") ? 1 : 0) - (keys.has("i") ? 1 : 0);
+  const rivalManualInput = Boolean(rivalInputX || rivalInputZ || keys.has("p"));
+
+  if ((next.fightIntro ?? 0) > 0) {
+    next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
+  } else if (rivalManualInput && rivalCanMove) {
+    const rivalInputLength = Math.hypot(rivalInputX, rivalInputZ) || 1;
+    next = {
+      ...next,
+      rivalControlled: true,
+      playerEngaged: true
+    };
+    if (rivalInputX || rivalInputZ) {
+      next = withActorPos(next, "rival", {
+        x: currentRivalPos.x + (rivalInputX / rivalInputLength) * 1.26 * safeDt,
+        z: currentRivalPos.z + (rivalInputZ / rivalInputLength) * 1.26 * safeDt
+      }, currentPlayerPos);
+      next.rivalMoving = 0.18;
+    } else {
+      next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
+    }
+  } else if ((next.playerEngaged ?? false) && rivalCanMove && (next.rivalCooldown ?? 0) <= 0.12) {
+    if (toPlayer.distance > 0.54) {
+      const strafe = Math.sin((next.token ?? 0) * 0.47) * 0.42;
+      const moveX = toPlayer.x + -toPlayer.z * strafe;
+      const moveZ = toPlayer.z + toPlayer.x * strafe;
+      const moveLength = Math.hypot(moveX, moveZ) || 1;
+      next = withActorPos(next, "rival", {
+        x: currentRivalPos.x + (moveX / moveLength) * 0.46 * safeDt,
+        z: currentRivalPos.z + (moveZ / moveLength) * 0.46 * safeDt
+      }, currentPlayerPos);
+      next.rivalMoving = 0.18;
+    } else if (toPlayer.distance <= 0.5 && (next.rivalStamina ?? 0) >= 0.55) {
+      const aiKind = (next.token ?? 0) % 5 === 0 ? "empujon" : "golpe";
+      next = applyCombatAction(next, "rival", aiKind, { ai: true });
+    }
+  } else {
+    next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
+  }
+
+  return next;
 }
 
 function createEmptyWalkTouchInput() {
@@ -154,17 +464,18 @@ function createEmptyWalkTouchInput() {
 
 function getInitialPerformanceProfile() {
   if (typeof window === "undefined") {
-    return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
+    return { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false };
   }
 
   const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
   const narrowViewport = window.innerWidth < 820;
-  const highDpr = window.devicePixelRatio >= 2;
   const perfOverride = new URLSearchParams(window.location.search).get("perf");
-  const lowPower = perfOverride === "low" || perfOverride === "mobile" || (!perfOverride && (coarsePointer || narrowViewport || highDpr));
+  const lowPower = perfOverride === "high"
+    ? false
+    : perfOverride === "low" || perfOverride === "mobile" || coarsePointer || narrowViewport;
 
   return lowPower
-    ? { mode: "low", dpr: [0.65, 1], antialias: false, shadows: false, postprocessing: false }
+    ? { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false }
     : { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
 }
 
@@ -209,7 +520,7 @@ function resolveCorkRoulettePull(current) {
 export default function App() {
   const match = useTrucolocoMatch();
   const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
-  const [cameraView, setCameraView] = useState("entry");
+  const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
   const [walkNotice, setWalkNotice] = useState("");
@@ -220,6 +531,8 @@ export default function App() {
   const returnToTableTimerRef = useRef(null);
   const walkNoticeTimerRef = useRef(null);
   const debateAiTimerRef = useRef(null);
+  const ringFrameRef = useRef(null);
+  const ringKeysRef = useRef(new Set());
   const matchRef = useRef(match);
 
   useEffect(() => {
@@ -238,7 +551,7 @@ export default function App() {
     if (wasHandStarted && !match.handStarted && match.phase === "role-select") {
       window.clearTimeout(returnToTableTimerRef.current);
       setIsSeatingRitual(false);
-      setCameraView("entry");
+      setCameraView("table");
     }
 
     previousHandStartedRef.current = match.handStarted;
@@ -249,6 +562,7 @@ export default function App() {
       window.clearTimeout(returnToTableTimerRef.current);
       window.clearTimeout(walkNoticeTimerRef.current);
       window.clearInterval(debateAiTimerRef.current);
+      window.cancelAnimationFrame(ringFrameRef.current);
     };
   }, []);
 
@@ -373,6 +687,8 @@ export default function App() {
           lastMove: "Round nuevo. Dos pasos, una excusa y vuelve el quilombo."
         });
       }
+
+      return applyCombatAction(current, "player", kind);
 
       const nextToken = current.token + 1;
       const distance = Math.abs(current.playerLane - current.rivalLane);
@@ -509,6 +825,8 @@ export default function App() {
     setDebateState((current) => {
       if (current.resolved || current.mode === "ruleta") return current;
 
+      return applyCombatAction(current, "rival", kind);
+
       const nextToken = current.token + 1;
 
       if ((current.rivalHitStun ?? 0) > 0) {
@@ -610,15 +928,28 @@ export default function App() {
       token: current.token + 1,
       lastMove: mode === "ruleta"
         ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
-        : "Modo ring. Alineate, guardá aire y resolvé a empujones."
+        : "Modo ring real-time. Movete libre, pegá cuando estés cerca y defendete si la mesa te encima."
     }));
   }, []);
 
   useEffect(() => {
     if (cameraView !== "ring") {
       window.clearInterval(debateAiTimerRef.current);
+      window.cancelAnimationFrame(ringFrameRef.current);
+      ringKeysRef.current.clear();
       return undefined;
     }
+
+    let lastFrame = performance.now();
+    const tick = (now) => {
+      const dt = (now - lastFrame) / 1000;
+      lastFrame = now;
+      setDebateState((current) => stepArenaCombat(current, ringKeysRef.current, dt));
+      ringFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    ringFrameRef.current = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(ringFrameRef.current);
 
     debateAiTimerRef.current = window.setInterval(() => {
       setDebateState((current) => {
@@ -810,14 +1141,15 @@ export default function App() {
   const moveDebatePlayer = useCallback((direction) => {
     setDebateState((current) => {
       if (current.resolved || current.mode === "ruleta") return current;
-      const nextLane = clamp(current.playerLane + direction * 0.18, -0.72, 0.72);
-      const escapedLine = current.rivalIntent === "windup" && !isInAttackLine(nextLane, current.rivalTargetLane);
+      const playerPos = getCombatPos(current, "player");
+      const rivalPos = getCombatPos(current, "rival");
+      const nextPlayerPos = clampRingPos({ x: playerPos.x + direction * 0.28, z: playerPos.z });
+      const moved = withActorPos(current, "player", nextPlayerPos, rivalPos);
 
       return {
-        ...current,
+        ...moved,
         kind: "move",
         token: current.token + 1,
-        playerLane: nextLane,
         lastDamageToPlayer: 0,
         lastDamageToRival: 0,
         hitStrength: 0,
@@ -827,11 +1159,9 @@ export default function App() {
         rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
         playerStamina: Math.min(3, current.playerStamina + 0.55),
         playerGuard: 0,
-        lastMove: escapedLine
-          ? `Saliste de la línea de ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Si la mesa falla, castigá con Q/E/R.`
-          : direction < 0
-            ? "Te corrés a la izquierda y recuperás aire."
-            : "Te corrés a la derecha y recuperás aire."
+        lastMove: direction < 0
+          ? "Te corrés a la izquierda y recuperás aire."
+          : "Te corrés a la derecha y recuperás aire."
       };
     });
   }, []);
@@ -839,13 +1169,15 @@ export default function App() {
   const moveDebateRival = useCallback((direction) => {
     setDebateState((current) => {
       if (current.resolved || current.mode === "ruleta") return current;
-      const nextLane = clamp(current.rivalLane + direction * 0.18, -0.72, 0.72);
+      const playerPos = getCombatPos(current, "player");
+      const rivalPos = getCombatPos(current, "rival");
+      const nextRivalPos = clampRingPos({ x: rivalPos.x + direction * 0.28, z: rivalPos.z });
+      const moved = withActorPos(current, "rival", nextRivalPos, playerPos);
 
       return {
-        ...current,
+        ...moved,
         kind: "rival-move",
         token: current.token + 1,
-        rivalLane: nextLane,
         lastDamageToPlayer: 0,
         lastDamageToRival: 0,
         hitStrength: 0,
@@ -887,6 +1219,16 @@ export default function App() {
           handleCameraViewChange("walk");
           return;
         }
+        if (["w", "a", "s", "d", "shift", "i", "j", "k", "l", "p"].includes(key)) {
+          event.preventDefault();
+          ringKeysRef.current.add(key);
+          return;
+        }
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowDown") {
+          event.preventDefault();
+          ringKeysRef.current.add(event.key.toLowerCase());
+          return;
+        }
         if (key === "a") {
           event.preventDefault();
           moveDebatePlayer(-1);
@@ -917,6 +1259,11 @@ export default function App() {
           switchDebateMode("ruleta");
           return;
         }
+        if (event.code === "Space") {
+          event.preventDefault();
+          triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "esquive");
+          return;
+        }
         if (key === "q" || (debateState.mode === "ruleta" && (event.code === "Space" || key === "j"))) {
           event.preventDefault();
           triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
@@ -934,15 +1281,16 @@ export default function App() {
         }
         if (event.code === "Space" || key === "f") {
           event.preventDefault();
+          ringKeysRef.current.add("f");
           triggerDebateAction("guardia");
           return;
         }
-        if (key === "u") {
+        if (key === "h") {
           event.preventDefault();
           triggerRivalDebateAction("golpe");
           return;
         }
-        if (key === "i") {
+        if (key === "u") {
           event.preventDefault();
           triggerRivalDebateAction("empujon");
           return;
@@ -954,27 +1302,58 @@ export default function App() {
         }
         if (key === "p") {
           event.preventDefault();
+          ringKeysRef.current.add("p");
           triggerRivalDebateAction("guardia");
           return;
         }
       }
     };
 
+    const handleKeyUp = (event) => {
+      const key = event.key.toLowerCase();
+      ringKeysRef.current.delete(key);
+      ringKeysRef.current.delete(event.key.toLowerCase());
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [cameraView, debateState.mode, handleCameraViewChange, moveDebatePlayer, moveDebateRival, switchDebateMode, triggerDebateAction, triggerRivalDebateAction]);
 
   useEffect(() => {
     if (cameraView !== "ring") return undefined;
 
     const handlePointerDown = (event) => {
-      if (event.button !== 0) return;
       if (event.target?.closest?.(".debate-hint")) return;
-      triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
+      if (event.button === 0) {
+        triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
+      }
+      if (event.button === 2) {
+        event.preventDefault();
+        ringKeysRef.current.add("rightclick");
+        triggerDebateAction("guardia");
+      }
+    };
+
+    const handlePointerUp = (event) => {
+      if (event.button === 2) ringKeysRef.current.delete("rightclick");
+    };
+
+    const handleContextMenu = (event) => {
+      if (cameraView === "ring") event.preventDefault();
     };
 
     window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("contextmenu", handleContextMenu);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("contextmenu", handleContextMenu);
+    };
   }, [cameraView, debateState.mode, triggerDebateAction]);
 
   return (
@@ -1224,7 +1603,7 @@ export default function App() {
                     ) : null}
                     {debateState.vulnerable ? <span>rival vulnerable</span> : null}
                     {(debateState.streak ?? 0) > 0 ? <span>racha {debateState.streak}</span> : null}
-                    <span>{getRingRead(Math.abs(debateState.playerLane - debateState.rivalLane), debateState.playerStamina)}</span>
+                    <span>{getRingRead(getCombatVector(getCombatPos(debateState, "player"), getCombatPos(debateState, "rival")).distance, debateState.playerStamina)}</span>
                   </>
                 )}
               </div>
@@ -1244,17 +1623,10 @@ export default function App() {
                     <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
                   </>
                 ) : (
-                  <>
-                    <button type="button" onClick={() => triggerDebateAction("golpe")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>Q Piña</button>
-                    <button type="button" onClick={() => moveDebatePlayer(-1)}>← Esquive</button>
-                    <button type="button" onClick={() => moveDebatePlayer(1)}>Esquive →</button>
-                    <button type="button" onClick={() => triggerDebateAction("guardia")}>F Guardia</button>
-                    <button type="button" onClick={() => triggerDebateAction("empujon")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0}>E Empujón</button>
-                    <button type="button" onClick={() => triggerDebateAction("remate")} disabled={(debateState.playerCooldown ?? 0) > 0 || (debateState.playerHitStun ?? 0) > 0 || (debateState.playerStamina ?? 0) < 2.35}>R Remate</button>
-                  </>
+                  null
                 )}
               </div>
-              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : "A: A/D + Q/E/R/F + click · B: ←/→ + U/I/O/P · T: ruleta · Esc: volver"}</small>
+              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : "P1 WASD + click/Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir"}</small>
             </div>
           ) : null}
 

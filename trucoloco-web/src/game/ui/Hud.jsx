@@ -8,19 +8,16 @@ const roleTone = {
   Negociante: {
     slug: "negociante",
     tableName: "La caja",
-    quote: "Todo se arregla charlando. Si no, se cobra.",
     seal: "BANCO"
   },
   "Jugador Estrella": {
     slug: "jugador-estrella",
     tableName: "La fama",
-    quote: "El marketing sube cuando la mesa lo mira.",
     seal: "HYPE"
   },
   Cartachin: {
     slug: "cartachin",
     tableName: "La mugre fina",
-    quote: "No es suerte. Es una carta donde no miraste.",
     seal: "ARMA"
   }
 };
@@ -37,10 +34,10 @@ function getRoleTone(match) {
 
 function Header({ match }) {
   const subtitle = match.phase === "role-select"
-    ? `Elegi un rol para entrar al antro. La mesa ya tiene repartidor y mano.`
+    ? "Elegí rol."
     : match.handClosed
-    ? `La mano termino. ${match.activeLane.human.name} ${match.handWinner === "A" ? "la gano" : "la perdio"}.`
-    : `Elegiste ${match.selectedRole}. Reparte ${match.dealerName}; sale ${match.whoStartsName}.`;
+    ? "Mano cerrada."
+    : `Sale ${match.nextActorName ?? match.whoStartsName}.`;
   const scoreNames = match.phase === "role-select"
     ? `Reparte ${match.dealerName} · sale ${match.whoStartsName}`
     : `${match.activeLane.human.name} vs ${match.activeLane.rival.name}`;
@@ -91,10 +88,7 @@ function RoleSelector({ match }) {
     <section className="role-selector role-selector-arcade">
       <div className="role-select-hero">
         <span className="panel-kicker">Paso 1 · Rol y personaje</span>
-        <h2>Elegí tu entrada</h2>
-        <p>
-          Primero definís la regla de la mano. Después marcás qué personaje del rol toma el foco.
-        </p>
+        <h2>Elegí rol</h2>
       </div>
 
       <div className="role-card-row">
@@ -141,7 +135,6 @@ function RoleSelector({ match }) {
                 <span className="character-card-mark" aria-hidden="true" />
                 <strong>{character.name}</strong>
                 <small>{character.role}</small>
-                <em>{character.quote}</em>
               </button>
             );
           })}
@@ -152,9 +145,7 @@ function RoleSelector({ match }) {
         <div>
           <span className="panel-kicker">Antes de repartir</span>
           <strong>{selectedCharacter.name} · {selectedRoleDef.title}</strong>
-          <p>
-            La mesa 3v3 ya tiene orden. Sale {match.whoStartsName}. Reparte {match.dealerName}. Tu entrada queda marcada por {selectedCharacter.name}.
-          </p>
+          <p>Sale {match.whoStartsName}. Reparte {match.dealerName}.</p>
         </div>
         <button
           className="action-button action-button-primary"
@@ -174,20 +165,10 @@ function ActionFocus({ match }) {
     return null;
   }
 
-  const actions = [];
   const focusState = getFocusState(match);
   const focusButtons = [];
   const advanceHandler = getAdvanceHandler(match);
   const trucoActionLabel = match.trucoCallLabel ?? "Truco";
-
-  if (match.canUseRolePower) actions.push(match.rolePowerButtonLabel);
-  if (match.canUseWeapon) actions.push("Cargar arma");
-  if (match.canCallEnvido) actions.push("Cantar envido");
-  if (match.canCallTruco) actions.push(`Cantar ${trucoActionLabel.toLowerCase()}`);
-  if (match.canPlayCard) actions.push("Bajar carta");
-  if (match.canAdvance && match.advanceLabel && !BOTTOM_OWNED_ADVANCE_PHASES.includes(match.phase)) {
-    actions.push(match.phase === "table-auto-turn" ? "Avanzar mesa" : match.advanceLabel);
-  }
 
   if (match.canUseRolePower && match.selectedRole === "Negociante") {
     focusButtons.push({
@@ -234,10 +215,8 @@ function ActionFocus({ match }) {
           <span className={`focus-badge focus-badge-${focusState.tone}`}>{focusState.badge}</span>
           <span className="role-table-name">{getRoleTone(match).tableName}</span>
         </div>
-        <span className="panel-kicker">Turno de mesa</span>
+        <span className="panel-kicker">Turno</span>
         <strong className="role-power-title">{focusState.summary}</strong>
-        <p>{match.phaseHint}</p>
-        {actions.length ? <small className="role-power-status">Accion disponible: {actions.join(" o ").toLowerCase()}.</small> : null}
       </div>
 
       {focusButtons.length ? (
@@ -334,7 +313,7 @@ function getFocusState(match) {
   if (match.phase === "role-select") {
     return {
       badge: "Rol listo",
-      summary: `Si confirmas ${match.selectedRole}, la mano arranca para ${match.whoStartsName}.`,
+      summary: `Sale ${match.whoStartsName}.`,
       tone: "neutral"
     };
   }
@@ -342,7 +321,7 @@ function getFocusState(match) {
   if (match.matchWinner) {
     return {
       badge: "Partida cerrada",
-      summary: `${getTeamName(match.matchWinner, match)} llego a ${match.config.winningScore}.`,
+      summary: `Gana ${getTeamName(match.matchWinner, match)}.`,
       tone: "neutral"
     };
   }
@@ -351,8 +330,8 @@ function getFocusState(match) {
     return {
       badge: match.handWinner === "A" ? "Mano ganada" : "Mano perdida",
       summary: match.pointsInverted
-        ? `${getTeamName(match.handWinner, match)} gano la mano, pero el punto lo cobra ${getTeamName(match.scoringWinner, match)}.`
-        : `${getTeamName(match.scoringWinner, match)} cobra esta mano.`,
+        ? `Cobra ${getTeamName(match.scoringWinner, match)}.`
+        : `Cobra ${getTeamName(match.scoringWinner, match)}.`,
       tone: match.scoringWinner === "A" ? "win" : "lose"
     };
   }
@@ -364,8 +343,8 @@ function getFocusState(match) {
     return {
       badge: pending?.accepted ? "Envido querido" : "Envido no querido",
       summary: pending?.accepted
-        ? `${match.activeLane.human.name} ${pending.humanValue} · ${match.activeLane.rival.name} ${pending.rivalValue}. Cobra ${winnerName}.`
-        : `${match.activeLane.rival.name} no quiso. Cobra ${match.activeLane.human.name}.`,
+        ? `${pending.humanValue}-${pending.rivalValue}. Cobra ${winnerName}.`
+        : `Cobra ${match.activeLane.human.name}.`,
       tone: pending?.winner === "A" ? "win" : "lose"
     };
   }
@@ -373,7 +352,7 @@ function getFocusState(match) {
   if (match.phase === "truco-response") {
     return {
       badge: "Te apuran",
-      summary: `${match.activeLane.rival.name} sube a ${match.trucoPending?.label ?? "truco"}.`,
+      summary: `${match.trucoPending?.label ?? "Truco"}.`,
       tone: "neutral"
     };
   }
@@ -385,14 +364,14 @@ function getFocusState(match) {
     if (lastTrick?.result === "tie") {
       return {
         badge: "Vuelta parda",
-        summary: `La ventaja sigue para ${winnerName}.`,
+        summary: `Sigue ${winnerName}.`,
         tone: "draw"
       };
     }
 
     return {
       badge: lastTrick?.winner === "A" ? "Vuelta ganada" : "Vuelta perdida",
-      summary: `${winnerName} abre la siguiente vuelta.`,
+      summary: `Sale ${winnerName}.`,
       tone: lastTrick?.winner === "A" ? "win" : "lose"
     };
   }
@@ -400,7 +379,7 @@ function getFocusState(match) {
   if (match.phase === "rival-leads") {
     return {
       badge: "Turno rival",
-      summary: `${match.activeLane.rival.name} abre la vuelta ${match.displayVueltaNumber}.`,
+      summary: `Juega ${match.activeLane.rival.name}.`,
       tone: "neutral"
     };
   }
@@ -408,7 +387,7 @@ function getFocusState(match) {
   if (match.phase === "pre-rival-lead") {
     return {
       badge: "Decidis vos",
-      summary: `${match.activeLane.rival.name} sale primero, pero tu rol todavia puede intervenir.`,
+      summary: `Antes de ${match.activeLane.rival.name}.`,
       tone: "neutral"
     };
   }
@@ -416,7 +395,7 @@ function getFocusState(match) {
   if (match.phase === "answer-rival") {
     return {
       badge: "Tu respuesta",
-      summary: `${match.activeLane.rival.name} ya jugo. Ahora responde ${match.activeLane.human.name}.`,
+      summary: `Respondé con carta.`,
       tone: "neutral"
     };
   }
@@ -425,14 +404,14 @@ function getFocusState(match) {
     if ((match.canUseRolePower || match.canUseWeapon) && match.tableCards.length === 0) {
       return {
         badge: "Antes de la primera carta",
-        summary: `Podés usar tu rol antes de que juegue ${match.nextActorName}.`,
+        summary: `Antes de ${match.nextActorName}.`,
         tone: "neutral"
       };
     }
 
     return {
       badge: "Mesa",
-      summary: `Juega ${match.nextActorName}. Avanzá para ver su carta.`,
+      summary: `Juega ${match.nextActorName}.`,
       tone: "neutral"
     };
   }
@@ -441,21 +420,21 @@ function getFocusState(match) {
     if ((match.canUseRolePower || match.canUseWeapon) && match.tableCards.length === 0) {
       return {
         badge: "Tu turno",
-        summary: "Primero decidí si usás tu rol.",
+        summary: "Rol o carta.",
         tone: "neutral"
       };
     }
 
     return {
       badge: "Tu turno",
-      summary: `Te toca como ${match.activeLane.human.name}.`,
+      summary: "Bajá carta.",
       tone: "neutral"
     };
   }
 
   return {
     badge: "Tu turno",
-    summary: `Estas abriendo la vuelta ${match.displayVueltaNumber}.`,
+    summary: `Vuelta ${match.displayVueltaNumber}.`,
     tone: "neutral"
   };
 }
@@ -468,42 +447,32 @@ function getSuitClass(card) {
   return `suit-${(card?.suit ?? "neutral").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
-function getProgressSummary(match) {
-  if (!match.trickHistory.length) {
-    return `Todavia no se jugo ninguna vuelta. Sale ${match.whoStartsName}.`;
-  }
-
-  const lastTrick = match.trickHistory[match.trickHistory.length - 1];
-
-  if (match.handClosed) {
-    return `${getTeamLabel(match.handWinner)} cerro la mano en ${match.trickHistory.length} ${match.trickHistory.length === 1 ? "vuelta" : "vueltas"}.`;
-  }
-
-  if (lastTrick.result === "tie") {
-    return `La vuelta ${lastTrick.index} fue parda. La ventaja sigue para ${getTrickWinnerName(lastTrick, match)}.`;
-  }
-
-  return `${getTrickWinnerName(lastTrick, match)} gano la vuelta ${lastTrick.index} y abre la siguiente.`;
-}
-
-function TableCard({ card, label }) {
+function TableCard({ card, label, order }) {
   const delta = card.powerDelta ?? 0;
   const modifierCopy = delta ? (delta > 0 ? "Potenciada" : "Debilitada") : null;
+  const hasCardImage = Boolean(card.image);
 
   return (
     <article
-      className={`table-card table-card-${card.side?.toLowerCase() ?? "neutral"} ${getSuitClass(card)}`}
+      className={`table-card table-card-${card.side?.toLowerCase() ?? "neutral"} ${hasCardImage ? "table-card-image" : ""} ${getSuitClass(card)}`}
       style={{ "--card-accent": card.tone }}
     >
-      <span className="table-card-corner">
-        <strong>{getCardRankNumber(card)}</strong>
-        <small>{getCardSuitCode(card)}</small>
-      </span>
+      <span className="table-card-order">{order}</span>
+      {hasCardImage ? (
+        <img className="table-card-art" src={card.image} alt="" draggable="false" />
+      ) : (
+        <>
+          <span className="table-card-corner">
+            <strong>{getCardRankNumber(card)}</strong>
+            <small>{getCardSuitCode(card)}</small>
+          </span>
+          <span className="table-card-emblem" aria-hidden="true" />
+          <strong className="table-card-name">{card.name}</strong>
+          <small>{card.suit}</small>
+          <span className="table-card-suit-mark">{getCardSuitCode(card)}</span>
+        </>
+      )}
       <span className="table-card-owner">{label}</span>
-      <span className="table-card-emblem" aria-hidden="true" />
-      <strong className="table-card-name">{card.name}</strong>
-      <small>{card.suit}</small>
-      <span className="table-card-suit-mark">{getCardSuitCode(card)}</span>
       {modifierCopy ? <span className="table-card-force">{modifierCopy}</span> : null}
     </article>
   );
@@ -512,26 +481,19 @@ function TableCard({ card, label }) {
 function TableShowdown({ match }) {
   const lastTrick = match.tableCards.length >= 6 ? match.trickHistory[match.trickHistory.length - 1] : null;
   const resultCopy = getTableResultCopy(match, lastTrick);
-  const tableSlots = Array.from({ length: 6 }, (_, index) => match.tableCards[index] ?? null);
+  const isClosed = match.phase === "trick-closed" || match.tableCards.length >= 6;
 
   return (
-    <section className="table-showdown">
+    <section className={isClosed ? "table-showdown table-showdown-closed" : "table-showdown"}>
       <div className="table-showdown-head">
-        <span className="panel-kicker">Mesa · Vuelta {match.displayVueltaNumber}/3</span>
+        <span className="panel-kicker">V{match.displayVueltaNumber} · derecha</span>
         <strong>{resultCopy}</strong>
       </div>
 
       <div className="table-card-row table-card-row-six">
-        {tableSlots.map((card, index) =>
-          card ? (
-            <TableCard key={`${card.seatId}-${card.handIndex}`} card={card} label={card.owner} />
-          ) : (
-            <div key={`empty-${index}`} className="table-card table-card-empty">
-              <span>Slot {index + 1}</span>
-              <small>{index === match.tableCards.length ? "Próximo" : "Pendiente"}</small>
-            </div>
-          )
-        )}
+        {match.tableCards.map((card, index) => (
+          <TableCard key={`${card.seatId}-${card.handIndex}`} card={card} label={card.owner} order={index + 1} />
+        ))}
       </div>
     </section>
   );
@@ -545,16 +507,24 @@ function getTableResultCopy(match, lastTrick) {
   }
 
   if (match.tableCards.length) {
-    return `${match.tableCards.length}/6 cartas en mesa. Actúa ${match.nextActorName ?? "la mesa"}.`;
+    return `${match.tableCards.length}/6 · ${match.nextActorName ?? "Mesa"}.`;
   }
 
-  if (match.nextActorName) return `Todavía no hay cartas. Sale ${match.nextActorName}.`;
+  if (match.nextActorName) return `Sale ${match.nextActorName}.`;
   if (match.handClosed) return "La mano ya cerro.";
-  return "Todavia no hay cartas en esta vuelta.";
+  return "Mesa limpia.";
 }
 
 function TableSpotlight({ match }) {
-  return null;
+  if (match.phase === "role-select" || match.phase === "trick-closed" || match.handClosed || !match.tableCards.length) {
+    return null;
+  }
+
+  return (
+    <div className="table-spotlight-layer">
+      <TableShowdown match={match} />
+    </div>
+  );
 }
 
 function TrickLedger({ match }) {
@@ -570,9 +540,7 @@ function TrickLedger({ match }) {
           const result =
             trick.result === "tie" ? "Parda" : trick.winner === "A" ? "Tu equipo" : "Rival";
           const winningCard = trick.cards?.find((card) => card.seatId === trick.winnerSeatId);
-          const summary = trick.cards
-            ? `${trick.cards.length} cartas · ${winningCard?.card?.name ?? winningCard?.name ?? "sin carta ganadora"}`
-            : getShortCardName(trick.humanCard);
+          const summary = winningCard?.card?.name ?? winningCard?.name ?? getShortCardName(trick.humanCard);
           const winnerName = getTrickWinnerName(trick, match);
 
           return (
@@ -590,38 +558,15 @@ function TrickLedger({ match }) {
 }
 
 function StatusStrip({ match }) {
-  const hasTableEvent = match.tableCards.length > 0 || match.trickHistory.length > 0 || match.handClosed || match.matchWinner;
-
-  if (match.phase === "role-select" || match.handClosed || match.matchWinner || !hasTableEvent) {
+  if (match.phase === "role-select" || match.handClosed || match.matchWinner || !match.trickHistory.length) {
     return null;
   }
 
-  const negotiationSummary = match.negotiationDice
-    ? `Dados ${match.negotiationDice.humanDie} y ${match.negotiationDice.rivalDie}.`
-    : null;
-  const tone = getRoleTone(match);
-  const speaker = match.nextActorName ?? match.activeLane.human.name;
-
   return (
     <section className="status-strip">
-      <article className="recent-event-card acta-card">
-        <div className="acta-top">
-          <span className="panel-kicker">Acta de mesa</span>
-          <span className="acta-seal">{tone.seal}</span>
-        </div>
-        <strong>{match.highlight}</strong>
-        <p>{match.eventLog}</p>
-        <blockquote>
-          <span>{speaker}</span>
-          {tone.quote}
-        </blockquote>
-        {negotiationSummary ? <p className="acta-note">{negotiationSummary}</p> : null}
+      <article className="status-card status-card-wide">
+        <TrickLedger match={match} />
       </article>
-      {match.trickHistory.length ? (
-        <article className="status-card status-card-wide">
-          <TrickLedger match={match} />
-        </article>
-      ) : null}
     </section>
   );
 }
@@ -635,16 +580,10 @@ function AwayFromTablePanel({ match, onReturnToTable }) {
     <section className="away-from-table-panel">
       <span className="focus-badge focus-badge-neutral">Fuera de mesa</span>
       <span className="panel-kicker">Vista de puerta</span>
-      <strong>La mano sigue en la mesa.</strong>
-      <p>
-        No se puede jugar desde la puerta. Volvé a la mesa para ver cartas, cantar o avanzar la ronda.
-      </p>
+      <strong>Volvé a la mesa.</strong>
       <button className="action-button action-button-primary" onClick={onReturnToTable} type="button">
         Volver a la mesa
       </button>
-      <small>
-        Ahora: {match.nextActorName ? `actúa ${match.nextActorName}` : match.highlight}
-      </small>
     </section>
   );
 }
@@ -710,11 +649,9 @@ function TrucoResponsePanel({ match }) {
     <footer className="bottom-dock bottom-dock-decision bottom-dock-truco">
       <section className="decision-panel truco-response-panel">
         <div className="decision-copy">
-          <span className="panel-kicker">Lance de truco</span>
-          <strong>{callerName} canta {pending.label}</strong>
-          <p>
-            Si querés, la mano vale {pending.acceptedBet}. Si no querés, {callerName} cobra {pending.rejectedPoints}.
-          </p>
+          <span className="panel-kicker">Truco</span>
+          <strong>{pending.label}</strong>
+          <p>Quiere: {pending.acceptedBet}. No quiere: {pending.rejectedPoints} para {callerName}.</p>
         </div>
 
         <div className="truco-ladder" aria-hidden="true">
@@ -760,44 +697,44 @@ function getHandPanelCopy(match) {
   const trucoActionLabel = match.trucoCallLabel?.toLowerCase() ?? "truco";
 
   if (match.phase === "role-select") {
-    return "Primero confirma el rol. La mano se reparte cuando arranques.";
+    return "Confirmá rol.";
   }
 
   if (match.matchWinner) {
-    return "La partida ya termino. Si queres, arranca una nueva.";
+    return "Partida cerrada.";
   }
 
   if (match.phase === "envido-resolution") {
-    return "Primero anotá el envido. Después vuelve la mano normal.";
+    return "Resolver envido.";
   }
 
   if (match.canPlayCard) {
-    if (match.canCallEnvido && match.canCallTruco) return `Podés cantar envido, ${trucoActionLabel} o bajar una carta.`;
-    if (match.canCallTruco) return `Podés cantar ${trucoActionLabel} o bajar una carta.`;
-    return "Elegi una carta para esta vuelta.";
+    if (match.canCallEnvido && match.canCallTruco) return `Envido, ${trucoActionLabel} o carta.`;
+    if (match.canCallTruco) return `${trucoActionLabel} o carta.`;
+    return "Elegí carta.";
   }
 
   if (match.phase === "table-auto-turn") {
-    return `Está por jugar ${match.nextActorName}. Avanzá la mesa para ver la carta.`;
+    return `Juega ${match.nextActorName}.`;
   }
 
   if (match.canAdvance && match.phase === "rival-leads") {
-    return `${match.activeLane.rival.name} sale primero. Mirá su carta antes de responder.`;
+    return `Sale ${match.activeLane.rival.name}.`;
   }
 
   if (match.phase === "pre-rival-lead") {
-    return "Antes de mirar la salida rival, decidí si usás el poder del rol.";
+    return "Rol o pasar.";
   }
 
   if (match.canAdvance && match.phase === "trick-closed") {
-    return "La vuelta ya se resolvio. Limpiá la mesa para arrancar la siguiente con claridad.";
+    return "Vuelta cerrada.";
   }
 
   if (match.handClosed) {
-    return "La mano ya termino. Lo que te quedo en la mano ya no cambia el resultado.";
+    return "Mano cerrada.";
   }
 
-  return "Todavia no es momento de bajar una carta.";
+  return "Esperá turno.";
 }
 
 function BottomDock({ match, handFocus, setHandFocus }) {
@@ -868,13 +805,8 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       <footer className="bottom-dock bottom-dock-decision">
         <section className="decision-panel">
           <div className="decision-copy">
-            <span className="panel-kicker">{isPreDecision ? "Antes de la salida" : "Salida rival"}</span>
-            <strong>{isPreDecision ? "Decisión previa" : `${match.activeLane.rival.name} abre la vuelta`}</strong>
-            <p>
-              {isPreDecision
-                ? `${match.activeLane.rival.name} sale primero. Podés usar tu rol ahora o dejar que muestre su carta.`
-                : `Mirá qué carta baja ${match.activeLane.rival.name}; después respondés con una de tus cartas.`}
-            </p>
+            <span className="panel-kicker">{isPreDecision ? "Antes" : "Salida"}</span>
+            <strong>{isPreDecision ? "Rol o pasar" : `Sale ${match.activeLane.rival.name}`}</strong>
           </div>
 
           {showWeaponsPanel ? (
@@ -910,13 +842,8 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       <footer className="bottom-dock bottom-dock-decision">
         <section className="decision-panel envido-panel">
           <div className="decision-copy">
-            <span className="panel-kicker">Lance de envido</span>
-            <strong>{pending?.accepted ? "Se cantan los tantos" : "No quiso"}</strong>
-            <p>
-              {pending?.accepted
-                ? `${match.activeLane.human.name} canta ${pending.humanValue}. ${match.activeLane.rival.name} canta ${pending.rivalValue}. Cobra ${winnerName}.`
-                : `${match.activeLane.rival.name} no quiere. ${match.activeLane.human.name} cobra 1 punto y se sigue jugando.`}
-            </p>
+            <span className="panel-kicker">Envido</span>
+            <strong>{pending?.accepted ? `Cobra ${winnerName}` : `${match.activeLane.human.name} cobra 1`}</strong>
           </div>
 
           {pending?.accepted ? (
@@ -951,10 +878,10 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       ? `${scoringWinnerName} gana la partida`
       : `${handWinnerName} gana la mano`;
     const resultCopy = match.matchWinner
-      ? `La partida llego a ${match.config.winningScore}. Podes barajar una prueba nueva.`
+      ? `A ${match.config.winningScore}.`
       : match.pointsInverted
-        ? `${handWinnerName} gano jugando, pero la negociacion hizo que cobre ${scoringWinnerName}.`
-        : `${scoringWinnerName} cobra ${match.activeBet} ${match.activeBet === 1 ? "punto" : "puntos"}.`;
+        ? `Cobra ${scoringWinnerName}.`
+        : `${scoringWinnerName} cobra ${match.activeBet}.`;
 
     return (
       <footer className="bottom-dock bottom-dock-result">
@@ -993,10 +920,12 @@ function BottomDock({ match, handFocus, setHandFocus }) {
     return (
       <footer className="bottom-dock bottom-dock-table-result">
         <section className={`table-result-panel table-result-panel-${trickTone}`}>
+          <TableShowdown match={match} />
+
           <div className="table-result-copy">
             <span className="panel-kicker">Vuelta resuelta</span>
             <strong>{match.highlight}</strong>
-            <p>Limpiá la mesa. La próxima vuelta la abre {nextLeader}.</p>
+            <p>Sigue {nextLeader}.</p>
           </div>
 
           <button
@@ -1017,7 +946,7 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       <section className={handPanelClassName}>
         <div className="panel-header">
           <div>
-            <span className="panel-kicker">{match.canPlayCard ? "Acción disponible" : "Tu mano"}</span>
+            <span className="panel-kicker">{match.canPlayCard ? "Acción" : "Tu mano"}</span>
             <p>{getHandPanelCopy(match)}</p>
           </div>
           <div className="panel-header-actions">
@@ -1054,19 +983,19 @@ function BottomDock({ match, handFocus, setHandFocus }) {
               {match.phase === "role-select"
                 ? "Rol sin confirmar."
                 : match.phase === "table-auto-turn"
-                  ? "Turno de la mesa."
+                  ? `Juega ${match.nextActorName}.`
                   : match.matchWinner
                     ? "Partida cerrada."
                     : "Mano cerrada."}
             </strong>
             <p>
               {match.phase === "role-select"
-                ? "Arranca la mano para repartir tus cartas."
+                ? "Repartí cartas."
                 : match.phase === "table-auto-turn"
-                  ? `Le toca a ${match.nextActorName}. Usá el botón para avanzar la ronda.`
+                  ? "Avanzá mesa."
                 : match.matchWinner
-                  ? "El marcador ya definio la partida."
-                  : "Cobra el punto y pasa a la siguiente mano."}
+                  ? "Marcador cerrado."
+                  : "Siguiente mano."}
             </p>
           </div>
         )}

@@ -819,6 +819,8 @@ function HexagonHub({ handClosed, outcomeTone, modId }) {
 
 function ImportedHexBoardAsset() {
   const { scene } = useGLTF("/assets/characters/tablero.glb");
+  const modelRef = useRef(null);
+  const glowRef = useRef(null);
   const { clonedScene, normalizedScale, offset } = useMemo(() => {
     const clone = scene.clone();
 
@@ -856,19 +858,42 @@ function ImportedHexBoardAsset() {
     };
   }, [scene]);
 
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (modelRef.current) {
+      modelRef.current.position.y = Math.sin(t * 1.4) * 0.018;
+      modelRef.current.rotation.y = Math.sin(t * 0.42) * 0.055;
+    }
+    if (glowRef.current) {
+      glowRef.current.material.opacity = 0.18 + Math.sin(t * 2.2) * 0.035;
+      glowRef.current.scale.setScalar(1 + Math.sin(t * 1.7) * 0.035);
+    }
+  });
+
   return (
-    <primitive
-      object={clonedScene}
-      scale={normalizedScale}
-      position={offset}
-      dispose={null}
-    />
+    <group name="Tablero_Holograma_Asset">
+      <mesh ref={glowRef} position={[0, -0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.88, 72]} />
+        <meshBasicMaterial color="#f0a34f" transparent opacity={0.18} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, -0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.82, 0.96, 96]} />
+        <meshBasicMaterial color="#91e9f6" transparent opacity={0.18} depthWrite={false} />
+      </mesh>
+      <primitive
+        ref={modelRef}
+        object={clonedScene}
+        scale={normalizedScale * 1.12}
+        position={offset}
+        dispose={null}
+      />
+    </group>
   );
 }
 
 function ImportedHexBoard({ handClosed, outcomeTone, modId }) {
   return (
-    <group name="Imported_Tablero_Central" position={[0, 0.245, 0.08]} rotation={[0, 0, 0]}>
+    <group name="Imported_Tablero_Central" position={[0, 0.34, 0.08]} rotation={[0, 0, 0]}>
       <Suspense fallback={null}>
         <ImportedHexBoardAsset />
       </Suspense>
@@ -939,11 +964,7 @@ export function Table({ match, performanceMode = "high" }) {
       <BrassStuds lowPower={lowPower} />
       <TableProps lowPower={lowPower} />
 
-      {lowPower ? (
-        <HexagonHub handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
-      ) : (
-        <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
-      )}
+      <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
 
       <mesh name="Table_Pedestal" castShadow receiveShadow position={[0, -1.05, 0]}>
         <cylinderGeometry args={[0.42, 0.58, 1.75, 24]} />

@@ -23,7 +23,7 @@ const WALK_CAMERA_HEIGHT = 2.92;
 const WALK_CAMERA_DISTANCE = 3.88;
 const WALK_CAMERA_SIDE_OFFSET = 0.86;
 const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
-const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v2";
+const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v3";
 
 const WALK_HOTSPOTS = [
   { id: "door", x: 0, z: 3.45, radius: 0.95 },

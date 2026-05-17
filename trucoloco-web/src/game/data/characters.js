@@ -12,9 +12,9 @@ export const characterSkins = {
     animationClipMap: {
       idle: null,
       walk: "NlaTrack.004",
-      run: "NlaTrack.001",
-      box: "NlaTrack.002",
-      jump: "NlaTrack"
+      run: "NlaTrack.002",
+      box: "NlaTrack.006",
+      jump: "NlaTrack.001"
     },
     animationTimeScaleMap: {
       walk: 0.72,
@@ -35,10 +35,10 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: null,
-      walk: "NlaTrack.004",
-      run: "NlaTrack.001",
+      walk: "NlaTrack.007",
+      run: "NlaTrack",
       box: "NlaTrack.002",
-      jump: "NlaTrack"
+      jump: "NlaTrack.005"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -56,8 +56,46 @@ export const characterSkins = {
     modelRotation: [0, 0, 0],
     modelTargetHeight: 1.72,
     modelPromptKey: "pochex",
+    walkFacingOffset: -Math.PI / 2,
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.003",
+      run: "NlaTrack.002",
+      box: "NlaTrack.001",
+      jump: "NlaTrack.004"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1,
+      jump: 1
+    },
     chairSeatColor: "#241711",
     chairBackColor: "#1f1410"
+  },
+  "cubano-cartachin-glb": {
+    modelSrc: "/assets/characters/cubano.glb",
+    modelScale: 1,
+    modelPosition: [0, 0.02, 0],
+    modelRotation: [0, 0, 0],
+    modelTargetHeight: 1.72,
+    modelPromptKey: "cubano",
+    walkFacingOffset: -Math.PI / 2,
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.004",
+      run: "NlaTrack.001",
+      box: "NlaTrack",
+      jump: "NlaTrack.003"
+    },
+    animationTimeScaleMap: {
+      walk: 0.76,
+      run: 0.98,
+      box: 1,
+      jump: 1
+    },
+    chairSeatColor: "#2a1c14",
+    chairBackColor: "#1f1510"
   },
   "pol-cartachin-glb": {
     modelSrc: "/assets/characters/pol.glb",
@@ -107,7 +145,7 @@ export const characterSkins = {
       walk: "NlaTrack.001",
       run: "NlaTrack.003",
       box: "NlaTrack",
-      jump: "NlaTrack.005"
+      jump: "NlaTrack.004"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -171,21 +209,21 @@ export const characterSkins = {
 export const roleDefinitions = {
   Negociante: {
     title: "Negociante",
-    summary: "Negocia los puntos de la mano. A veces salva a su equipo y a veces lo manda al muere.",
+    summary: "Puntos y riesgo.",
     powerName: "Negociar puntos",
-    powerSummary: "Antes de la primera carta, los dos negociantes tiran un dado. Si suman 8 o mas, la mano se cobra al reves."
+    powerSummary: "8+ invierte el cobro."
   },
   "Jugador Estrella": {
     title: "Jugador Estrella",
-    summary: "Es el atrevido del antro. En este slice juega mano clasica, pero ya fija el tono del duelo.",
+    summary: "Mano clasica.",
     powerName: "Atrevida total",
-    powerSummary: "Por ahora no agrega una regla nueva. Este rol gana personalidad con sus cartas, frases y presencia."
+    powerSummary: "Sin regla extra."
   },
   Cartachin: {
     title: "Cartachin",
-    summary: "Carga armas antes de arrancar y mete mugre fina cuando la mano pide trampa prolija.",
+    summary: "Armas de apertura.",
     powerName: "Mazo de armas",
-    powerSummary: "Solo Cartachin puede cargar un arma al abrir la mano."
+    powerSummary: "Arma antes de la primera carta."
   }
 };
 
@@ -195,7 +233,6 @@ export const teams = {
       id: "irvyn",
       name: "Irvyn",
       role: "Negociante",
-      quote: "Si no se arregla charlando, se arregla cobrando.",
       accent: "#d9b36c",
       skinId: "irvyn-negociante-glb"
     },
@@ -203,7 +240,6 @@ export const teams = {
       id: "gazpacho",
       name: "Gazpacho",
       role: "Jugador Estrella",
-      quote: "El As es mio por derecho divino.",
       accent: "#f0872d",
       skinId: "gazpacho-star-skin"
     },
@@ -211,9 +247,15 @@ export const teams = {
       id: "cartachin-sur",
       name: "Pochex",
       role: "Cartachin",
-      quote: "No es suerte. Es mugre bien administrada.",
       accent: "#b4472d",
       skinId: "pochex-cartachin-glb"
+    },
+    {
+      id: "cubano",
+      name: "Cubano",
+      role: "Cartachin",
+      accent: "#d7a45d",
+      skinId: "cubano-cartachin-glb"
     }
   ],
   B: [
@@ -221,7 +263,6 @@ export const teams = {
       id: "marvyn",
       name: "Marvyn",
       role: "Negociante",
-      quote: "Todo se negocia, hasta la verguenza.",
       accent: "#a6eef0",
       skinId: "marvyn-negociante-glb"
     },
@@ -229,7 +270,6 @@ export const teams = {
       id: "myke-keta",
       name: "Myke Keta",
       role: "Jugador Estrella",
-      quote: "Si me das un hueco, te vacio la noche.",
       accent: "#5c7fc0",
       skinId: "myke-keta-star-skin"
     },
@@ -237,7 +277,6 @@ export const teams = {
       id: "cartachin-norte",
       name: "Pol",
       role: "Cartachin",
-      quote: "Siempre hay una carta pegada al forro del saco.",
       accent: "#59a06e",
       skinId: "pol-cartachin-glb"
     }

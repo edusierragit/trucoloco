@@ -5,7 +5,7 @@ export const weapons = [
   {
     id: "parca-utileria",
     name: "Parca de Utileria",
-    summary: "Tu proxima carta sube dos lugares en la vuelta que juegues.",
+    summary: "+2 a tu proxima carta.",
     effectType: "boost_human",
     effectValue: 2,
     tone: "#8b1a1a"
@@ -13,7 +13,7 @@ export const weapons = [
   {
     id: "bocanada-humo",
     name: "Bocanada de Humo",
-    summary: "La proxima carta rival entra debilitada en esta vuelta.",
+    summary: "-2 a la proxima rival.",
     effectType: "debuff_rival",
     effectValue: 2,
     tone: "#7f6b58"

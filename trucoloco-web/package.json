@@ -8,6 +8,8 @@
     "dev:mcp": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/dev-with-threejs-mcp.ps1",
     "mcp:three": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start-threejs-mcp.ps1",
     "check:rules": "node scripts/validate-truco-rules.mjs",
+    "check:flow": "node scripts/validate-truco-flow.mjs",
+    "check:ui": "node scripts/validate-ui-flow.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

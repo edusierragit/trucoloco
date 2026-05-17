@@ -1,4 +1,4 @@
-const CARD_ASSET_VERSION = "real-deck-4";
+const CARD_ASSET_VERSION = "light-deck-2";
 const CARD_BACK_IMAGE = "/assets/cards/backs/truco-back.svg";
 
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({
@@ -134,7 +134,7 @@ export const modifiers = [
   {
     id: "humo-total",
     title: "Humo Total",
-    summary: "No se ve nada. Los poderes de todas las cartas bajan 1 punto. El As de Espada no se inmuta.",
+    summary: "-1 a todas menos As de Espada.",
     fx: "humo"
   }
 ];
