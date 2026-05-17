@@ -649,6 +649,69 @@ function TableProps({ lowPower = false }) {
   );
 }
 
+function DuelProp({ position, rotation = [0, 0, 0], flipped = false }) {
+  const gripX = flipped ? -0.16 : 0.16;
+
+  return (
+    <group name="Mesa_Duelo_Prop" position={position} rotation={rotation}>
+      <RoundedBox args={[0.62, 0.075, 0.14]} radius={0.035} position={[0.03, 0.02, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#17110e" roughness={0.44} metalness={0.42} />
+      </RoundedBox>
+      <mesh position={[-0.34, 0.02, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.055, 0.055, 0.28, 18]} />
+        <meshStandardMaterial color="#2b241d" roughness={0.36} metalness={0.55} />
+      </mesh>
+      <RoundedBox args={[0.22, 0.055, 0.34]} radius={0.028} position={[gripX, -0.055, 0.16]} rotation={[0.34, 0, flipped ? -0.32 : 0.32]} castShadow receiveShadow>
+        <meshStandardMaterial color="#5b2b16" roughness={0.74} metalness={0.04} />
+      </RoundedBox>
+      <RoundedBox args={[0.46, 0.026, 0.03]} radius={0.01} position={[-0.44, 0.035, 0]}>
+        <meshStandardMaterial color="#8a6a45" roughness={0.28} metalness={0.62} />
+      </RoundedBox>
+    </group>
+  );
+}
+
+function DecorativeCardFan() {
+  const cards = [
+    [-0.2, -0.1, 0.22],
+    [-0.1, -0.03, 0.1],
+    [0, 0, 0],
+    [0.1, -0.03, -0.1],
+    [0.2, -0.1, -0.22]
+  ];
+
+  return (
+    <group name="Mesa_Cartas_Duelo" position={[0.72, 0.44, -1.22]} rotation={[-Math.PI / 2, 0, -0.2]}>
+      {cards.map(([x, z, angle], index) => (
+        <group key={index} position={[x, 0.004 * index, z]} rotation={[0, 0, angle]}>
+          <RoundedBox args={[0.28, 0.018, 0.42]} radius={0.022} castShadow receiveShadow>
+            <meshStandardMaterial color="#eadfbe" roughness={0.58} metalness={0.02} />
+          </RoundedBox>
+          <RoundedBox args={[0.2, 0.02, 0.3]} radius={0.012} position={[0, 0.012, 0]}>
+            <meshStandardMaterial color={index % 2 ? "#7a1f18" : "#1d4151"} roughness={0.66} />
+          </RoundedBox>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function TableDangerProps({ lowPower = false }) {
+  if (lowPower) return null;
+
+  return (
+    <group name="Table_Danger_Props">
+      <DuelProp position={[-1.28, 0.46, 1.28]} rotation={[0, 0.82, 0]} />
+      <DuelProp position={[1.36, 0.46, 1.2]} rotation={[0, -0.88, 0]} flipped />
+      <DecorativeCardFan />
+      <mesh name="Duelo_Claim_Ring" position={[0, 0.456, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.02, 1.045, 96]} />
+        <meshBasicMaterial color="#f0ddb4" transparent opacity={0.22} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function getTurnMarkerPose(seatId) {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
   const seatIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
@@ -963,6 +1026,7 @@ export function Table({ match, performanceMode = "high" }) {
       <FeltInlay modId={modId} lowPower={lowPower} />
       <BrassStuds lowPower={lowPower} />
       <TableProps lowPower={lowPower} />
+      <TableDangerProps lowPower={lowPower} />
 
       <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
 
