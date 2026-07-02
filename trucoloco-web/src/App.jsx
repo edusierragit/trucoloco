@@ -8,7 +8,7 @@ import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 
 const cameraViews = [
   { id: "entry", label: "Puerta", hint: "1 · entrar" },
-  { id: "table", label: "Mesa", hint: "2 · mirar" },
+  { id: "table", label: "Aérea", hint: "2 · plano general" },
   { id: "seat", label: "Silla", hint: "3 · sentarte" },
   { id: "walk", label: "Caminar", hint: "4 · WASD" }
 ];
@@ -757,7 +757,8 @@ export default function App() {
     isSeatingRitual ? "stage-seating-ritual" : "",
     cameraView === "walk" && !isSeatingRitual ? "stage-walk-mode" : "",
     cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : "",
-    cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : ""
+    cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : "",
+    cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {

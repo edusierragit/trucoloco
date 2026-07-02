@@ -4350,3 +4350,23 @@ select {
 .stage-seat-mode .hud-top .title-block p {
   display: none;
 }
+
+/* vista aérea (table): misma limpieza de carteles que la vista silla,
+   pero la mano HTML sigue visible porque acá no hay mano 3D */
+.stage-table-mode .role-lock,
+.stage-table-mode .focus-badge,
+.stage-table-mode .role-table-name,
+.stage-table-mode .hand-empty,
+.stage-table-mode .hud-top .title-block p,
+.stage-table-mode .action-focus .call-copy .panel-kicker {
+  display: none;
+}
+
+.stage-table-mode .call-bar {
+  padding: 10px 14px;
+  background: rgba(8, 6, 4, 0.66);
+}
+
+.stage-seat-mode .hand-empty {
+  display: none;
+}

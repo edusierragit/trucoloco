@@ -275,54 +275,26 @@ function SceneHandCard({ card, position, rotation, faceDown = false }) {
 
 function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
   const archivedTricks = showCurrentPair ? trickHistory.slice(0, -1) : trickHistory;
+  void handClosed;
 
+  // como en el truco real: las vueltas resueltas se doblan boca abajo junto al
+  // mazo — el centro de la mesa queda libre para las cartas vivas
   return (
-    <group name="TrickHistory3D">
+    <group name="TrickHistory3D" position={[2.56, 0.2, 0.74]} rotation={[0, -0.3, 0]}>
       {archivedTricks.map((trick, index) => {
-        const z = handClosed ? -0.42 + index * 0.38 : -0.16 + index * 0.48;
-        const x = handClosed ? (index % 2 === 0 ? -0.14 : 0.14) : 0;
-        const scale = handClosed ? 0.72 : 0.82;
+        const cards = trick.cards ?? [trick.humanCard, trick.rivalCard].filter(Boolean);
 
         return (
-          <group key={`trick-${trick.index}`} position={[x, handClosed ? 0.22 : 0.27, z]} scale={scale}>
-            {trick.cards ? (
-              trick.cards.slice(0, 6).map((play, cardIndex) => {
-                const row = cardIndex < 3 ? -0.24 : 0.24;
-                const column = (cardIndex % 3) - 1;
-
-                return (
-                  <SceneHandCard
-                    key={`${trick.index}-${play.seatId}`}
-                    card={play.card ?? play}
-                    position={[column * 0.42, 0, row]}
-                    rotation={[0, 0, (column * 0.04)]}
-                  />
-                );
-              })
-            ) : (
-              <>
-                <SceneHandCard
-                  card={trick.humanCard}
-                  position={[-0.52, 0, 0]}
-                  rotation={[0, 0, -0.08]}
-                />
-                <SceneHandCard
-                  card={trick.rivalCard}
-                  position={[0.52, 0, 0]}
-                  rotation={[0, Math.PI, 0.08]}
-                />
-              </>
-            )}
-            <Text
-              position={[0, 0.08, 0.85]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              fontSize={0.07}
-              color="#c9a46a"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {`V ${trick.index}`}
-            </Text>
+          <group key={`trick-${trick.index}`} position={[0, 0.05 + index * 0.05, 0]} scale={0.5}>
+            {cards.slice(0, 6).map((play, cardIndex) => (
+              <SceneHandCard
+                key={`${trick.index}-${play.seatId ?? cardIndex}`}
+                card={play.card ?? play}
+                position={[cardIndex * 0.05 - 0.12, cardIndex * 0.012, cardIndex * 0.035]}
+                rotation={[0, ((cardIndex % 3) - 1) * 0.14, 0]}
+                faceDown
+              />
+            ))}
           </group>
         );
       })}
@@ -862,7 +834,7 @@ function HexagonHub({ handClosed, outcomeTone, modId }) {
   });
 
   return (
-    <group name="Hexagono_Central" position={[0, 0.255, 0.08]}>
+    <group name="Hexagono_Central" position={[0, 0.255, 0.08]} scale={0.55}>
       <mesh position={[0, 0, 0]} receiveShadow castShadow>
         <cylinderGeometry args={[0.96, 1.08, 0.12, 6]} />
         <meshStandardMaterial color="#6a301d" roughness={0.84} />
