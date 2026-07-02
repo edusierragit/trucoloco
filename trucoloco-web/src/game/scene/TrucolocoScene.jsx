@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
 import { PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { Table } from "./Table";
+import { HeldHand, Table } from "./Table";
 import { TeamsAroundTable } from "./TeamsAroundTable";
 import { CharacterFigure } from "./CharacterFigure";
 import { characterSkins, tableSeats } from "../data/characters";
@@ -444,33 +444,31 @@ function DebateProceduralFighter({ bodyColor, accent, headRef, leftArmRef, right
   );
 }
 
-function FighterHealthBar({ side, health, damage, active }) {
+function RingHealthRail({ side, health, stamina, active }) {
   const isPlayer = side === "player";
-  const fillColor = isPlayer ? "#63d5c5" : "#e06b4a";
-  const width = 0.48 * (clamp(health, 0, 100) / 100);
-  const lowHealth = health <= 32;
+  const color = isPlayer ? "#63d5c5" : "#e06b4a";
+  const label = isPlayer ? "P1" : "P2";
+  const x = isPlayer ? -0.9 : 0.9;
+  const width = 0.88 * (clamp(health, 0, 100) / 100);
+  const staminaWidth = 0.88 * (clamp(stamina ?? 3, 0, 3) / 3);
 
   return (
-    <group name={`Debate_Fighter_HP_${side}`} position={[0, 1.08, 0.02]} rotation={[0, isPlayer ? -0.28 : 0.28, 0]}>
-      <Text position={[0, 0.11, 0]} fontSize={0.05} color={active ? "#f3dfb6" : "#caa875"} anchorX="center" anchorY="middle" letterSpacing={0.12}>
-        {isPlayer ? "VOS" : "RIVAL"} · {Math.round(health)} HP
+    <group name={`Debate_HP_Rail_${side}`} position={[x, 0.122, 1.62]} rotation={[-Math.PI / 2, 0, 0]}>
+      <Text position={[-0.5, -0.12, 0.018]} fontSize={0.075} color={active ? "#f3dfb6" : color} anchorX="left" anchorY="middle" letterSpacing={0.1}>
+        {label} · {Math.round(health)} HP
       </Text>
-      <RoundedBox args={[0.54, 0.045, 0.035]} radius={0.014} position={[0, 0.035, 0]}>
-        <meshStandardMaterial color="#100908" roughness={0.72} metalness={0.08} />
+      <RoundedBox args={[0.96, 0.03, 0.026]} radius={0.012} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#100909" roughness={0.72} metalness={0.08} transparent opacity={0.88} />
       </RoundedBox>
-      <RoundedBox args={[Math.max(0.018, width), 0.052, 0.043]} radius={0.014} position={[-(0.48 - width) / 2, 0.038, 0.006]}>
-        <meshStandardMaterial
-          color={lowHealth ? "#f05b45" : fillColor}
-          emissive={lowHealth ? "#f05b45" : fillColor}
-          emissiveIntensity={lowHealth ? 0.48 : 0.28}
-          roughness={0.45}
-        />
+      <RoundedBox args={[Math.max(0.018, width), 0.038, 0.032]} radius={0.012} position={[-(0.88 - width) / 2, 0, 0.018]}>
+        <meshStandardMaterial color={health <= 28 ? "#f05b45" : color} emissive={health <= 28 ? "#f05b45" : color} emissiveIntensity={active ? 0.5 : 0.22} roughness={0.45} />
       </RoundedBox>
-      {damage > 0 ? (
-        <Text position={[0.02, 0.24, 0.02]} fontSize={0.085} color="#ffddb8" anchorX="center" anchorY="middle" letterSpacing={0.05}>
-          -{Math.round(damage)}
-        </Text>
-      ) : null}
+      <RoundedBox args={[0.96, 0.012, 0.018]} radius={0.006} position={[0, 0.062, 0.014]}>
+        <meshStandardMaterial color="#17100b" roughness={0.72} metalness={0.08} />
+      </RoundedBox>
+      <RoundedBox args={[Math.max(0.016, staminaWidth), 0.014, 0.02]} radius={0.006} position={[-(0.88 - staminaWidth) / 2, 0.062, 0.024]}>
+        <meshStandardMaterial color="#f3dfb6" emissive="#d98a36" emissiveIntensity={0.12} roughness={0.5} />
+      </RoundedBox>
     </group>
   );
 }
@@ -496,13 +494,14 @@ function DebateFighter({ side, action, character }) {
   const playerWon = action?.resolved && (action?.rivalHealth ?? 100) <= 0;
   const rivalWon = action?.resolved && (action?.playerHealth ?? 100) <= 0;
   const hasFallen = isPlayer ? rivalWon : playerWon;
-  const health = isPlayer ? action?.playerHealth ?? 100 : action?.rivalHealth ?? 100;
   const damageTaken = isPlayer ? action?.lastDamageToPlayer ?? 0 : action?.lastDamageToRival ?? 0;
   const rivalManualAttack = action?.kind === "rival-golpe" || action?.kind === "rival-empujon" || action?.kind === "rival-remate";
   const isMoving = isPlayer ? (action?.playerMoving ?? 0) > 0 : (action?.rivalMoving ?? 0) > 0;
+  const attackPulse = isPlayer ? action?.playerActionPulse ?? 0 : action?.rivalActionPulse ?? 0;
   const isActive = isPlayer
     ? action?.kind === "golpe" || action?.kind === "empujon" || action?.kind === "remate"
     : action?.kind === "rival" || action?.kind === "rival-windup" || rivalManualAttack;
+  const isAttackPulse = isActive && attackPulse > 0;
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -573,12 +572,28 @@ function DebateFighter({ side, action, character }) {
       >
         {isPlayer ? "P1" : "P2"}
       </Text>
+      {isAttackPulse ? (
+        <group name={`Debate_AttackArc_${side}`} position={[0, 0.52, 0.34]} rotation={[0, 0, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.28, 0.012, 8, 36, Math.PI * 0.92]} />
+            <meshBasicMaterial color={isPlayer ? "#f3c172" : "#63d5c5"} transparent opacity={0.42} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, -0.018, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+            <coneGeometry args={[0.055, 0.18, 3]} />
+            <meshBasicMaterial color={isPlayer ? "#f3c172" : "#63d5c5"} transparent opacity={0.46} depthWrite={false} />
+          </mesh>
+        </group>
+      ) : null}
       {hasModelFighter ? (
-        <RingCharacterModel character={character} active={isActive} fallen={hasFallen} moving={isMoving} />
+        <RingCharacterModel character={character} active={isAttackPulse} fallen={hasFallen} moving={isMoving} />
       ) : (
         <DebateProceduralFighter bodyColor={bodyColor} accent={accent} headRef={headRef} leftArmRef={leftArmRef} rightArmRef={rightArmRef} />
       )}
-      <FighterHealthBar side={side} health={health} damage={damageTaken} active={isActive || action?.vulnerable} />
+      {damageTaken > 0 ? (
+        <Text position={[0, 1.18, 0]} fontSize={0.13} color="#ffddb8" anchorX="center" anchorY="middle" letterSpacing={0.08}>
+          -{Math.round(damageTaken)}
+        </Text>
+      ) : null}
     </group>
   );
 }
@@ -852,6 +867,9 @@ function DebateRing({ debateAction, playerCharacter, rivalCharacter, position = 
         </Text>
       ) : null}
 
+      <RingHealthRail side="player" health={playerHealth} stamina={debateAction?.playerStamina ?? 3} active={(debateAction?.playerCooldown ?? 0) <= 0} />
+      <RingHealthRail side="rival" health={rivalHealth} stamina={debateAction?.rivalStamina ?? 3} active={(debateAction?.rivalCooldown ?? 0) <= 0} />
+
       <DebateFighter side="player" action={debateAction} character={playerCharacter} />
       <DebateFighter side="rival" action={debateAction} character={rivalCharacter} />
       <DebateImpactFX action={debateAction} />
@@ -986,35 +1004,38 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
 function DebateEntrance() {
   return (
     <group name="Debate_Entrance" position={[-5.42, -1.08, -0.9]}>
-      <RoundedBox args={[0.24, 2.32, 0.2]} radius={0.04} position={[0, 1.02, -1.02]} castShadow receiveShadow>
-        <meshStandardMaterial color="#2b160d" roughness={0.74} metalness={0.08} />
+      <RoundedBox args={[0.08, 1.28, 1.58]} radius={0.035} position={[0.04, 0.64, 0]} receiveShadow>
+        <meshStandardMaterial color="#090606" roughness={0.92} metalness={0.08} transparent opacity={0.78} />
       </RoundedBox>
-      <RoundedBox args={[0.24, 2.32, 0.2]} radius={0.04} position={[0, 1.02, 1.02]} castShadow receiveShadow>
-        <meshStandardMaterial color="#2b160d" roughness={0.74} metalness={0.08} />
+      <RoundedBox args={[0.12, 1.4, 0.055]} radius={0.025} position={[-0.02, 0.68, -0.82]} castShadow receiveShadow>
+        <meshStandardMaterial color="#2b160d" roughness={0.64} metalness={0.12} />
       </RoundedBox>
-      <RoundedBox args={[0.24, 0.16, 2.18]} radius={0.04} position={[0, 2.22, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#b47a34" roughness={0.38} metalness={0.52} />
+      <RoundedBox args={[0.12, 1.4, 0.055]} radius={0.025} position={[-0.02, 0.68, 0.82]} castShadow receiveShadow>
+        <meshStandardMaterial color="#2b160d" roughness={0.64} metalness={0.12} />
       </RoundedBox>
-      <RoundedBox args={[1.15, 0.08, 2.34]} radius={0.04} position={[-0.38, 0.015, 0]} receiveShadow>
+      <RoundedBox args={[0.12, 0.08, 1.72]} radius={0.035} position={[-0.02, 1.38, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#b47a34" emissive="#6b3518" emissiveIntensity={0.1} roughness={0.38} metalness={0.5} />
+      </RoundedBox>
+      <RoundedBox args={[0.72, 0.045, 1.32]} radius={0.035} position={[-0.38, 0.018, 0]} receiveShadow>
         <meshStandardMaterial color="#1d0f0a" roughness={0.82} metalness={0.06} />
       </RoundedBox>
-      <RoundedBox args={[0.07, 0.055, 1.8]} radius={0.02} position={[-0.88, 0.085, 0]} receiveShadow>
-        <meshStandardMaterial color="#e06b4a" emissive="#e06b4a" emissiveIntensity={0.2} roughness={0.46} />
+      <RoundedBox args={[0.042, 0.045, 1.2]} radius={0.018} position={[-0.69, 0.08, 0]} receiveShadow>
+        <meshStandardMaterial color="#e06b4a" emissive="#e06b4a" emissiveIntensity={0.22} roughness={0.46} />
       </RoundedBox>
-      <RoundedBox args={[0.07, 0.055, 1.8]} radius={0.02} position={[0.02, 0.085, 0]} receiveShadow>
-        <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.13} roughness={0.46} />
+      <RoundedBox args={[0.042, 0.045, 1.2]} radius={0.018} position={[-0.08, 0.08, 0]} receiveShadow>
+        <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.14} roughness={0.46} />
       </RoundedBox>
-      <mesh position={[-0.42, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.68, 0.82, 48]} />
-        <meshBasicMaterial color="#e06b4a" transparent opacity={0.2} depthWrite={false} />
+      <mesh position={[-0.38, 0.095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.38, 0.5, 48]} />
+        <meshBasicMaterial color="#e06b4a" transparent opacity={0.22} depthWrite={false} />
       </mesh>
-      <Text position={[-0.12, 1.66, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.105} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.13}>
-        SALA DE CONFLICTO
+      <Text position={[-0.05, 1.08, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.07} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.15}>
+        SALA
       </Text>
-      <Text position={[-0.44, 0.055, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.07} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
-        PASILLO
+      <Text position={[-0.38, 0.052, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.052} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        CONFLICTO
       </Text>
-      <pointLight position={[-0.42, 0.88, 0]} intensity={6.2} color="#e06b4a" />
+      <pointLight position={[-0.32, 0.58, 0]} intensity={2.4} color="#e06b4a" />
     </group>
   );
 }
@@ -1120,7 +1141,44 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getCameraPose({ match, isNarrow, cameraView }) {
+const RING_WORLD_ORIGIN = { x: -7.45, y: -1.14, z: -0.9 };
+
+function getRingCameraPose(debateAction, isNarrow) {
+  const player = debateAction?.playerPos ?? { x: -0.72, z: 0.18 };
+  const rival = debateAction?.rivalPos ?? { x: 0.72, z: -0.18 };
+  const playerX = RING_WORLD_ORIGIN.x + (player.x ?? -0.72);
+  const playerZ = RING_WORLD_ORIGIN.z + (player.z ?? 0.18);
+  const rivalX = RING_WORLD_ORIGIN.x + (rival.x ?? 0.72);
+  const rivalZ = RING_WORLD_ORIGIN.z + (rival.z ?? -0.18);
+  const midpointX = (playerX + rivalX) / 2;
+  const midpointZ = (playerZ + rivalZ) / 2;
+  const deltaX = rivalX - playerX;
+  const deltaZ = rivalZ - playerZ;
+  const distanceBetweenFighters = Math.hypot(deltaX, deltaZ) || 1;
+  const toRivalX = deltaX / distanceBetweenFighters;
+  const toRivalZ = deltaZ / distanceBetweenFighters;
+  const sideX = toRivalZ;
+  const sideZ = -toRivalX;
+  const chaseDistance = isNarrow ? 1.92 : 2.18;
+  const sideOffset = isNarrow ? 0.12 : 0.34;
+  const tension = clamp(1 - distanceBetweenFighters / 2.4, 0, 1);
+
+  return {
+    position: [
+      clamp(playerX - toRivalX * chaseDistance + sideX * sideOffset, -9.35, -5.7),
+      RING_WORLD_ORIGIN.y + (isNarrow ? 1.55 : 1.42) - tension * 0.1,
+      clamp(playerZ - toRivalZ * chaseDistance + sideZ * sideOffset, -2.35, 0.82)
+    ],
+    target: [
+      clamp(midpointX + toRivalX * 0.12, -9.05, -5.88),
+      RING_WORLD_ORIGIN.y + 0.36,
+      clamp(midpointZ + toRivalZ * 0.08, -2.16, 0.66)
+    ],
+    fov: isNarrow ? 53 : 48
+  };
+}
+
+function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
   const isRoleSelect = match.phase === "role-select";
   const ownSeat = getOwnSeat(match);
   const ownSeatWorld = getSeatWorld(ownSeat);
@@ -1134,31 +1192,37 @@ function getCameraPose({ match, isNarrow, cameraView }) {
   }
 
   if (cameraView === "seat") {
-    const target = [ownSeatWorld.x * 0.18, -0.82, ownSeatWorld.z * 0.14];
-    const dx = ownSeatWorld.x - target[0];
-    const dz = ownSeatWorld.z - target[2];
-    const length = Math.hypot(dx, dz) || 1;
-    const distance = isNarrow ? 2.56 : 2.72;
-    const cameraX = clamp(target[0] + (dx / length) * distance, -4.25, 4.25);
-    const cameraZ = clamp(target[2] + (dz / length) * distance, -3.18, 3.62);
+    // Liar's Bar framing: seated eye-level at your own chair, the rivals'
+    // faces across the felt. The gaze drifts toward whoever is acting.
+    const sx = ownSeatWorld.x;
+    const sz = ownSeatWorld.z;
+    const len = Math.hypot(sx, sz) || 1;
+    const inX = -sx / len;
+    const inZ = -sz / len;
+    const eyeX = sx + inX * 0.2;
+    const eyeZ = sz + inZ * 0.2;
+    const eyeY = 0.62; // standing at your spot, chin over the felt
+
+    let lookX = -sx * 0.2;
+    let lookY = -0.46;
+    let lookZ = -sz * 0.2;
+    const actor = match.handStarted && !match.handClosed ? getActiveTurnSeat(match) : null;
+    if (actor && actor.seatId !== ownSeat.seatId) {
+      const actorWorld = getSeatWorld(actor);
+      lookX += (actorWorld.x * 0.72 - lookX) * 0.55;
+      lookZ += (actorWorld.z * 0.72 - lookZ) * 0.55;
+      lookY = -0.1; // raise the gaze to their upper body
+    }
 
     return {
-      position: [
-        cameraX,
-        isNarrow ? 2.08 : 1.46,
-        cameraZ
-      ],
-      target,
-      fov: isNarrow ? 46 : 39
+      position: [eyeX, eyeY, eyeZ],
+      target: [lookX, lookY, lookZ],
+      fov: isNarrow ? 58 : 50
     };
   }
 
   if (cameraView === "ring") {
-    return {
-      position: isNarrow ? [-7.45, 0.3, 0.92] : [-7.45, 0.42, 0.74],
-      target: [-7.45, -2.12, -0.62],
-      fov: isNarrow ? 52 : 48
-    };
+    return getRingCameraPose(debateAction, isNarrow);
   }
 
   const activeSeat = !isRoleSelect && match.handStarted && !match.handClosed ? getActiveTurnSeat(match) : null;
@@ -1222,15 +1286,17 @@ export function TrucolocoScene({
 
     if (cameraView === "ring" && debateAction?.token !== debateTokenRef.current) {
       debateTokenRef.current = debateAction?.token ?? 0;
-      ringShakeRef.current = (debateAction?.hitStrength ?? 0) * 0.16;
+      ringShakeRef.current = (debateAction?.hitStrength ?? 0) * 0.075;
     }
 
-    const cameraPose = getCameraPose({ match, isNarrow, cameraView });
+    const cameraPose = getCameraPose({ match, isNarrow, cameraView, debateAction });
     const activeTurnSeat = getActiveTurnSeat(match);
     const [targetX, targetY, targetZ] = cameraPose.position;
     const targetLookAt = targetLookAtRef.current.set(...cameraPose.target);
-    const cameraAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * (cameraView === "seat" ? 4.7 : 3.45));
-    const targetAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * 5.2);
+    const cameraSpeed = cameraView === "ring" ? 8.2 : cameraView === "seat" ? 4.7 : 3.45;
+    const targetSpeed = cameraView === "ring" ? 8.8 : 5.2;
+    const cameraAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * cameraSpeed);
+    const targetAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * targetSpeed);
 
     if (
       !Number.isFinite(camera.position.x) ||
@@ -1279,6 +1345,12 @@ export function TrucolocoScene({
       <ambientLight intensity={lowPower ? 0.24 : 0.18} color="#9d6b45" />
       <hemisphereLight intensity={lowPower ? 0.36 : 0.28} color="#dba66e" groundColor="#070b08" />
       <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} lowPower={lowPower} />
+
+      {cameraView === "seat" && !isRoleSelect ? (
+        <Suspense fallback={null}>
+          <HeldHand match={match} />
+        </Suspense>
+      ) : null}
 
       <group name="Room_Runtime" position={[0, -1.35, 0.25]}>
         <RoundedBox name="Floor_Antro" args={[14, 0.4, 10]} radius={0.18} position={[0, -1.9, 0]} receiveShadow>

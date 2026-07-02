@@ -4287,3 +4287,44 @@ select {
     font-size: 0.92rem;
   }
 }
+
+/* ─── seat mode (Liar's Bar): the 3D held hand takes over ────────────────────
+   The HTML hand stays in the DOM (accessibility + validate-ui-flow clicks it
+   via el.click()) but disappears visually — the felt and the faces rule. */
+.stage-seat-mode .hand-fan {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+
+.stage-seat-mode .hand-fan .card-button {
+  pointer-events: auto; /* still clickable programmatically */
+}
+
+/* declutter: informational panels shrink so the scene breathes */
+.stage-seat-mode .hand-panel .panel-header p {
+  max-width: 42ch;
+}
+
+.stage-seat-mode .hand-empty {
+  min-height: 0;
+  padding: 8px 14px;
+}
+
+/* seat mode: the whole HTML hand panel goes ghost — 3D cards are the hand.
+   Still in the DOM and programmatically clickable for the ui validator. */
+.stage-seat-mode .hand-panel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+}

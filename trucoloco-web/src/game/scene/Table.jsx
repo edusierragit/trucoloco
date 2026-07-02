@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
@@ -51,9 +51,11 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   const groupRef = useRef(null);
   const shadowRef = useRef(null);
   const progressRef = useRef(0);
-  const fromX = card.side === "A" ? 0 : 1.9;
-  const fromZ = card.side === "A" ? 3.2 : -2.8;
-  const fromY = 1.6;
+  // the card flies in from the hand of whoever threw it, not from a generic side
+  const ownerSeat = card.seatId ? tableSeats.find((seat) => seat.seatId === card.seatId) : null;
+  const fromX = ownerSeat ? ownerSeat.position[0] * 0.78 : card.side === "A" ? 0 : 1.9;
+  const fromZ = ownerSeat ? ownerSeat.position[2] * 0.78 : card.side === "A" ? 3.2 : -2.8;
+  const fromY = ownerSeat ? 1.18 : 1.6;
   const initialRotX = 0.62;
   const initialRotY = card.side === "A" ? -0.18 : 0.18;
   const initialRotZ = card.side === "A" ? -0.34 : 0.34;
@@ -956,7 +958,7 @@ function ImportedHexBoardAsset() {
 
 function ImportedHexBoard({ handClosed, outcomeTone, modId }) {
   return (
-    <group name="Imported_Tablero_Central" position={[0, 0.34, 0.08]} rotation={[0, 0, 0]}>
+    <group name="Imported_Tablero_Central" position={[0, 0.34, 0.08]} rotation={[0, 0, 0]} scale={0.5}>
       <Suspense fallback={null}>
         <ImportedHexBoardAsset />
       </Suspense>
@@ -1080,6 +1082,147 @@ export function Table({ match, performanceMode = "high" }) {
           </group>
         ))}
       </group>
+    </group>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HeldHand — Liar's Bar style: your cards physically held in front of the
+// camera while seated. Hover raises a card, click throws it to the felt.
+// Mounted OUTSIDE the room group (world space), only in "seat" view.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeldCardFace({ image, dimmed }) {
+  const texture = useTexture(image);
+  return (
+    <mesh position={[0, 0, 0.011]}>
+      <planeGeometry args={[0.285, 0.43]} />
+      <meshBasicMaterial map={texture} toneMapped={false} color={dimmed ? "#9c9285" : "#ffffff"} />
+    </mesh>
+  );
+}
+
+function HeldCard({ card, offset, hovered, dimmed, onOver, onOut, onPlay }) {
+  const ref = useRef(null);
+
+  useFrame((_, delta) => {
+    const g = ref.current;
+    if (!g) return;
+    const tx = offset * 0.315;
+    const ty = -Math.abs(offset) * 0.05 + (hovered ? 0.15 : 0);
+    const tz = hovered ? 0.1 : 0;
+    const rz = -offset * 0.17;
+    const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 13);
+    g.position.x += (tx - g.position.x) * alpha;
+    g.position.y += (ty - g.position.y) * alpha;
+    g.position.z += (tz - g.position.z) * alpha;
+    g.rotation.z += (rz - g.rotation.z) * alpha;
+    const targetScale = hovered ? 1.09 : 1;
+    const s = g.scale.x + (targetScale - g.scale.x) * alpha;
+    g.scale.setScalar(s);
+  });
+
+  return (
+    <group ref={ref} name={`HeldCard_${card.id}`}>
+      <group
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          onOver();
+        }}
+        onPointerOut={(event) => {
+          event.stopPropagation();
+          onOut();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onPlay();
+        }}
+      >
+        <RoundedBox args={[0.33, 0.475, 0.018]} radius={0.02} castShadow>
+          <meshStandardMaterial color={CARD_EDGE} roughness={0.7} />
+        </RoundedBox>
+        <mesh position={[0, 0, 0.0095]}>
+          <planeGeometry args={[0.305, 0.45]} />
+          <meshBasicMaterial color={CARD_FACE} toneMapped={false} />
+        </mesh>
+        {card.image ? (
+          <Suspense fallback={null}>
+            <HeldCardFace image={card.image} dimmed={dimmed} />
+          </Suspense>
+        ) : (
+          <Text position={[0, 0, 0.012]} fontSize={0.055} maxWidth={0.26} color={CARD_TEXT} anchorX="center" anchorY="middle">
+            {card.name}
+          </Text>
+        )}
+        {hovered && !dimmed ? (
+          <mesh position={[0, 0, -0.012]}>
+            <planeGeometry args={[0.39, 0.53]} />
+            <meshBasicMaterial color="#ffd98a" transparent opacity={0.35} toneMapped={false} />
+          </mesh>
+        ) : null}
+      </group>
+    </group>
+  );
+}
+
+export function HeldHand({ match }) {
+  const groupRef = useRef(null);
+  const [hoverId, setHoverId] = useState(null);
+  const canPlay = Boolean(match.canPlayCard);
+  const cards = match.humanHand ?? [];
+
+  useEffect(() => {
+    if (!canPlay) setHoverId(null);
+  }, [canPlay]);
+
+  useEffect(
+    () => () => {
+      document.body.style.cursor = "auto";
+    },
+    []
+  );
+
+  useFrame((state) => {
+    const g = groupRef.current;
+    if (!g) return;
+    // viewmodel: ride the camera, park the fan low like cards held at the chest
+    g.position.copy(state.camera.position);
+    g.quaternion.copy(state.camera.quaternion);
+    g.translateZ(-1.08);
+    g.translateY(-0.45);
+    g.rotateX(0.3);
+    g.rotateZ(Math.sin(state.clock.elapsedTime * 0.7) * 0.01); // breathing
+  });
+
+  if (!cards.length) return null;
+
+  const midpoint = (cards.length - 1) / 2;
+
+  return (
+    <group ref={groupRef} name="HeldHand3D" renderOrder={40}>
+      {cards.map((card, index) => (
+        <HeldCard
+          key={card.handIndex}
+          card={card}
+          offset={index - midpoint}
+          hovered={hoverId === card.handIndex}
+          dimmed={!canPlay}
+          onOver={() => {
+            if (!canPlay) return;
+            setHoverId(card.handIndex);
+            document.body.style.cursor = "pointer";
+          }}
+          onOut={() => {
+            setHoverId((value) => (value === card.handIndex ? null : value));
+            document.body.style.cursor = "auto";
+          }}
+          onPlay={() => {
+            if (!canPlay) return;
+            document.body.style.cursor = "auto";
+            match.playCard(card.handIndex);
+          }}
+        />
+      ))}
     </group>
   );
 }

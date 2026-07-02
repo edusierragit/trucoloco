@@ -27,6 +27,8 @@ const RING_START_STATE = {
   fightIntro: 1.85,
   playerCooldown: 0,
   rivalCooldown: 0,
+  playerActionPulse: 0,
+  rivalActionPulse: 0,
   playerHitStun: 0,
   rivalHitStun: 0,
   playerPos: { x: -0.72, z: 0.18 },
@@ -137,41 +139,6 @@ function getRivalAttackName(attack) {
   return "Carga";
 }
 
-function pickRivalAttack(token) {
-  return token % 3 === 0 ? "barrida" : "hombro";
-}
-
-function getRingTableLine(kind, token) {
-  const lines = {
-    punish: [
-      "La mesa hace silencio de escribano trucho.",
-      "Alguien golpea la baranda: eso cuenta como jurisprudencia.",
-      "Se escucha un 'uhhh' desde la mesa grande."
-    ],
-    remate: [
-      "Remate con firma y moño. Nadie quiere revisar el reglamento.",
-      "Cerraste la discusión como si tuvieras testigos.",
-      "La mesa quedó mirando el piso, oficialmente convencida."
-    ],
-    hit: [
-      "Pegó donde duele: en la interpretación.",
-      "La discusión se inclinó medio metro para tu lado.",
-      "No fue elegante, pero fue vinculante."
-    ],
-    fail: [
-      "Pegaste al aire y el aire no estaba en la discusión.",
-      "Te apuraste y la mesa olió sangre.",
-      "Mucho gesto, poca sentencia."
-    ]
-  };
-  const bucket = lines[kind] ?? lines.hit;
-  return bucket[token % bucket.length];
-}
-
-function isInAttackLine(playerLane, targetLane) {
-  return Math.abs(playerLane - targetLane) <= 0.18;
-}
-
 function getCombatActionConfig(kind) {
   if (kind === "remate") {
     return { label: "Especial", cost: 2.1, cooldown: 1.1, range: 0.92, damage: 34, stunDamage: 26, knockback: 0.36 };
@@ -186,17 +153,17 @@ function getCombatActionConfig(kind) {
 
 function getDebateTitle(state) {
   if (state.mode === "ruleta") return state.resolved ? "Corcho cantado" : "Ruleta de corchos";
-  if (state.resolved) return (state.rivalHealth ?? 100) <= 0 ? "KO: ganaste la disputa" : "KO: la mesa te sacó";
+  if (state.resolved) return (state.rivalHealth ?? 100) <= 0 ? "KO: P1 ganó la disputa" : "KO: P2 ganó la disputa";
   if ((state.fightIntro ?? 0) > 0) return "Entrás al ring";
   if ((state.playerHitStun ?? 0) > 0) return "Te tambalearon";
-  if ((state.rivalHitStun ?? 0) > 0) return "El rival quedó abierto";
+  if ((state.rivalHitStun ?? 0) > 0) return "P2 quedó abierto";
   if ((state.playerDash ?? 0) > 0) return "Esquive";
   if ((state.playerGuard ?? 0) > 0) return "Guardia";
   if (state.kind === "remate") return "Especial conectado";
   if (state.kind === "empujon") return "Fuerte conectado";
   if (state.kind === "golpe") return "Piña conectada";
-  if (state.kind?.startsWith("rival")) return "Te atacan";
-  if (!state.playerEngaged) return "Probá el cuerpo";
+  if (state.kind?.startsWith("rival")) return "P2 atacó";
+  if (!state.rivalControlled) return "Esperando P2";
   return "Arena libre: pegá con click";
 }
 
@@ -210,15 +177,13 @@ function getDebateGoal(state) {
 
   if (state.resolved) return "La pelea terminó. Revancha con Q o volvé al antro con Esc.";
   if ((state.fightIntro ?? 0) > 0) return "P1: WASD + click/Q/E/R/F. P2 local: IJKL + H/U/O/P.";
-  if (!state.playerEngaged) return "El rival espera. Movete con WASD o tirá la primera piña con click. P2 puede entrar con IJKL.";
+  if (!state.rivalControlled) return "PvP local: P1 ya se mueve. P2 entra con IJKL + H/U/O/P.";
   if (state.playerGuard > 0) return "Estás bloqueando. Soltá F o movete para volver a pegar.";
   if ((state.playerDash ?? 0) > 0) return "Esquive activo: reposicionate y entrá con click o Q.";
-  return state.rivalControlled
-    ? "Arena local P1 vs P2: los dos se mueven y pegan en tiempo real."
-    : "Arena real-time: movete libre, entrá al rango, pegá y salí antes de que te contesten.";
+  return "Arena local P1 vs P2: los dos se mueven y pegan en tiempo real.";
 }
 
-function applyCombatAction(current, actor, kind, options = {}) {
+function applyCombatAction(current, actor, kind) {
   const isPlayer = actor === "player";
   const playerStarted = isPlayer ? { playerEngaged: true } : {};
   const rivalStarted = !isPlayer ? { rivalControlled: true, playerEngaged: true } : {};
@@ -230,6 +195,7 @@ function applyCombatAction(current, actor, kind, options = {}) {
   const nextToken = (current.token ?? 0) + 1;
   const attackerCooldownKey = isPlayer ? "playerCooldown" : "rivalCooldown";
   const defenderCooldownKey = isPlayer ? "rivalCooldown" : "playerCooldown";
+  const attackerPulseKey = isPlayer ? "playerActionPulse" : "rivalActionPulse";
   const attackerStaminaKey = isPlayer ? "playerStamina" : "rivalStamina";
   const defenderStaminaKey = isPlayer ? "rivalStamina" : "playerStamina";
   const attackerGuardKey = isPlayer ? "playerGuard" : "rivalGuard";
@@ -250,7 +216,7 @@ function applyCombatAction(current, actor, kind, options = {}) {
       lastDamageToPlayer: 0,
       lastDamageToRival: 0,
       hitStrength: 0,
-      lastMove: isPlayer ? "Estás aturdido. Movete para recuperar postura." : "El rival quedó aturdido."
+      lastMove: isPlayer ? "P1 quedó aturdido. Movete para recuperar postura." : "P2 quedó aturdido."
     };
   }
 
@@ -262,11 +228,12 @@ function applyCombatAction(current, actor, kind, options = {}) {
       kind: isPlayer ? "guardia" : "rival-guard",
       token: nextToken,
       [attackerGuardKey]: 0.55,
+      [attackerPulseKey]: 0,
       [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) + 0.25, 0, 3),
       lastDamageToPlayer: 0,
       lastDamageToRival: 0,
       hitStrength: 0.08,
-      lastMove: isPlayer ? "Guardia arriba. Reducís daño frontal, pero si te rodean te la cobran." : "El rival levanta guardia."
+      lastMove: isPlayer ? "P1 cubre arriba. Reducís daño frontal, pero si te rodean te la cobran." : "P2 levanta guardia."
     };
   }
 
@@ -285,12 +252,13 @@ function applyCombatAction(current, actor, kind, options = {}) {
       kind: isPlayer ? "dash" : "rival-dash",
       token: nextToken,
       [attackerDashKey]: 0.28,
+      [attackerPulseKey]: 0,
       [attackerGuardKey]: 0,
       [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) - 0.55, 0, 3),
       lastDamageToPlayer: 0,
       lastDamageToRival: 0,
       hitStrength: 0,
-      lastMove: isPlayer ? "Esquive corto. Saliste del eje: entrá con click si quedó cerca." : "El rival esquiva y busca otro ángulo."
+      lastMove: isPlayer ? "P1 esquiva corto. Saliste del eje: entrá con click si quedó cerca." : "P2 esquiva y busca otro ángulo."
     };
   }
 
@@ -308,7 +276,7 @@ function applyCombatAction(current, actor, kind, options = {}) {
       ? Math.max(3, Math.round(actionConfig.damage * 0.34))
       : actionConfig.damage + (guardBroken ? 8 : 0)
     : 0;
-  const damage = options.ai ? Math.max(1, Math.round(rawDamage * 0.38)) : rawDamage;
+  const damage = rawDamage;
   const counterDamage = guarded ? 4 : 0;
   const nextDefenderHealth = clamp((current[defenderHealthKey] ?? 100) - damage, 0, 100);
   const nextAttackerHealth = clamp((current[attackerHealthKey] ?? 100) - counterDamage, 0, 100);
@@ -333,9 +301,10 @@ function applyCombatAction(current, actor, kind, options = {}) {
     token: nextToken,
     [attackerHealthKey]: nextAttackerHealth,
     [defenderHealthKey]: nextDefenderHealth,
+    [attackerPulseKey]: canAttack ? (kind === "remate" ? 0.42 : kind === "empujon" ? 0.32 : 0.22) : 0,
     [attackerStaminaKey]: clamp(stamina - (canAttack ? actionConfig.cost : 0), 0, 3),
     [defenderStaminaKey]: clamp((current[defenderStaminaKey] ?? 3) + (guarded ? 0.12 : 0), 0, 3),
-    [attackerCooldownKey]: canAttack ? actionConfig.cooldown * (options.ai ? 2.55 : 1) : Math.max(0.06, cooldown),
+    [attackerCooldownKey]: canAttack ? actionConfig.cooldown : Math.max(0.06, cooldown),
     [defenderCooldownKey]: Math.max(0, current[defenderCooldownKey] ?? 0),
     [attackerGuardKey]: 0,
     [defenderGuardKey]: guarded ? Math.max(0, defenderGuard - 0.34) : 0,
@@ -348,20 +317,20 @@ function applyCombatAction(current, actor, kind, options = {}) {
     rival: Math.min(5, Math.floor((100 - (isPlayer ? nextAttackerHealth : nextDefenderHealth)) / 20)),
     resolved: attackerWon || defenderWon,
     lastMove: attackerWon
-      ? (isPlayer ? "KO. Lo sacaste del ring: tu versión gana el conflicto." : "KO. El rival te sacó del ring.")
+      ? (isPlayer ? "KO. P1 sacó a P2 del ring: tu versión gana el conflicto." : "KO. P2 sacó a P1 del ring.")
       : defenderWon
-        ? (isPlayer ? "KO. Te contestaron y caíste." : "KO. El rival cayó por contra.")
+        ? (isPlayer ? "KO. P2 contestó y P1 cayó." : "KO. P2 cayó por contra.")
         : !canAttack
           ? !hasAir
-            ? (isPlayer ? "Sin aire: corré, esquivá o bloqueá para recuperar." : "El rival se quedó sin aire.")
-            : (isPlayer ? "Cooldown: el golpe todavía no salió." : "El rival quiso repetir demasiado rápido.")
+            ? (isPlayer ? "P1 sin aire: corré, esquivá o bloqueá para recuperar." : "P2 se quedó sin aire.")
+            : (isPlayer ? "Cooldown: el golpe todavía no salió." : "P2 quiso repetir demasiado rápido.")
           : hitLanded
             ? guarded
-              ? (isPlayer ? "Pegaste sobre guardia. Hizo daño menor y te devolvió un raspón." : "Bloqueaste parte del golpe rival.")
+              ? (isPlayer ? "P1 pegó sobre guardia. Hizo daño menor y cobró un raspón." : "P1 bloqueó parte del golpe de P2.")
               : guardBroken
-                ? (isPlayer ? "Especial rompe guardia. Entró fuerte." : "El rival rompió tu guardia con especial.")
-                : (isPlayer ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.` : `El rival conectó ${actionConfig.label.toLowerCase()}.`)
-            : (isPlayer ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.` : "El rival pegó al aire.")
+                ? (isPlayer ? "Especial rompe guardia. Entró fuerte." : "P2 rompió tu guardia con especial.")
+                : (isPlayer ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.` : `P2 conectó ${actionConfig.label.toLowerCase()}.`)
+            : (isPlayer ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.` : "P2 pegó al aire.")
   };
 }
 
@@ -373,6 +342,8 @@ function stepArenaCombat(current, keys, dt) {
     ...current,
     playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - safeDt),
     rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - safeDt),
+    playerActionPulse: Math.max(0, (current.playerActionPulse ?? 0) - safeDt),
+    rivalActionPulse: Math.max(0, (current.rivalActionPulse ?? 0) - safeDt),
     playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - safeDt),
     rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - safeDt),
     fightIntro: Math.max(0, (current.fightIntro ?? 0) - safeDt),
@@ -412,7 +383,6 @@ function stepArenaCombat(current, keys, dt) {
 
   const currentPlayerPos = getCombatPos(next, "player");
   const currentRivalPos = getCombatPos(next, "rival");
-  const toPlayer = getCombatVector(currentRivalPos, currentPlayerPos);
   const rivalCanMove = (next.rivalHitStun ?? 0) <= 0;
   const rivalInputX = (keys.has("l") ? 1 : 0) - (keys.has("j") ? 1 : 0);
   const rivalInputZ = (keys.has("k") ? 1 : 0) - (keys.has("i") ? 1 : 0);
@@ -435,21 +405,6 @@ function stepArenaCombat(current, keys, dt) {
       next.rivalMoving = 0.18;
     } else {
       next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
-    }
-  } else if ((next.playerEngaged ?? false) && rivalCanMove && (next.rivalCooldown ?? 0) <= 0.12) {
-    if (toPlayer.distance > 0.62) {
-      const strafe = Math.sin((next.token ?? 0) * 0.47) * 0.42;
-      const moveX = toPlayer.x + -toPlayer.z * strafe;
-      const moveZ = toPlayer.z + toPlayer.x * strafe;
-      const moveLength = Math.hypot(moveX, moveZ) || 1;
-      next = withActorPos(next, "rival", {
-        x: currentRivalPos.x + (moveX / moveLength) * 0.72 * safeDt,
-        z: currentRivalPos.z + (moveZ / moveLength) * 0.72 * safeDt
-      }, currentPlayerPos);
-      next.rivalMoving = 0.18;
-    } else if (toPlayer.distance <= 0.62 && (next.rivalStamina ?? 0) >= 0.55) {
-      const aiKind = (next.token ?? 0) % 5 === 0 ? "empujon" : "golpe";
-      next = applyCombatAction(next, "rival", aiKind, { ai: true });
     }
   } else {
     next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
@@ -477,6 +432,43 @@ function getInitialPerformanceProfile() {
   return lowPower
     ? { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false }
     : { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
+}
+
+function playConflictHitSound(hitStrength = 0.5, resolved = false) {
+  if (typeof window === "undefined") return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+
+  const context = playConflictHitSound.context ?? new AudioContext();
+  playConflictHitSound.context = context;
+  if (context.state === "suspended") void context.resume();
+
+  const now = context.currentTime;
+  const gain = context.createGain();
+  const low = context.createOscillator();
+  const snap = context.createOscillator();
+  const strength = clamp(hitStrength, 0.15, 1);
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(resolved ? 0.18 : 0.08 + strength * 0.12, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + (resolved ? 0.22 : 0.12));
+
+  low.type = "sine";
+  low.frequency.setValueAtTime(resolved ? 58 : 82 - strength * 18, now);
+  low.frequency.exponentialRampToValueAtTime(38, now + (resolved ? 0.22 : 0.12));
+
+  snap.type = "triangle";
+  snap.frequency.setValueAtTime(190 + strength * 90, now);
+  snap.frequency.exponentialRampToValueAtTime(92, now + 0.06);
+
+  low.connect(gain);
+  snap.connect(gain);
+  gain.connect(context.destination);
+
+  low.start(now);
+  snap.start(now);
+  low.stop(now + 0.24);
+  snap.stop(now + 0.09);
 }
 
 function resolveCorkRoulettePull(current) {
@@ -530,9 +522,9 @@ export default function App() {
   const previousHandStartedRef = useRef(match.handStarted);
   const returnToTableTimerRef = useRef(null);
   const walkNoticeTimerRef = useRef(null);
-  const debateAiTimerRef = useRef(null);
   const ringFrameRef = useRef(null);
   const ringKeysRef = useRef(new Set());
+  const debateSoundTokenRef = useRef(debateState.token);
   const matchRef = useRef(match);
 
   useEffect(() => {
@@ -561,7 +553,6 @@ export default function App() {
     return () => {
       window.clearTimeout(returnToTableTimerRef.current);
       window.clearTimeout(walkNoticeTimerRef.current);
-      window.clearInterval(debateAiTimerRef.current);
       window.cancelAnimationFrame(ringFrameRef.current);
     };
   }, []);
@@ -579,6 +570,20 @@ export default function App() {
     }));
     setCameraView(viewId);
   }, []);
+
+  // repartir = sentarse: dealing a hand drops you into the seated Liar's-Bar view
+  const prevPhaseRef = useRef(match.phase);
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current;
+    prevPhaseRef.current = match.phase;
+    if (
+      prevPhase === "role-select" &&
+      match.phase !== "role-select" &&
+      (cameraView === "table" || cameraView === "entry")
+    ) {
+      handleCameraViewChange("seat");
+    }
+  }, [match.phase, cameraView, handleCameraViewChange]);
 
   const setWalkTouchAxis = useCallback((axis, value) => {
     setWalkTouchInput((current) => ({
@@ -673,7 +678,7 @@ export default function App() {
             ...current,
             kind: "wait",
             token: current.token + 1,
-            lastMove: "Ahora aprieta la mesa. No le robes el momento dramatico."
+            lastMove: "Ahora aprieta P2. No le robes el momento dramatico."
           };
         }
 
@@ -689,135 +694,6 @@ export default function App() {
       }
 
       return applyCombatAction(current, "player", kind);
-
-      const nextToken = current.token + 1;
-      const distance = Math.abs(current.playerLane - current.rivalLane);
-
-      if ((current.playerHitStun ?? 0) > 0) {
-        return {
-          ...current,
-          kind: "stun",
-          token: nextToken,
-          lastDamageToPlayer: 0,
-          lastDamageToRival: 0,
-          hitStrength: 0,
-          playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-          playerStamina: Math.min(3, current.playerStamina + 0.35),
-          lastMove: "Estas aturdido. Primero recupera postura; despues volves a pegar."
-        };
-      }
-
-      if (kind === "guardia") {
-        return {
-          ...current,
-          kind: "guardia",
-          token: nextToken,
-          lastDamageToPlayer: 0,
-          lastDamageToRival: 0,
-          hitStrength: 0.18,
-          playerGuard: 1,
-          playerStamina: Math.min(3, current.playerStamina + 0.95),
-          lastMove: current.rivalIntent === "windup"
-            ? current.rivalAttack === "barrida"
-              ? "Levantás guardia, pero la mesa viene abajo. Si no salís de la línea, te barre."
-              : `Te cubrís justo antes del choque. Si viene hombro, queda pagando. ${getRingRead(distance, Math.min(3, current.playerStamina + 0.95))}.`
-            : `Levantás guardia y recuperás aire. ${getRingRead(distance, Math.min(3, current.playerStamina + 0.95))}.`
-        };
-      }
-
-      const actionConfig = getCombatActionConfig(kind);
-      const isRemate = kind === "remate";
-      const rivalGuarded = (current.rivalGuard ?? 0) > 0.25 && !isRemate;
-      const remateBonus = isRemate && (current.vulnerable ?? false) ? 10 : 0;
-      const cost = actionConfig.cost;
-      const stillRecovering = (current.playerCooldown ?? 0) > 0;
-      const hasAir = current.playerStamina >= cost;
-      const nextStamina = !stillRecovering && hasAir ? Math.max(0, current.playerStamina - cost) : current.playerStamina;
-      const attemptCooldown = actionConfig.cooldown;
-      const hitRange = actionConfig.range;
-      const hitLanded = !stillRecovering && hasAir && distance <= hitRange;
-      const interruptedWindup = hitLanded && current.rivalIntent === "windup";
-      const punishedVulnerable = hitLanded && current.vulnerable;
-      const rivalCounter = hitLanded && (current.rivalHitStun ?? 0) <= 0 && (kind === "empujon" ? nextToken % 4 === 0 : nextToken % 3 === 0);
-      const whiffPunish = !stillRecovering && !hitLanded && distance <= 0.48 && nextToken % 2 === 0;
-      const playerDamage = hitLanded
-        ? Math.max(
-          rivalGuarded ? 5 : 0,
-          actionConfig.damage + remateBonus + (interruptedWindup ? 10 : 0) + (punishedVulnerable && !isRemate ? 14 : 0) - (rivalGuarded ? 18 : 0)
-        )
-        : 0;
-      const rivalDamage = rivalGuarded
-        ? (isRemate ? 0 : 6)
-        : rivalCounter && !interruptedWindup && !punishedVulnerable
-          ? 24
-          : whiffPunish
-            ? (isRemate ? 26 : 14)
-            : 0;
-      const nextRivalHealth = clamp((current.rivalHealth ?? 100) - playerDamage, 0, 100);
-      const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
-      const hitStrength = clamp((playerDamage + rivalDamage) / 42, 0, 1);
-      const nextPlayer = Math.min(5, Math.floor((100 - nextRivalHealth) / 20));
-      const nextRival = Math.min(5, Math.floor((100 - nextPlayerHealth) / 20));
-      const playerWon = nextRivalHealth <= 0;
-      const rivalWon = nextPlayerHealth <= 0;
-      const directionToPlayer = Math.sign(current.playerLane - current.rivalLane || 1);
-      const rivalStep = hitLanded ? -directionToPlayer * 0.14 : directionToPlayer * 0.18;
-      const nextRivalLane = clamp(current.rivalLane + rivalStep, -0.72, 0.72);
-      const staminaRead = getRingRead(Math.abs(current.playerLane - nextRivalLane), nextStamina);
-      const nextStreak = hitLanded ? Math.min(3, (current.streak ?? 0) + 1) : 0;
-
-      return {
-        ...current,
-        kind,
-        token: nextToken,
-        player: nextPlayer,
-        rival: nextRival,
-        playerHealth: nextPlayerHealth,
-        rivalHealth: nextRivalHealth,
-        lastDamageToPlayer: rivalDamage,
-        lastDamageToRival: playerDamage,
-        hitStrength,
-        playerLane: current.playerLane,
-        rivalLane: nextRivalLane,
-        playerStamina: nextStamina,
-        rivalStamina: clamp(current.rivalStamina + (whiffPunish ? -1 : 0.35), 0, 3),
-        playerCooldown: stillRecovering ? Math.max(0, current.playerCooldown - 1) : attemptCooldown,
-        rivalCooldown: Math.max(0, current.rivalCooldown ?? 0),
-        playerHitStun: rivalDamage > 0 ? 1 : 0,
-        rivalHitStun: playerDamage >= actionConfig.stunDamage ? 1 : 0,
-        playerGuard: 0,
-        rivalGuard: Math.max(0, (current.rivalGuard ?? 0) - 0.55),
-        rivalIntent: "neutral",
-        rivalAttack: "none",
-        rivalTargetLane: current.rivalTargetLane,
-        vulnerable: false,
-        streak: nextStreak,
-        crowdHeat: 0,
-        resolved: playerWon || rivalWon,
-        lastMove: playerWon
-          ? "KO. La mesa cae y tu versión vuelve al antro con autoridad."
-          : rivalWon
-            ? "KO. Te sacaron del eje y la mesa canta victoria."
-          : punishedVulnerable
-            ? `Castigaste la ventana. ${getRingTableLine("punish", nextToken)} ${staminaRead}.`
-          : interruptedWindup
-            ? `Lo cortaste cuando venía cargando. Punto doble de orgullo. ${staminaRead}.`
-          : rivalGuarded
-            ? `Te le fuiste encima, pero el rival cerró guardia. Entró poco daño y te raspó de contra. ${staminaRead}.`
-          : rivalCounter
-          ? "Te contestaron con hombro. El conflicto sigue vivo."
-          : stillRecovering
-            ? "Estas recuperando el brazo. Medio segundo mas y volves a entrar."
-          : !hasAir
-            ? `Te quedaste sin aire y tiraste un manotazo triste. ${staminaRead}.`
-          : !hitLanded
-            ? `${getRingTableLine("fail", nextToken)} ${whiffPunish ? "Te puntearon de vuelta." : "Quedaste pagando."} ${staminaRead}.`
-          : kind === "empujon"
-            ? `Empujón sucio, efectivo y poco reglamentario. ${staminaRead}.`
-            : kind === "remate"
-              ? `${getRingTableLine("remate", nextToken)} ${staminaRead}.`
-            : `${getRingTableLine("hit", nextToken)} ${staminaRead}.`
-      };
     });
   }, []);
 
@@ -826,99 +702,6 @@ export default function App() {
       if (current.resolved || current.mode === "ruleta") return current;
 
       return applyCombatAction(current, "rival", kind);
-
-      const nextToken = current.token + 1;
-
-      if ((current.rivalHitStun ?? 0) > 0) {
-        return {
-          ...current,
-          kind: "rival-stun",
-          token: nextToken,
-          lastDamageToPlayer: 0,
-          lastDamageToRival: 0,
-          hitStrength: 0,
-          rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-          rivalStamina: Math.min(3, current.rivalStamina + 0.35),
-          lastMove: "Jugador B quedó aturdido. Tiene que recuperar postura antes de contestar."
-        };
-      }
-
-      if (kind === "guardia") {
-        return {
-          ...current,
-          kind: "rival-guard",
-          token: nextToken,
-          lastDamageToPlayer: 0,
-          lastDamageToRival: 0,
-          hitStrength: 0.18,
-          rivalGuard: 1,
-          rivalStamina: Math.min(3, current.rivalStamina + 0.85),
-          lastMove: "Jugador B levanta guardia. Si le tirás golpe básico o empujón, absorbe gran parte del daño."
-        };
-      }
-
-      const actionConfig = getCombatActionConfig(kind);
-      const distance = Math.abs(current.playerLane - current.rivalLane);
-      const stillRecovering = (current.rivalCooldown ?? 0) > 0;
-      const hasAir = current.rivalStamina >= actionConfig.cost;
-      const guarded = (current.playerGuard ?? 0) > 0.25;
-      const hitLanded = !stillRecovering && hasAir && distance <= actionConfig.range;
-      const guardReduced = hitLanded && guarded && kind !== "remate";
-      const guardBroken = hitLanded && guarded && kind === "remate";
-      const rivalDamage = hitLanded
-        ? guardReduced
-          ? Math.max(4, actionConfig.damage - 17)
-          : actionConfig.damage + (guardBroken ? 8 : 0)
-        : 0;
-      const counterDamage = guardReduced ? 7 : 0;
-      const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
-      const nextRivalHealth = clamp((current.rivalHealth ?? 100) - counterDamage, 0, 100);
-      const hitStrength = clamp((rivalDamage + counterDamage) / 42, 0, 1);
-      const playerWon = nextRivalHealth <= 0;
-      const rivalWon = nextPlayerHealth <= 0;
-      const directionToRival = Math.sign(current.rivalLane - current.playerLane || 1);
-
-      return {
-        ...current,
-        kind: kind === "remate" ? "rival-remate" : kind === "empujon" ? "rival-empujon" : "rival-golpe",
-        token: nextToken,
-        player: Math.min(5, Math.floor((100 - nextRivalHealth) / 20)),
-        rival: Math.min(5, Math.floor((100 - nextPlayerHealth) / 20)),
-        playerHealth: nextPlayerHealth,
-        rivalHealth: nextRivalHealth,
-        lastDamageToPlayer: rivalDamage,
-        lastDamageToRival: counterDamage,
-        hitStrength,
-        playerLane: hitLanded ? clamp(current.playerLane - directionToRival * 0.1, -0.72, 0.72) : current.playerLane,
-        rivalLane: current.rivalLane,
-        playerStamina: Math.min(3, current.playerStamina + (counterDamage > 0 ? 0.45 : 0.18)),
-        rivalStamina: hasAir && !stillRecovering ? Math.max(0, current.rivalStamina - actionConfig.cost) : current.rivalStamina,
-        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-        rivalCooldown: stillRecovering ? Math.max(0, current.rivalCooldown - 1) : actionConfig.cooldown,
-        playerHitStun: rivalDamage >= actionConfig.stunDamage ? 1 : 0,
-        rivalHitStun: counterDamage > 0 ? 1 : 0,
-        playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.6),
-        rivalGuard: 0,
-        rivalIntent: "neutral",
-        rivalAttack: "none",
-        vulnerable: false,
-        resolved: playerWon || rivalWon,
-        lastMove: rivalWon
-          ? "KO. Jugador B cerró el conflicto y te dejó mirando la baranda."
-          : playerWon
-            ? "KO. Bloqueaste y contestaste lo justo: Jugador B cae."
-            : stillRecovering
-              ? "Jugador B quiso repetir demasiado rápido. Cooldown manda."
-              : !hasAir
-                ? "Jugador B se quedó sin aire y amagó al vacío."
-                : !hitLanded
-                  ? `Jugador B tiró ${actionConfig.label.toLowerCase()} fuera de rango. ${getRingRead(distance, current.playerStamina)}.`
-                  : guardBroken
-                    ? "Jugador B rompió tu guardia con remate. La defensa no aguanta todo."
-                    : guardReduced
-                      ? "Bloqueaste parte del ataque de Jugador B y devolviste un raspón."
-                      : `Jugador B conectó ${actionConfig.label.toLowerCase()}. La pelea ya es local y de a dos.`
-      };
     });
   }, []);
 
@@ -928,13 +711,12 @@ export default function App() {
       token: current.token + 1,
       lastMove: mode === "ruleta"
         ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
-        : "Modo ring real-time. Movete libre, pegá cuando estés cerca y defendete si la mesa te encima."
+        : "Modo ring real-time. Movete libre, pegá cuando estés cerca y defendete si P2 te encima."
     }));
   }, []);
 
   useEffect(() => {
     if (cameraView !== "ring") {
-      window.clearInterval(debateAiTimerRef.current);
       window.cancelAnimationFrame(ringFrameRef.current);
       ringKeysRef.current.clear();
       return undefined;
@@ -950,255 +732,32 @@ export default function App() {
 
     ringFrameRef.current = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(ringFrameRef.current);
-
-    debateAiTimerRef.current = window.setInterval(() => {
-      setDebateState((current) => {
-        if (current.resolved) return current;
-
-        if (current.mode === "ruleta") {
-          return current.turn === "rival" ? resolveCorkRoulettePull(current) : current;
-        }
-
-        const nextToken = current.token + 1;
-        const distance = Math.abs(current.playerLane - current.rivalLane);
-        const directionToPlayer = Math.sign(current.playerLane - current.rivalLane || 1);
-
-        if (current.vulnerable) {
-          return {
-            ...current,
-            kind: "rival-reset",
-            token: nextToken,
-            rivalStamina: Math.min(3, current.rivalStamina + 0.55),
-            lastDamageToPlayer: 0,
-            lastDamageToRival: 0,
-            hitStrength: 0,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
-            vulnerable: false,
-            streak: Math.max(0, (current.streak ?? 0) - 1),
-            crowdHeat: Math.max(0, (current.crowdHeat ?? 0) - 1),
-            rivalIntent: "neutral",
-            rivalAttack: "none",
-            lastMove: "La mesa recompone postura. Perdiste la ventana para castigar gratis."
-          };
-        }
-
-        if ((current.rivalHitStun ?? 0) > 0) {
-          return {
-            ...current,
-            kind: "rival-stun",
-            token: nextToken,
-            lastDamageToPlayer: 0,
-            lastDamageToRival: 0,
-            hitStrength: 0,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-            playerStamina: Math.min(3, current.playerStamina + 0.55),
-            rivalIntent: "neutral",
-            rivalAttack: "none",
-            lastMove: "La mesa quedo aturdida. Esa es la ventana buena para entrar."
-          };
-        }
-
-        if (current.rivalIntent === "windup") {
-          const guarded = (current.playerGuard ?? 0) > 0.25;
-          const inLine = isInAttackLine(current.playerLane, current.rivalTargetLane);
-          const isBarrida = current.rivalAttack === "barrida";
-          const dodged = !inLine;
-          const blocked = inLine && guarded && !isBarrida;
-          const guardBroken = inLine && guarded && isBarrida;
-          const cleanHit = inLine && !guarded;
-          const counterDamage = blocked ? 10 : 0;
-          const rivalDamage = guardBroken ? 30 : cleanHit ? (isBarrida ? 24 : 18) : 0;
-          const nextRivalHealth = clamp((current.rivalHealth ?? 100) - counterDamage, 0, 100);
-          const nextPlayerHealth = clamp((current.playerHealth ?? 100) - rivalDamage, 0, 100);
-          const hitStrength = clamp((counterDamage + rivalDamage) / 34, 0, 1);
-          const nextPlayer = Math.min(5, Math.floor((100 - nextRivalHealth) / 20));
-          const nextRival = Math.min(5, Math.floor((100 - nextPlayerHealth) / 20));
-          const rivalWon = nextPlayerHealth <= 0;
-          const playerWon = nextRivalHealth <= 0;
-          const nextPlayerLane = clamp(current.playerLane - directionToPlayer * 0.08, -0.72, 0.72);
-          const actionKind = dodged ? "rival-whiff" : guardBroken ? "rival-guardbreak" : "rival";
-          const earnedWindow = (dodged || blocked) && !playerWon && !rivalWon;
-
-          return {
-            ...current,
-            kind: actionKind,
-            token: nextToken,
-            playerLane: nextPlayerLane,
-            player: nextPlayer,
-            rival: nextRival,
-            playerHealth: nextPlayerHealth,
-            rivalHealth: nextRivalHealth,
-            lastDamageToPlayer: rivalDamage,
-            lastDamageToRival: counterDamage,
-            hitStrength,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: rivalDamage > 0 ? 1 : 0,
-            playerHitStun: rivalDamage >= 18 ? 1 : 0,
-            rivalHitStun: counterDamage > 0 ? 1 : 0,
-            rivalStamina: Math.max(0, current.rivalStamina - 1),
-            playerGuard: 0,
-            rivalIntent: "neutral",
-            rivalAttack: "none",
-            vulnerable: earnedWindow,
-            streak: earnedWindow ? Math.min(3, (current.streak ?? 0) + 1) : 0,
-            crowdHeat: 0,
-            resolved: rivalWon || playerWon,
-            lastMove: playerWon
-          ? "Lo esperaste y se regaló. La mesa queda a nada del KO."
-              : rivalWon
-                ? "KO. La mesa te sacó del ring; respawn al antro cuando salgas."
-              : dodged
-                ? `Esquivaste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. La mesa quedó abierta: castigá con Q/E/R.`
-              : guardBroken
-                ? "Te cubriste arriba y te barrieron abajo. Te bajaron vida: esquivá las barridas."
-              : guarded
-                ? "Bloqueaste el hombro y lo dejaste abierto. Castigá con Q/E/R."
-                : `Te comiste la ${getRivalAttackName(current.rivalAttack).toLowerCase()}. Movete o contestá. ${getRingRead(Math.abs(nextPlayerLane - current.rivalLane), current.playerStamina)}.`
-          };
-        }
-
-        if (distance > 0.36) {
-          const nextRivalLane = clamp(current.rivalLane + directionToPlayer * 0.14, -0.72, 0.72);
-
-          return {
-            ...current,
-            kind: "rival-move",
-            token: nextToken,
-            rivalLane: nextRivalLane,
-            lastDamageToPlayer: 0,
-            lastDamageToRival: 0,
-            hitStrength: 0,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-            rivalStamina: Math.min(3, current.rivalStamina + 0.35),
-            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.35),
-            rivalIntent: "neutral",
-            rivalAttack: "none",
-            vulnerable: false,
-            lastMove: `La mesa te busca el cuerpo. ${getRingRead(Math.abs(current.playerLane - nextRivalLane), current.playerStamina)}.`
-          };
-        }
-
-        if (current.rivalStamina < 1) {
-          return {
-            ...current,
-            kind: "rival-breathe",
-            token: nextToken,
-            rivalStamina: Math.min(3, current.rivalStamina + 0.8),
-            lastDamageToPlayer: 0,
-            lastDamageToRival: 0,
-            hitStrength: 0,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-            playerGuard: Math.max(0, (current.playerGuard ?? 0) - 0.25),
-            rivalIntent: "neutral",
-            rivalAttack: "none",
-            lastMove: "La mesa afloja medio paso y recupera aire. Es tu ventana."
-          };
-        }
-
-        if (current.rivalIntent !== "windup") {
-          const rivalAttack = pickRivalAttack(nextToken + current.rival + current.player);
-
-          return {
-            ...current,
-            kind: "rival-windup",
-            token: nextToken,
-            rivalIntent: "windup",
-            rivalAttack,
-            rivalTargetLane: current.playerLane,
-            lastDamageToPlayer: 0,
-            lastDamageToRival: 0,
-            hitStrength: 0,
-            playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-            rivalCooldown: 1,
-            playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-            rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-            rivalStamina: Math.min(3, current.rivalStamina + 0.25),
-            lastMove: rivalAttack === "barrida"
-              ? "La mesa amagó arriba y va bajo. Salí de la línea con A/D; la guardia no salva."
-              : "La mesa baja el hombro y carga de frente. Cubrite con F o cortala con Q/E."
-          };
-        }
-
-        return current;
-      });
-    }, 980);
-
-    return () => window.clearInterval(debateAiTimerRef.current);
   }, [cameraView]);
 
-  const moveDebatePlayer = useCallback((direction) => {
-    setDebateState((current) => {
-      if (current.resolved || current.mode === "ruleta") return current;
-      const playerPos = getCombatPos(current, "player");
-      const rivalPos = getCombatPos(current, "rival");
-      const nextPlayerPos = clampRingPos({ x: playerPos.x + direction * 0.28, z: playerPos.z });
-      const moved = withActorPos(current, "player", nextPlayerPos, rivalPos);
+  useEffect(() => {
+    if (cameraView !== "ring") return;
+    if (debateSoundTokenRef.current === debateState.token) return;
+    debateSoundTokenRef.current = debateState.token;
 
-      return {
-        ...moved,
-        kind: "move",
-        token: current.token + 1,
-        lastDamageToPlayer: 0,
-        lastDamageToRival: 0,
-        hitStrength: 0,
-        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-        rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-        playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-        rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-        playerStamina: Math.min(3, current.playerStamina + 0.55),
-        playerGuard: 0,
-        lastMove: direction < 0
-          ? "Te corrés a la izquierda y recuperás aire."
-          : "Te corrés a la derecha y recuperás aire."
-      };
-    });
-  }, []);
-
-  const moveDebateRival = useCallback((direction) => {
-    setDebateState((current) => {
-      if (current.resolved || current.mode === "ruleta") return current;
-      const playerPos = getCombatPos(current, "player");
-      const rivalPos = getCombatPos(current, "rival");
-      const nextRivalPos = clampRingPos({ x: rivalPos.x + direction * 0.28, z: rivalPos.z });
-      const moved = withActorPos(current, "rival", nextRivalPos, playerPos);
-
-      return {
-        ...moved,
-        kind: "rival-move",
-        token: current.token + 1,
-        lastDamageToPlayer: 0,
-        lastDamageToRival: 0,
-        hitStrength: 0,
-        playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - 1),
-        rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - 1),
-        playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - 1),
-        rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - 1),
-        rivalStamina: Math.min(3, current.rivalStamina + 0.55),
-        rivalGuard: 0,
-        lastMove: direction < 0
-          ? "Jugador B se corre a su izquierda y recupera aire."
-          : "Jugador B se corre a su derecha y recupera aire."
-      };
-    });
-  }, []);
+    const damage = Math.max(debateState.lastDamageToPlayer ?? 0, debateState.lastDamageToRival ?? 0);
+    if (damage > 0 || debateState.resolved) {
+      playConflictHitSound(debateState.hitStrength ?? damage / 34, debateState.resolved);
+    }
+  }, [
+    cameraView,
+    debateState.hitStrength,
+    debateState.lastDamageToPlayer,
+    debateState.lastDamageToRival,
+    debateState.resolved,
+    debateState.token
+  ]);
 
   const stageClassName = [
     "stage-shell",
     isSeatingRitual ? "stage-seating-ritual" : "",
     cameraView === "walk" && !isSeatingRitual ? "stage-walk-mode" : "",
-    cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : ""
+    cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : "",
+    cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {
@@ -1219,44 +778,29 @@ export default function App() {
           handleCameraViewChange("walk");
           return;
         }
+
+        // ── Held keys consumed each frame by stepArenaCombat ──────────────
+        //   P1 move : W A S D  (+ Shift sprint)   |  arrows mirror P1 move
+        //   P2 move : I J K L
+        //   Guard hold: P1 = F (also right-click) | P2 = P
         if (["w", "a", "s", "d", "shift", "i", "j", "k", "l", "p"].includes(key)) {
           event.preventDefault();
           ringKeysRef.current.add(key);
           return;
         }
-        if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowDown") {
+        if (["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) {
           event.preventDefault();
-          ringKeysRef.current.add(event.key.toLowerCase());
+          ringKeysRef.current.add(key);
           return;
         }
-        if (key === "a") {
-          event.preventDefault();
-          moveDebatePlayer(-1);
-          return;
-        }
-        if (key === "d") {
-          event.preventDefault();
-          moveDebatePlayer(1);
-          return;
-        }
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          moveDebateRival(-1);
-          return;
-        }
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          moveDebateRival(1);
-          return;
-        }
+
+        // ── Discrete actions (fire once per press) ────────────────────────
+        //   G          : toggle ring / ruleta mode
+        //   P1 attacks : Q golpe · E empujón · R remate · Space esquiva · F guardia
+        //   P2 attacks : H golpe · U empujón · O remate (P2 guard is the held P above)
         if (key === "g") {
           event.preventDefault();
           switchDebateMode("ring");
-          return;
-        }
-        if (key === "t") {
-          event.preventDefault();
-          switchDebateMode("ruleta");
           return;
         }
         if (event.code === "Space") {
@@ -1264,7 +808,7 @@ export default function App() {
           triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "esquive");
           return;
         }
-        if (key === "q" || (debateState.mode === "ruleta" && (event.code === "Space" || key === "j"))) {
+        if (key === "q") {
           event.preventDefault();
           triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
           return;
@@ -1279,7 +823,7 @@ export default function App() {
           triggerDebateAction("remate");
           return;
         }
-        if (event.code === "Space" || key === "f") {
+        if (key === "f") {
           event.preventDefault();
           ringKeysRef.current.add("f");
           triggerDebateAction("guardia");
@@ -1300,12 +844,6 @@ export default function App() {
           triggerRivalDebateAction("remate");
           return;
         }
-        if (key === "p") {
-          event.preventDefault();
-          ringKeysRef.current.add("p");
-          triggerRivalDebateAction("guardia");
-          return;
-        }
       }
     };
 
@@ -1321,7 +859,7 @@ export default function App() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [cameraView, debateState.mode, handleCameraViewChange, moveDebatePlayer, moveDebateRival, switchDebateMode, triggerDebateAction, triggerRivalDebateAction]);
+  }, [cameraView, debateState.mode, handleCameraViewChange, switchDebateMode, triggerDebateAction, triggerRivalDebateAction]);
 
   useEffect(() => {
     if (cameraView !== "ring") return undefined;
@@ -1619,7 +1157,6 @@ export default function App() {
                 ) : debateState.resolved ? (
                   <>
                     <button type="button" onClick={() => triggerDebateAction("golpe")}>Revancha</button>
-                    <button type="button" onClick={() => switchDebateMode("ruleta")}>Ruleta</button>
                     <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
                   </>
                 ) : (

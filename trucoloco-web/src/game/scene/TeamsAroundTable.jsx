@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
+import { Billboard, Text } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
 import { CharacterFigure } from "./CharacterFigure";
 
@@ -33,12 +33,14 @@ function CharacterSeat({
   isSeatedView,
   isAwayFromSeat,
   showFloatingLabel,
-  lowPower
+  lowPower,
+  actingSeatPos
 }) {
   const ringRef = useRef(null);
   const outerRingRef = useRef(null);
   const torsoRef = useRef(null);
   const upperRef = useRef(null);
+  const groupRef = useRef(null);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
@@ -168,11 +170,32 @@ function CharacterSeat({
     if (upperRef.current) {
       upperRef.current.position.y = upperBaseY + Math.sin(t * 0.9 + timeRef.current * 0.4) * 0.012;
     }
+
+    // ---- Everyone glances at whoever is acting — the table feels alive ----
+    if (groupRef.current) {
+      let lookYaw = seatYaw;
+      if (actingSeatPos && !isCurrentActor && !isRoleSelect) {
+        const dx = actingSeatPos[0] - seat.position[0];
+        const dz = actingSeatPos[2] - seat.position[2];
+        if (Math.hypot(dx, dz) > 0.5) {
+          let turn = Math.atan2(dx, dz) - seatYaw;
+          while (turn > Math.PI) turn -= Math.PI * 2;
+          while (turn < -Math.PI) turn += Math.PI * 2;
+          // heads turn, bodies stay planted: cap the twist
+          lookYaw = seatYaw + Math.max(-0.5, Math.min(0.5, turn));
+        }
+      }
+      let yawDelta = lookYaw - groupRef.current.rotation.y;
+      while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+      while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+      groupRef.current.rotation.y += yawDelta * Math.min(1, delta * 2.4);
+    }
   });
 
   return (
     <group
       key={`${seat.team}-${character.id}`}
+      ref={groupRef}
       name={`Seat_${character.name}`}
       position={seat.position}
       rotation={[0, seatYaw, 0]}
@@ -238,7 +261,7 @@ function CharacterSeat({
       )}
 
       {showFloatingLabel && !isAwayFromSeat ? (
-        <group position={[0, 2.02, 0]} rotation={[0, -seatYaw, 0]}>
+        <Billboard position={[0, 2.02, 0]} follow>
           <Text
             fontSize={isCurrentActor ? 0.18 : isSelectedLane ? 0.16 : 0.11}
             color={isCurrentActor ? "#91e9f6" : isSelectedLane ? "#f0ddb4" : "#8f7755"}
@@ -258,7 +281,7 @@ function CharacterSeat({
           >
             {isCurrentActor ? character.name.toUpperCase() : isSelectedCharacter ? "ELEGIDO" : character.role.toUpperCase()}
           </Text>
-        </group>
+        </Billboard>
       ) : null}
 
       {/* Base ring */}
@@ -284,6 +307,10 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
   const { size } = useThree();
   const isNarrow = size.width < 640;
   const lowPower = performanceMode === "low";
+
+  const actingSeat = match.handStarted && !match.handClosed
+    ? visibleRosterSeats.find((seat) => seat.character?.name === match.nextActorName)
+    : null;
 
   return (
     <group name="Players_Ring">
@@ -314,6 +341,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
             isAwayFromSeat={isAwayFromSeat}
             showFloatingLabel={showFloatingLabel}
             lowPower={lowPower}
+            actingSeatPos={actingSeat && actingSeat.seatId !== seat.seatId ? actingSeat.position : null}
           />
         );
       })}
