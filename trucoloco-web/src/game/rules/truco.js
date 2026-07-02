@@ -97,6 +97,42 @@ export const getHandWinner = (trickHistory, manoTeam) => {
   return third;
 };
 
+export const getWeaponPowerAdjustment = ({ basePower, seatId, selectedSeatId, oppositeSeatId, selectedRole, activeWeapon }) => {
+  if (!activeWeapon || selectedRole !== "Cartachin") {
+    return { power: basePower, effect: null };
+  }
+
+  if (activeWeapon.id === "parca-utileria" && seatId === selectedSeatId) {
+    const delta = activeWeapon.effectValue ?? 2;
+
+    return {
+      power: basePower + delta,
+      effect: {
+        weaponId: activeWeapon.id,
+        weaponName: activeWeapon.name,
+        delta,
+        target: "self"
+      }
+    };
+  }
+
+  if (activeWeapon.id === "bocanada-humo" && seatId === oppositeSeatId) {
+    const delta = activeWeapon.effectValue ?? 2;
+
+    return {
+      power: Math.max(1, basePower - delta),
+      effect: {
+        weaponId: activeWeapon.id,
+        weaponName: activeWeapon.name,
+        delta: -delta,
+        target: "rival"
+      }
+    };
+  }
+
+  return { power: basePower, effect: null };
+};
+
 export const resolveVuelta = (humanCard, rivalCard, activeWeapon, activeLane, manoTeam, trickHistory) => {
   let humanPower = humanCard.power;
   let rivalPower = rivalCard.power;
@@ -104,12 +140,12 @@ export const resolveVuelta = (humanCard, rivalCard, activeWeapon, activeLane, ma
 
   if (activeWeapon?.id === "parca-utileria") {
     humanPower += activeWeapon.effectValue ?? 2;
-    logs.push("La Parca de Utileria mete presion y empuja tu carta.");
+    logs.push("La Sustancia X le da poder ilegal a tu carta.");
   }
 
   if (activeWeapon?.id === "bocanada-humo") {
     rivalPower = Math.max(1, rivalPower - (activeWeapon.effectValue ?? 2));
-    logs.push("La Bocanada de Humo le ensucia la lectura al rival.");
+    logs.push("El Pucho en el Ojo le nubla la carta al rival.");
   }
 
   if (humanPower === rivalPower) {

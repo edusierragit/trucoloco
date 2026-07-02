@@ -1203,20 +1203,11 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
     const eyeZ = sz + inZ * 0.2;
     const eyeY = 0.62; // standing at your spot, chin over the felt
 
-    let lookX = -sx * 0.2;
-    let lookY = -0.46;
-    let lookZ = -sz * 0.2;
-    const actor = match.handStarted && !match.handClosed ? getActiveTurnSeat(match) : null;
-    if (actor && actor.seatId !== ownSeat.seatId) {
-      const actorWorld = getSeatWorld(actor);
-      lookX += (actorWorld.x * 0.72 - lookX) * 0.55;
-      lookZ += (actorWorld.z * 0.72 - lookZ) * 0.55;
-      lookY = -0.1; // raise the gaze to their upper body
-    }
-
+    // static gaze at the table heart — the player looks around by dragging,
+    // the camera never wanders on its own (pedido explícito del usuario)
     return {
       position: [eyeX, eyeY, eyeZ],
-      target: [lookX, lookY, lookZ],
+      target: [-sx * 0.2, -0.42, -sz * 0.2],
       fov: isNarrow ? 58 : 50
     };
   }
@@ -1280,6 +1271,45 @@ export function TrucolocoScene({
   const ringShakeRef = useRef(0);
   const cameraTargetRef = useRef(new Vector3(0, 0.16, 0.02));
   const targetLookAtRef = useRef(new Vector3(0, 0.16, 0.02));
+  const seatLookRef = useRef({ yaw: 0, pitch: 0 });
+
+  // seated free-look: drag on empty space swivels your head (clicks on cards still play)
+  const { gl } = useThree();
+  useEffect(() => {
+    if (cameraView !== "seat") return undefined;
+    const el = gl.domElement;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const down = (event) => {
+      if (event.button !== 0) return;
+      dragging = true;
+      lastX = event.clientX;
+      lastY = event.clientY;
+    };
+    const move = (event) => {
+      if (!dragging) return;
+      const dx = event.clientX - lastX;
+      const dy = event.clientY - lastY;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      const look = seatLookRef.current;
+      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw - dx * 0.0042));
+      look.pitch = Math.max(-0.55, Math.min(0.4, look.pitch - dy * 0.003));
+    };
+    const up = () => {
+      dragging = false;
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      seatLookRef.current = { yaw: 0, pitch: 0 };
+    };
+  }, [cameraView, gl]);
 
   useFrame((state, delta) => {
     if (isWalkMode) return;
@@ -1293,6 +1323,25 @@ export function TrucolocoScene({
     const activeTurnSeat = getActiveTurnSeat(match);
     const [targetX, targetY, targetZ] = cameraPose.position;
     const targetLookAt = targetLookAtRef.current.set(...cameraPose.target);
+
+    // seated free-look: swivel the gaze around the eye by the dragged offset
+    if (cameraView === "seat") {
+      const look = seatLookRef.current;
+      if (look.yaw !== 0 || look.pitch !== 0) {
+        const ex = cameraPose.position[0];
+        const ey = cameraPose.position[1];
+        const ez = cameraPose.position[2];
+        const dx = targetLookAt.x - ex;
+        const dy = targetLookAt.y - ey;
+        const dz = targetLookAt.z - ez;
+        const cos = Math.cos(look.yaw);
+        const sin = Math.sin(look.yaw);
+        const rx = dx * cos - dz * sin;
+        const rz = dx * sin + dz * cos;
+        const flat = Math.hypot(dx, dz);
+        targetLookAt.set(ex + rx, ey + dy + look.pitch * flat, ez + rz);
+      }
+    }
     const cameraSpeed = cameraView === "ring" ? 8.2 : cameraView === "seat" ? 4.7 : 3.45;
     const targetSpeed = cameraView === "ring" ? 8.8 : 5.2;
     const cameraAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * cameraSpeed);

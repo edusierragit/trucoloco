@@ -4328,3 +4328,25 @@ select {
   clip-path: inset(50%);
   border: 0;
 }
+
+/* seat mode declutter: menos carteles, más mesa.
+   Se ocultan etiquetas puramente decorativas; los botones de acción quedan. */
+.stage-seat-mode .role-lock,
+.stage-seat-mode .focus-badge,
+.stage-seat-mode .role-table-name,
+.stage-seat-mode .weapons-panel .panel-header p {
+  display: none;
+}
+
+.stage-seat-mode .action-focus .call-copy .panel-kicker {
+  display: none;
+}
+
+.stage-seat-mode .call-bar {
+  padding: 10px 14px;
+  background: rgba(8, 6, 4, 0.66);
+}
+
+.stage-seat-mode .hud-top .title-block p {
+  display: none;
+}

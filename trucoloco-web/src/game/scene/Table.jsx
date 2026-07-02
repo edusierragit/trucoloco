@@ -60,12 +60,15 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   const initialRotY = card.side === "A" ? -0.18 : 0.18;
   const initialRotZ = card.side === "A" ? -0.34 : 0.34;
 
+  // played cards read as real naipes, not furniture — keep them modest on the felt
+  const TABLE_CARD_SCALE = 0.62;
+
   useEffect(() => {
     progressRef.current = 0;
     if (groupRef.current) {
       groupRef.current.position.set(fromX, fromY, fromZ);
       groupRef.current.rotation.set(initialRotX, initialRotY, initialRotZ);
-      groupRef.current.scale.setScalar(0.82);
+      groupRef.current.scale.setScalar(0.82 * TABLE_CARD_SCALE);
     }
   }, [animationKey, fromX, fromZ, card.owner, initialRotY, initialRotZ]);
 
@@ -83,7 +86,7 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
     groupRef.current.rotation.x = initialRotX + (rotation[0] - initialRotX) * t;
     groupRef.current.rotation.y = initialRotY + ((rotation[1] ?? 0) - initialRotY) * t;
     groupRef.current.rotation.z = initialRotZ + (rotation[2] - initialRotZ) * t;
-    const scale = 0.82 + (1 - 0.82) * t;
+    const scale = (0.82 + (1 - 0.82) * t) * TABLE_CARD_SCALE;
     groupRef.current.scale.setScalar(scale);
 
     if (shadowRef.current) {
@@ -386,19 +389,9 @@ function LastPlayedMarker({ tableCards }) {
   return (
     <group name="Table_LastPlayedMarker" position={[pose.position[0], 0.432, pose.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
       <mesh ref={markerRef}>
-        <ringGeometry args={[0.68, 0.82, 54]} />
+        <ringGeometry args={[0.46, 0.56, 54]} />
         <meshBasicMaterial color={lastCard.side === "A" ? "#63d5c5" : "#d05a44"} transparent opacity={0.2} depthWrite={false} />
       </mesh>
-      <Text
-        position={[0, 0.02, 0.92]}
-        fontSize={0.075}
-        color="#f3dfb6"
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.08}
-      >
-        {lastCard.side === "A" ? "TU JUGADA" : "JUGO LA MESA"}
-      </Text>
     </group>
   );
 }
