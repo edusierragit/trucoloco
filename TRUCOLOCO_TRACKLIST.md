@@ -77,9 +77,22 @@
 - **Píldora a la esquina inferior derecha** (portal a body — el sidebar con
   backdrop-filter rompía el fixed) + chips para cambiar de rol al fin de mano.
 
+## ✅ HECHO (2026-07-03, cierre)
+
+- **Deploy público a GitHub Pages** — workflow `.github/workflows/pages.yml`
+  (repo edusierragit/trucoloco), vite con base relativa. El "Copiar link" copia
+  la URL real donde esté corriendo → los amigos entran desde SUS casas.
+- **Unirse con código** — input CÓDIGO + botón Unirse junto a "Crear sala".
+- **Cámara silla en convención única "agarrar el mundo"** (arrastrás la escena).
+- `CODEX_TASK_2.md` — máquina de humo interactiva (prop + hotspot F + partículas
+  + fog que se enturbia ~20s y se disipa) lista para delegar cuando Codex
+  termine la tarea 1.
+
 ## 🔧 EN CURSO
 
 - [ ] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — corriendo.
+- [ ] **Cámara silla**: si "agarrar el mundo" tampoco convence a Edu, probar
+  convención FPS pura (los dos ejes espejados respecto de la actual).
 - [ ] **Auditoría fina de reglas de canto** (envido solo 1ª vuelta/mano, cadena
   truco-retruco-vale4 y quién tiene el quiero) — con tests en check:rules.
 - [ ] Guiños faciales NO se pueden con los GLB actuales (sin blendshapes) — plan Mixamo.

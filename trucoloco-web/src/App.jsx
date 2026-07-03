@@ -1318,9 +1318,36 @@ export default function App() {
             <p className="sala-note">Presencia en vivo · la partida compartida llega en la próxima etapa</p>
           </div>
         ) : (
-          <button className="canto-chip sala-open-btn" type="button" onClick={() => joinSala(genRoomCode(), true)}>
-            🌐 Crear sala
-          </button>
+          <div className="sala-join-box">
+            <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
+              🌐 Crear sala
+            </button>
+            <div className="sala-join-row">
+              <input
+                className="sala-code-input"
+                maxLength={4}
+                placeholder="CÓDIGO"
+                autoComplete="off"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    const code = event.currentTarget.value.trim().toUpperCase();
+                    if (code.length === 4) joinSala(code, false);
+                  }
+                }}
+              />
+              <button
+                className="canto-chip sala-btn"
+                type="button"
+                onClick={(event) => {
+                  const input = event.currentTarget.previousSibling;
+                  const code = input?.value?.trim().toUpperCase() ?? "";
+                  if (code.length === 4) joinSala(code, false);
+                }}
+              >
+                Unirse
+              </button>
+            </div>
+          </div>
         ),
         document.body
       )}

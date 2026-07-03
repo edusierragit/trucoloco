@@ -4727,3 +4727,39 @@ select {
   letter-spacing: 0.04em;
   opacity: 0.5;
 }
+
+/* unirse con código pegado a mano */
+.sala-join-box {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 44;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.sala-join-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sala-code-input {
+  width: 92px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 178, 110, 0.3);
+  background: rgba(8, 6, 4, 0.8);
+  color: #91e9f6;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.sala-code-input:focus {
+  border-color: #91e9f6;
+}

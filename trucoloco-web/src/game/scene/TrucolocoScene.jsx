@@ -281,6 +281,58 @@ function RoomAccents() {
   );
 }
 
+function MainRoomShell() {
+  return (
+    <group name="Room_SolidShell">
+      <RoundedBox name="Ceiling_BackSoffit_Antro" args={[11.45, 0.24, 1.05]} radius={0.1} position={[0, 2.82, -4.02]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.98} metalness={0.02} />
+      </RoundedBox>
+      <RoundedBox name="Ceiling_FrontSoffit_Antro" args={[14.0, 0.22, 0.9]} radius={0.1} position={[0, 2.82, 4.48]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.98} metalness={0.02} />
+      </RoundedBox>
+      <RoundedBox name="Ceiling_LeftSoffit_Antro" args={[1.0, 0.22, 8.8]} radius={0.1} position={[-5.95, 2.82, 0.04]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.98} metalness={0.02} />
+      </RoundedBox>
+      <RoundedBox name="Ceiling_RightSoffit_Antro" args={[1.0, 0.22, 8.8]} radius={0.1} position={[5.95, 2.82, 0.04]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.98} metalness={0.02} />
+      </RoundedBox>
+      <RoundedBox name="FrontWall_Left_Antro" args={[5.45, 4.75, 0.34]} radius={0.14} position={[-4.55, 0.38, 4.72]} receiveShadow>
+        <meshStandardMaterial color="#120b08" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="FrontWall_Right_Antro" args={[5.45, 4.75, 0.34]} radius={0.14} position={[4.55, 0.38, 4.72]} receiveShadow>
+        <meshStandardMaterial color="#0c1110" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="FrontWall_Header_Antro" args={[3.15, 1.22, 0.34]} radius={0.12} position={[0, 2.16, 4.72]} receiveShadow>
+        <meshStandardMaterial color="#0b0706" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="FrontWall_BrassLintel" args={[2.46, 0.08, 0.16]} radius={0.025} position={[0, 1.47, 4.52]} castShadow receiveShadow>
+        <meshStandardMaterial color={BAR_COLORS.brass} roughness={0.36} metalness={0.58} />
+      </RoundedBox>
+      <RoundedBox name="FrontBaseboard_Antro" args={[13.8, 0.16, 0.13]} radius={0.035} position={[0, -1.61, 4.33]} receiveShadow>
+        <meshStandardMaterial color="#0b0605" roughness={0.86} />
+      </RoundedBox>
+      <RoundedBox name="LeftBaseboard_Antro" args={[0.14, 0.16, 8.55]} radius={0.035} position={[-5.38, -1.61, 0.05]} receiveShadow>
+        <meshStandardMaterial color="#0b0605" roughness={0.86} />
+      </RoundedBox>
+      <RoundedBox name="RightBaseboard_Antro" args={[0.14, 0.16, 8.55]} radius={0.035} position={[5.38, -1.61, 0.05]} receiveShadow>
+        <meshStandardMaterial color="#0b0605" roughness={0.86} />
+      </RoundedBox>
+      <RoundedBox name="SideRoom_FloorBridge" args={[2.34, 0.34, 2.55]} radius={0.12} position={[-6.42, -1.78, -0.9]} receiveShadow>
+        <meshStandardMaterial color="#160c09" roughness={0.9} metalness={0.04} />
+      </RoundedBox>
+      <RoundedBox name="SideRoom_CeilingBridge" args={[2.48, 0.2, 2.68]} radius={0.08} position={[-6.43, 2.22, -0.9]} receiveShadow>
+        <meshStandardMaterial color="#070504" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="SideRoom_BackClosure" args={[2.2, 3.4, 0.2]} radius={0.08} position={[-6.42, 0.35, -2.28]} receiveShadow>
+        <meshStandardMaterial color="#0e0807" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="SideRoom_FrontClosure" args={[2.2, 3.4, 0.2]} radius={0.08} position={[-6.42, 0.35, 0.48]} receiveShadow>
+        <meshStandardMaterial color="#180b08" roughness={0.96} />
+      </RoundedBox>
+    </group>
+  );
+}
+
 function BackBarDressing({ lowPower = false }) {
   const bottleColors = ["#2b4a38", "#4b231d", "#57401f", "#213a42", "#38251c", "#523428", "#1d332c"];
   const rows = lowPower ? [0.05] : [-0.95, 0.05, 1.05];
@@ -922,6 +974,12 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
       <RoundedBox args={[4.95, 0.035, 4.12]} radius={0.06} position={[0, -0.005, 0.02]} receiveShadow>
         <meshStandardMaterial color="#22120d" roughness={0.82} metalness={0.03} />
       </RoundedBox>
+      <RoundedBox name="DebateRoom_Ceiling" args={[5.7, 0.22, 4.8]} radius={0.1} position={[0, 2.34, 0]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.98} metalness={0.02} />
+      </RoundedBox>
+      <RoundedBox name="DebateRoom_FrontWall" args={[5.45, 2.42, 0.22]} radius={0.08} position={[0, 1.02, 2.36]} receiveShadow>
+        <meshStandardMaterial color="#120907" roughness={0.98} />
+      </RoundedBox>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}>
         <ringGeometry args={[1.42, 1.55, 96]} />
         <meshBasicMaterial color="#d98a36" transparent opacity={0.16} depthWrite={false} />
@@ -936,17 +994,28 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
       <RoundedBox args={[0.22, 2.55, 4.45]} radius={0.08} position={[-2.82, 1.0, 0]} receiveShadow>
         <meshStandardMaterial color="#210f0b" roughness={0.96} />
       </RoundedBox>
-      <RoundedBox args={[0.16, 1.76, 1.52]} radius={0.08} position={[2.74, 0.58, -1.27]} receiveShadow>
-        <meshStandardMaterial color="#0c0b09" roughness={0.98} transparent opacity={0.58} />
+      <RoundedBox name="DebateRoom_RightWall_Back" args={[0.2, 2.55, 1.5]} radius={0.08} position={[2.82, 1.0, -1.52]} receiveShadow>
+        <meshStandardMaterial color="#0d0a08" roughness={0.98} />
       </RoundedBox>
-      <RoundedBox args={[0.18, 0.2, 3.95]} radius={0.04} position={[2.74, 2.0, 0]} receiveShadow>
+      <RoundedBox name="DebateRoom_RightWall_Front" args={[0.2, 2.55, 1.18]} radius={0.08} position={[2.82, 1.0, 1.62]} receiveShadow>
+        <meshStandardMaterial color="#1b0d0a" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="DebateRoom_RightDoorHeader" args={[0.22, 0.34, 4.22]} radius={0.04} position={[2.82, 2.02, 0]} receiveShadow>
         <meshStandardMaterial color="#b47a34" roughness={0.38} metalness={0.54} />
+      </RoundedBox>
+      {[[-2.72, -2.2], [2.72, -2.2], [-2.72, 2.2], [2.72, 2.2]].map(([x, z]) => (
+        <RoundedBox key={`${x}-${z}`} args={[0.2, 2.28, 0.2]} radius={0.045} position={[x, 0.95, z]} castShadow receiveShadow>
+          <meshStandardMaterial color="#1a0c08" roughness={0.74} metalness={0.12} />
+        </RoundedBox>
+      ))}
+      <RoundedBox name="DebateRoom_BackBaseboard" args={[5.18, 0.14, 0.12]} radius={0.03} position={[0, -0.02, -2.22]} receiveShadow>
+        <meshStandardMaterial color="#080504" roughness={0.88} />
+      </RoundedBox>
+      <RoundedBox name="DebateRoom_FrontBaseboard" args={[5.18, 0.14, 0.12]} radius={0.03} position={[0, -0.02, 2.22]} receiveShadow>
+        <meshStandardMaterial color="#080504" roughness={0.88} />
       </RoundedBox>
       <RoundedBox args={[4.65, 0.045, 0.065]} radius={0.025} position={[0, 2.42, 1.98]} receiveShadow>
         <meshStandardMaterial color="#d98a36" emissive="#d98a36" emissiveIntensity={0.08} roughness={0.52} metalness={0.22} transparent opacity={0.62} />
-      </RoundedBox>
-      <RoundedBox args={[0.18, 1.76, 1.2]} radius={0.08} position={[2.73, 0.58, 1.55]} receiveShadow>
-        <meshStandardMaterial color="#1b0d0a" roughness={0.98} />
       </RoundedBox>
       <RoundedBox args={[1.18, 0.11, 1.38]} radius={0.055} position={[2.18, -0.045, 0.18]} rotation={[0, 0.04, 0]} receiveShadow>
         <meshStandardMaterial color="#2c170f" roughness={0.72} metalness={0.08} />
@@ -1005,8 +1074,11 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
 function DebateEntrance() {
   return (
     <group name="Debate_Entrance" position={[-5.42, -1.08, -0.9]}>
-      <RoundedBox args={[0.08, 1.28, 1.58]} radius={0.035} position={[0.04, 0.64, 0]} receiveShadow>
-        <meshStandardMaterial color="#090606" roughness={0.92} metalness={0.08} transparent opacity={0.78} />
+      <RoundedBox args={[0.18, 1.78, 1.84]} radius={0.05} position={[0.02, 0.86, 0]} receiveShadow>
+        <meshStandardMaterial color="#080605" roughness={0.94} metalness={0.08} />
+      </RoundedBox>
+      <RoundedBox args={[0.05, 1.22, 1.32]} radius={0.03} position={[0.12, 0.72, 0]} receiveShadow>
+        <meshStandardMaterial color="#120b08" roughness={0.96} emissive="#4d210f" emissiveIntensity={0.12} />
       </RoundedBox>
       <RoundedBox args={[0.12, 1.4, 0.055]} radius={0.025} position={[-0.02, 0.68, -0.82]} castShadow receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.64} metalness={0.12} />
@@ -1032,6 +1104,9 @@ function DebateEntrance() {
       </mesh>
       <Text position={[-0.05, 1.08, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.07} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.15}>
         SALA
+      </Text>
+      <Text position={[0.14, 0.78, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.05} color="#e06b4a" anchorX="center" anchorY="middle" letterSpacing={0.13}>
+        EN OBRA
       </Text>
       <Text position={[-0.38, 0.052, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.052} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
         CONFLICTO
@@ -1353,7 +1428,7 @@ export function TrucolocoScene({
       lastX = event.clientX;
       lastY = event.clientY;
       const look = seatLookRef.current;
-      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw + dx * 0.0042));
+      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw - dx * 0.0042));
       look.pitch = Math.max(-0.55, Math.min(0.4, look.pitch + dy * 0.003));
     };
     const up = () => {
@@ -1466,6 +1541,8 @@ export function TrucolocoScene({
         <RoundedBox name="Floor_Antro" args={[14, 0.4, 10]} radius={0.18} position={[0, -1.9, 0]} receiveShadow>
           <meshStandardMaterial color={BAR_COLORS.floor} roughness={0.94} metalness={0.05} />
         </RoundedBox>
+
+        <MainRoomShell />
 
         <RoundedBox name="BackWall_Antro" args={[11.2, 4.8, 0.3]} radius={0.18} position={[0, 0.4, -4.2]} receiveShadow>
           <meshStandardMaterial color={BAR_COLORS.wall} roughness={0.98} />
