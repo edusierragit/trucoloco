@@ -4638,3 +4638,92 @@ select {
 .bottom-dock-truco .truco-response-panel .panel-kicker {
   display: none;
 }
+
+/* ─── panel de sala online (presencia) ───────────────────────────────────── */
+.sala-open-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 44;
+}
+
+.sala-panel {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 44;
+  width: 232px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(8, 6, 4, 0.85);
+  border: 1px solid rgba(214, 178, 110, 0.28);
+  backdrop-filter: blur(10px);
+  color: #f0ddb4;
+  font-family: inherit;
+}
+
+.sala-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sala-kicker {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+}
+
+.sala-code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 24px;
+  letter-spacing: 0.28em;
+  color: #91e9f6;
+  text-shadow: 0 0 12px rgba(145, 233, 246, 0.4);
+}
+
+.sala-count {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.sala-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.sala-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(240, 221, 180, 0.1);
+  border: 1px solid rgba(240, 221, 180, 0.2);
+}
+
+.sala-chip-self {
+  border-color: #91e9f6;
+}
+
+.sala-chip small {
+  opacity: 0.6;
+}
+
+.sala-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sala-btn {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.sala-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  opacity: 0.5;
+}

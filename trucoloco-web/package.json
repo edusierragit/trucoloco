@@ -10,7 +10,7 @@
     "check:rules": "node scripts/validate-truco-rules.mjs",
     "check:flow": "node scripts/validate-truco-flow.mjs",
     "check:ui": "node scripts/validate-ui-flow.mjs",
-    "build": "vite build",
+    "build": "vite build .",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "three": "^0.183.2",
+    "trystero": "^0.25.2",
     "vite": "^8.0.8"
   },
   "devDependencies": {

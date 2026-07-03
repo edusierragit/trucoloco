@@ -8,6 +8,8 @@ import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
+import { createPortal } from "react-dom";
+import { createTrucolocoRoom, genRoomCode, ROOM_LIMIT } from "./game/net/room";
 
 // las caras de las cartas se precargan apenas hay un respiro: nunca más
 // naipes blancos "cargando" en la mano
@@ -575,6 +577,55 @@ export default function App() {
       jumpToken: current.jumpToken
     }));
     setCameraView(viewId);
+  }, []);
+
+  // ─── SALA ONLINE (etapa presencia): crear, entrar por link, ver quién está ──
+  const [netRoom, setNetRoom] = useState(null);
+  const [roster, setRoster] = useState([]);
+  const netRoomRef = useRef(null);
+
+  const joinSala = useCallback((code, isHost) => {
+    netRoomRef.current?.leave();
+    const profile = {
+      name: match.selectedCharacter?.name ?? "Pibe",
+      role: match.selectedRole,
+      characterId: match.selectedCharacter?.id ?? null
+    };
+    const room = createTrucolocoRoom(code, { isHost, profile });
+    room.onRoster(setRoster);
+    netRoomRef.current = room;
+    setNetRoom(room);
+  }, [match.selectedCharacter, match.selectedRole]);
+
+  const leaveSala = useCallback(() => {
+    netRoomRef.current?.leave();
+    netRoomRef.current = null;
+    setNetRoom(null);
+    setRoster([]);
+  }, []);
+
+  // el perfil viaja solo cuando cambiás de rol o personaje
+  useEffect(() => {
+    netRoomRef.current?.updateProfile({
+      name: match.selectedCharacter?.name ?? "Pibe",
+      role: match.selectedRole,
+      characterId: match.selectedCharacter?.id ?? null
+    });
+  }, [match.selectedRole, match.selectedCharacter]);
+
+  // link de invitación: ?sala=XXXX entra directo, sin prompts.
+  // guard por ref: StrictMode corre los efectos dos veces en dev y un doble
+  // joinRoom envenena las suscripciones a los relays
+  const autoJoinedRef = useRef(false);
+  useEffect(() => {
+    if (autoJoinedRef.current) return;
+    autoJoinedRef.current = true;
+    const code = new URLSearchParams(window.location.search).get("sala");
+    if (code && code.length === 4) {
+      window.history.replaceState(null, "", window.location.pathname);
+      joinSala(code.toUpperCase(), false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // audio: el contexto se despierta con el primer gesto (política de autoplay)
@@ -1228,6 +1279,51 @@ export default function App() {
           <Hud match={match} cameraView={cameraView} onReturnToTable={() => handleCameraViewChange("table")} />
         </aside>
       </div>
+
+      {createPortal(
+        netRoom ? (
+          <div className="sala-panel">
+            <div className="sala-head">
+              <span className="sala-kicker">SALA</span>
+              <strong className="sala-code">{netRoom.code}</strong>
+              <span className="sala-count">{roster.length}/{ROOM_LIMIT}</span>
+            </div>
+            <div className="sala-roster">
+              {roster.map((peer) => (
+                <span key={peer.peerId} className={peer.self ? "sala-chip sala-chip-self" : "sala-chip"}>
+                  {peer.isHost ? "★ " : ""}{peer.name}
+                  {peer.role ? <small> · {peer.role}</small> : null}
+                </span>
+              ))}
+            </div>
+            <div className="sala-actions">
+              <button
+                className="canto-chip canto-chip-advance sala-btn"
+                type="button"
+                onClick={async () => {
+                  const link = `${window.location.origin}${window.location.pathname}?sala=${netRoom.code}`;
+                  try {
+                    await navigator.clipboard.writeText(link);
+                  } catch {
+                    window.prompt("Copiá el link:", link);
+                  }
+                }}
+              >
+                ⧉ Copiar link
+              </button>
+              <button className="canto-chip sala-btn" type="button" onClick={leaveSala}>
+                Salir
+              </button>
+            </div>
+            <p className="sala-note">Presencia en vivo · la partida compartida llega en la próxima etapa</p>
+          </div>
+        ) : (
+          <button className="canto-chip sala-open-btn" type="button" onClick={() => joinSala(genRoomCode(), true)}>
+            🌐 Crear sala
+          </button>
+        ),
+        document.body
+      )}
     </div>
   );
 }

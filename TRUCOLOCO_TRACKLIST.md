@@ -53,6 +53,30 @@
 - **Cámara drag corregida** (ya no invertida) · **vista aérea eliminada** ·
   **pilas de vueltas prolijas** · `CODEX_TASK.md` creado (Codex corriendo escenario).
 
+## ✅ HECHO por Codex (2026-07-03)
+
+- **Antro cerrado estructuralmente** — agregada carcasa de techo, frente, zócalos,
+  puente lateral y cierres de pasillo sin tocar mesa, asientos, HUD ni reglas.
+- **Sala del Conflicto más sólida** — techo, pared frontal, laterales con umbral,
+  columnas y zócalos para que el ring no quede flotando en vacío negro.
+- **Entrada lateral más clara** — puerta/umbral con cartel de obra para ocultar el
+  hueco cuando se camina por el antro y todavía no se entra al ring.
+- **Bar con apoyos visibles** — soportes bajo estantes y remates de pared para que
+  botellas/estantes no parezcan props cortados.
+
+## ✅ HECHO (2026-07-03, noche)
+
+- **SALAS ONLINE — etapa 1 (presencia) FUNCIONANDO** — botón "🌐 Crear sala" arriba
+  a la derecha → código de 4 letras + "Copiar link"; el amigo abre `?sala=XXXX` y
+  entra directo. Panel muestra el roster en vivo (nombre · rol, ★ host, contador x/6).
+  Verificado con E2E de dos navegadores reales por relays nostr (redundancia total,
+  relay muerto excluido, guard anti-StrictMode). Base: `src/game/net/room.js`.
+  **Falta (etapa 2): partida compartida** — hoy cada uno ve su propia partida local;
+  hay que sincronizar el match (host autoritativo emite estado, invitados mandan
+  jugadas) + asignación de asientos por rol + chat de voz (`room.addStream`).
+- **Píldora a la esquina inferior derecha** (portal a body — el sidebar con
+  backdrop-filter rompía el fixed) + chips para cambiar de rol al fin de mano.
+
 ## 🔧 EN CURSO
 
 - [ ] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — corriendo.
