@@ -4842,3 +4842,14 @@ select {
   font-style: italic;
   color: #ffce6e;
 }
+
+/* el marcador late cuando cambia el score */
+@keyframes scorePop {
+  0% { transform: scale(1.45); color: #ffce6e; text-shadow: 0 0 18px rgba(255, 206, 110, 0.7); }
+  100% { transform: scale(1); }
+}
+
+.score-pop {
+  display: inline-block;
+  animation: scorePop 0.7s ease-out;
+}

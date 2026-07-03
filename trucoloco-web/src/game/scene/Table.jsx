@@ -747,6 +747,23 @@ function getTurnMarkerPose(seatId) {
   };
 }
 
+// quién es MANO esta mano: anillo quieto y sobrio en su lugar de la mesa
+function ManoMarker({ match }) {
+  if (!match.manoSeatId || !match.handStarted || match.handClosed) return null;
+  const pose = getTurnMarkerPose(match.manoSeatId);
+  return (
+    <group name="Mano_Marker" position={[pose.position[0], pose.position[1] - 0.012, pose.position[2]]} rotation={pose.rotation}>
+      <mesh>
+        <ringGeometry args={[0.5, 0.53, 40]} />
+        <meshBasicMaterial color="#d9b36c" transparent opacity={0.4} depthWrite={false} />
+      </mesh>
+      <Text position={[0, -0.66, 0.01]} fontSize={0.09} color="#d9b36c" anchorX="center" anchorY="middle" letterSpacing={0.2}>
+        MANO
+      </Text>
+    </group>
+  );
+}
+
 function TurnMarker({ match }) {
   const ringRef = useRef(null);
   const timeRef = useRef(0);
@@ -1061,6 +1078,7 @@ export function Table({ match, performanceMode = "high" }) {
 
       <TensionRing handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
       <TurnMarker match={match} />
+      <ManoMarker match={match} />
       <CardTableauGuides active={showActiveTableCards} playedCount={match.tableCards.length} />
       <LastPlayedMarker tableCards={match.tableCards} />
 
@@ -1124,22 +1142,23 @@ function HeldCardFace({ image, dimmed }) {
   );
 }
 
-function HeldCard({ card, offset, hovered, dimmed, onOver, onOut, onPlay }) {
+function HeldCard({ card, offset, hovered, selected, dimmed, onOver, onOut, onPlay }) {
   const ref = useRef(null);
 
   useFrame((_, delta) => {
     const g = ref.current;
     if (!g) return;
+    const lift = selected ? 0.26 : hovered ? 0.15 : 0;
     const tx = offset * 0.315;
-    const ty = -Math.abs(offset) * 0.05 + (hovered ? 0.15 : 0);
-    const tz = hovered ? 0.1 : 0;
-    const rz = -offset * 0.17;
+    const ty = -Math.abs(offset) * 0.05 + lift;
+    const tz = selected ? 0.16 : hovered ? 0.1 : 0;
+    const rz = selected ? -offset * 0.06 : -offset * 0.17;
     const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 13);
     g.position.x += (tx - g.position.x) * alpha;
     g.position.y += (ty - g.position.y) * alpha;
     g.position.z += (tz - g.position.z) * alpha;
     g.rotation.z += (rz - g.rotation.z) * alpha;
-    const targetScale = hovered ? 1.09 : 1;
+    const targetScale = selected ? 1.14 : hovered ? 1.09 : 1;
     const s = g.scale.x + (targetScale - g.scale.x) * alpha;
     g.scale.setScalar(s);
   });
@@ -1176,11 +1195,16 @@ function HeldCard({ card, offset, hovered, dimmed, onOver, onOut, onPlay }) {
             {card.name}
           </Text>
         )}
-        {hovered && !dimmed ? (
+        {(hovered || selected) && !dimmed ? (
           <mesh position={[0, 0, -0.012]}>
             <planeGeometry args={[0.39, 0.53]} />
-            <meshBasicMaterial color="#ffd98a" transparent opacity={0.35} toneMapped={false} />
+            <meshBasicMaterial color={selected ? "#91e9f6" : "#ffd98a"} transparent opacity={selected ? 0.5 : 0.35} toneMapped={false} />
           </mesh>
+        ) : null}
+        {selected && !dimmed ? (
+          <Text position={[0, -0.31, 0.02]} fontSize={0.055} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+            TOCÁ DE NUEVO PARA TIRAR
+          </Text>
         ) : null}
       </group>
     </group>
@@ -1190,11 +1214,15 @@ function HeldCard({ card, offset, hovered, dimmed, onOver, onOut, onPlay }) {
 export function HeldHand({ match }) {
   const groupRef = useRef(null);
   const [hoverId, setHoverId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const canPlay = Boolean(match.canPlayCard);
   const cards = match.humanHand ?? [];
 
   useEffect(() => {
-    if (!canPlay) setHoverId(null);
+    if (!canPlay) {
+      setHoverId(null);
+      setSelectedId(null);
+    }
   }, [canPlay]);
 
   useEffect(
@@ -1228,6 +1256,7 @@ export function HeldHand({ match }) {
           card={card}
           offset={index - midpoint}
           hovered={hoverId === card.handIndex}
+          selected={selectedId === card.handIndex}
           dimmed={!canPlay}
           onOver={() => {
             if (!canPlay) return;
@@ -1241,7 +1270,14 @@ export function HeldHand({ match }) {
           }}
           onPlay={() => {
             if (!canPlay) return;
+            // dos toques: el primero la levanta (pensala), el segundo la tira
+            if (selectedId !== card.handIndex) {
+              setSelectedId(card.handIndex);
+              sfx.tick();
+              return;
+            }
             document.body.style.cursor = "auto";
+            setSelectedId(null);
             match.playCard(card.handIndex);
           }}
         />

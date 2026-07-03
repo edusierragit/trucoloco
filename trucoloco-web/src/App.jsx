@@ -658,6 +658,15 @@ export default function App() {
     return () => window.removeEventListener("pointerdown", wake);
   }, []);
 
+  // reparto con sonido
+  const dealRef = useRef(match.handNumber);
+  useEffect(() => {
+    if (match.handStarted && match.handNumber !== dealRef.current) {
+      dealRef.current = match.handNumber;
+      sfx.deal();
+    }
+  }, [match.handNumber, match.handStarted]);
+
   // cada carta que toca el fieltro suena
   const slapKeyRef = useRef(match.pendingAnimationKey);
   useEffect(() => {

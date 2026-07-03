@@ -54,6 +54,13 @@ class Sfx {
     src.start(t);
   }
 
+  // reparto: tres cartas rapiditas
+  deal() {
+    this.noise(0.06, 0.2, 2200, 0);
+    this.noise(0.06, 0.2, 2000, 0.11);
+    this.noise(0.06, 0.22, 1800, 0.22);
+  }
+
   // la carta golpea el fieltro
   slap() {
     this.noise(0.09, 0.34, 1600);

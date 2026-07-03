@@ -52,7 +52,7 @@ function Header({ match }) {
 
       <div className="scoreboard">
         <span className="score-label">Mano {match.handNumber} · Mano vale {match.activeBet}</span>
-        <strong>
+        <strong key={`${match.scores.A}-${match.scores.B}`} className="score-pop">
           {match.scores.A} - {match.scores.B}
         </strong>
         <span className="score-names">{scoreNames}</span>
