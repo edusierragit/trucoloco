@@ -6,6 +6,15 @@
 
 ## ✅ HECHO (commits recientes, checks verdes en todos)
 
+- **BUG HISTÓRICO: las cartas jugadas por fin muestran su cara** — los RoundedBox
+  tenían radio de redondeo mayor que la mitad del espesor: la geometría se inflaba
+  como un libro y se tragaba el plano de la textura (por eso los "cartones gigantes"
+  desde el día uno). Radios corregidos + polygonOffset + cara visible de ambos lados
+  + banda GRANDE de número/palo legible desde cualquier silla.
+- **Preload del mazo** — las 40 caras se precargan en idle: no más naipes blancos.
+- **Panel de armas** ya no pisa las cartas (dock izquierdo en vista silla);
+  cartel "ROL DE LA PARTIDA / MAZO DE ARMAS" eliminado en todos los modos.
+
 - **Fix crash de arranque** — el juego no cargaba (variables fantasma en App.jsx).
 - **Mesa Liar's Bar** — cartas 3D en mano en primera persona (hover levanta, click tira),
   cámara sentada a nivel de ojos, personajes que se giran a mirar al que actúa,
@@ -32,8 +41,10 @@
 - [ ] **Personajes vivos (procedural)** — inclinarse al jugar, festejo/lamento al
   cerrar mano, peso de pie a pie. (Los guiños faciales NO se pueden: los GLB no
   traen blendshapes — ver plan Mixamo abajo.)
-- [ ] **Dorso de carta con diseño** — las cartas paradas de tu lado muestran un dorso
-  marrón liso; ponerle el diseño "TRUCO · LA TRAICIÓN" que ya existe en SceneHandCard.
+- [ ] **Dorso de carta con diseño** — ponerle a las cartas el dorso "TRUCO · LA TRAICIÓN".
+- [ ] **Habitación con jugadores que ENTRAN** — pedido de Edu: en la sala solo deberían
+  estar los jugadores que van entrando y eligiendo personaje (clave para el modo online);
+  mientras tanto, los 6 miran la mesa.
 
 ## 📦 BACKLOG PRIORIZADO (pedidos de Edu)
 

@@ -36,13 +36,17 @@ const TABLE_BRASS = "#c08a3f";
 const FELT_BASE = "#102e20";
 const FELT_DEEP = "#091d14";
 
-function CardImagePlane({ image, width, height, y = 0.036 }) {
+function CardImagePlane({ image, width, height, y = 0.036, flip = false }) {
   const texture = useTexture(image);
-
+  
   return (
-    <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh
+      position={[0, flip ? -y : y, 0]}
+      rotation={flip ? [Math.PI / 2, 0, Math.PI] : [-Math.PI / 2, 0, 0]}
+    >
       <planeGeometry args={[width, height]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
+      {/* polygonOffset: a distancia de mesa el depth buffer no separa 2.5mm — sin esto la textura pierde contra la caja crema (z-fighting) */}
+      <meshBasicMaterial map={texture} toneMapped={false} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
     </mesh>
   );
 }
@@ -61,11 +65,11 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   const initialRotZ = card.side === "A" ? -0.34 : 0.34;
 
   // played cards read as real naipes, not furniture — keep them modest on the felt
-  const TABLE_CARD_SCALE = 0.62;
+  const TABLE_CARD_SCALE = 0.8;
 
   useEffect(() => {
     progressRef.current = 0;
-    if (groupRef.current) {
+        if (groupRef.current) {
       groupRef.current.rotation.order = "YXZ";
       groupRef.current.position.set(fromX, fromY, fromZ);
       groupRef.current.rotation.set(initialRotX, initialRotY, initialRotZ);
@@ -101,14 +105,50 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
         <circleGeometry args={[0.78, 28]} />
         <meshBasicMaterial color="#000000" transparent opacity={0} />
       </mesh>
-      <RoundedBox name={`Card_${card.owner}_${card.id}`} args={[1.08, 0.055, 1.58]} radius={0.065} castShadow receiveShadow>
+      <RoundedBox name={`Card_${card.owner}_${card.id}`} args={[1.08, 0.045, 1.58]} radius={0.02} castShadow receiveShadow>
         <meshStandardMaterial color={CARD_EDGE} roughness={0.72} />
       </RoundedBox>
-      <RoundedBox args={[0.98, 0.028, 1.46]} radius={0.048} position={[0, 0.016, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.026, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.98, 1.46]} />
         <meshStandardMaterial color={CARD_FACE} roughness={0.58} />
-      </RoundedBox>
+      </mesh>
       {card.image ? (
-        <CardImagePlane image={card.image} width={0.98} height={1.46} y={0.034} />
+        <>
+          {/* la carta jugada es pública: la cara se ve desde AMBOS lados de la mesa */}
+          <CardImagePlane image={card.image} width={0.98} height={1.46} y={0.034} />
+          <CardImagePlane image={card.image} width={0.98} height={1.46} y={0.034} flip />
+          {/* los SVG son tenues: número y palo GRANDES para leer desde cualquier silla */}
+          {[false, true].map((flipSide) => (
+            <group key={flipSide ? "b" : "f"} rotation={flipSide ? [Math.PI, 0, 0] : [0, 0, 0]}>
+              <mesh position={[0, 0.038, -0.52]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[0.9, 0.34]} />
+                <meshBasicMaterial color={suitColor[card.suit] ?? "#8a6a3c"} transparent opacity={0.85} toneMapped={false} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} />
+              </mesh>
+              <Text
+                position={[-0.16, 0.042, -0.52]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.3}
+                fontWeight={800}
+                color="#16100a"
+                anchorX="center"
+                anchorY="middle"
+              >
+                {String(getCardRankNumber(card))}
+              </Text>
+              <Text
+                position={[0.22, 0.042, -0.52]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={0.13}
+                color="#16100a"
+                anchorX="center"
+                anchorY="middle"
+                letterSpacing={0.06}
+              >
+                {getCardSuitCode(card)}
+              </Text>
+            </group>
+          ))}
+        </>
       ) : (
         <>
           <mesh position={[0, 0.032, -0.58]}>
@@ -171,13 +211,13 @@ function SceneHandCard({ card, position, rotation, faceDown = false }) {
         <meshBasicMaterial color="#000000" transparent opacity={0.12} />
       </mesh>
 
-      <RoundedBox args={[0.86, 0.05, 1.28]} radius={0.06} castShadow receiveShadow>
+      <RoundedBox args={[0.86, 0.045, 1.28]} radius={0.02} castShadow receiveShadow>
         <meshStandardMaterial color={CARD_EDGE} roughness={0.72} />
       </RoundedBox>
 
       {faceDown ? (
         <>
-          <RoundedBox args={[0.78, 0.026, 1.18]} radius={0.045} position={[0, 0.014, 0]} castShadow receiveShadow>
+          <RoundedBox args={[0.78, 0.022, 1.18]} radius={0.01} position={[0, 0.014, 0]} castShadow receiveShadow>
             <meshStandardMaterial color={CARD_BACK} roughness={0.62} />
           </RoundedBox>
           {card.backImage ? (
@@ -213,7 +253,7 @@ function SceneHandCard({ card, position, rotation, faceDown = false }) {
         </>
       ) : (
         <>
-          <RoundedBox args={[0.78, 0.026, 1.18]} radius={0.045} position={[0, 0.014, 0]} castShadow receiveShadow>
+          <RoundedBox args={[0.78, 0.022, 1.18]} radius={0.01} position={[0, 0.014, 0]} castShadow receiveShadow>
             <meshStandardMaterial color={CARD_FACE} roughness={0.58} />
           </RoundedBox>
           {card.image ? (
@@ -309,8 +349,8 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
 const tableCardPoses = Array.from({ length: 6 }, (_, i) => {
   const angle = (Math.PI * 2 * i) / 6 + Math.PI / 6;
   return {
-    position: [Math.sin(angle) * 1.18, 0.55, Math.cos(angle) * 1.18 + 0.08],
-    rotation: [0.95, angle, 0] // orden YXZ: yaw radial primero, después la inclinación
+    position: [Math.sin(angle) * 1.46, 0.415, Math.cos(angle) * 1.46 + 0.08],
+    rotation: [0, angle + Math.PI, 0] // plana frente a su dueño, cabecera hacia el centro
   };
 });
 
@@ -378,8 +418,8 @@ const getTableCardPose = (card, index) => {
   if (seat) {
     const angle = Math.atan2(seat.position[0], seat.position[2]);
     return {
-      position: [Math.sin(angle) * 1.18, 0.55, Math.cos(angle) * 1.18 + 0.08],
-      rotation: [0.95, angle, 0]
+      position: [Math.sin(angle) * 1.46, 0.415, Math.cos(angle) * 1.46 + 0.08],
+      rotation: [0, angle + Math.PI, 0]
     };
   }
   return tableCardPoses[card.tableIndex ?? index] ?? {

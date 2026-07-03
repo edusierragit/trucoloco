@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { useTexture } from "@react-three/drei";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
+import { deck } from "./game/data/cards";
+
+// las caras de las cartas se precargan apenas hay un respiro: nunca más
+// naipes blancos "cargando" en la mano
+if (typeof window !== "undefined") {
+  const preloadDeck = () => deck.forEach((card) => card.image && useTexture.preload(card.image));
+  if ("requestIdleCallback" in window) window.requestIdleCallback(preloadDeck, { timeout: 4000 });
+  else window.setTimeout(preloadDeck, 1500);
+}
 
 const cameraViews = [
   { id: "entry", label: "Puerta", hint: "1 · entrar" },

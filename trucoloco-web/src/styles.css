@@ -4395,3 +4395,26 @@ select {
 .stage-table-mode .hand-panel {
   background: rgba(8, 6, 4, 0.5);
 }
+
+/* el cartel de rol es redundante en TODOS los modos: la funcionalidad manda */
+.role-lock {
+  display: none;
+}
+
+/* silla: las armas del cartachin se corren a la izquierda, nunca sobre tus cartas */
+.stage-seat-mode .weapons-panel {
+  position: fixed;
+  left: 14px;
+  bottom: 120px;
+  width: 236px;
+  max-width: 34vw;
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(8, 6, 4, 0.72);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.stage-seat-mode .weapons-panel .panel-kicker {
+  display: none;
+}
