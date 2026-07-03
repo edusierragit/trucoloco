@@ -131,6 +131,20 @@
 - **Codex completó su pasada 1** (soportes de estantes + vigas del techo,
   checks verdes) — CODEX_TASK_2.md (máquina de humo) listo para dárselo.
 
+## ✅ HECHO (2026-07-03, pase de arte)
+
+- **ARTE del antro (Claude)** — neón TRUCOLOCO con parpadeo de tubo viejo +
+  luz roja sobre la barra, trío de lámparas colgantes con conos de luz
+  volumétrica falsa, techo cerrado (chau vacío negro), pared frontal, alfombra
+  circular bajo la mesa, y la **MÁQUINA DE HUMO clickeable** (le hacés click y
+  escupe humo: el fog del antro se enturbia ~20s y se disipa; luz de standby
+  roja→verde). La estética queda en manos de Claude; CODEX_TASK_2 (humo) queda
+  absorbida y obsoleta.
+- **Panel de sala v2** — compacto, botones que no se rompen en 3 líneas.
+- **CODEX_TASK_3.md** — el refactor de perspectiva del hook (paso 1 del
+  multiplayer) especificado para Codex: lógica pura, contrato estricto,
+  snapshot/hydrate + tests. CERO estética.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

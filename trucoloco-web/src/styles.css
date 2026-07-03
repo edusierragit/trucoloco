@@ -4883,3 +4883,35 @@ select {
     bottom: 320px;
   }
 }
+
+/* ─── panel de sala v2: compacto, sin botones que se rompen ─────────────── */
+.sala-panel {
+  width: 256px;
+  padding: 12px;
+}
+
+.sala-panel .sala-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sala-panel .sala-btn,
+.sala-panel .canto-chip {
+  font-size: 11.5px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.sala-note {
+  font-size: 9.5px;
+  line-height: 1.5;
+  opacity: 0.45;
+}
+
+.sala-join-box .canto-chip {
+  font-size: 12px;
+  padding: 9px 16px;
+  white-space: nowrap;
+}
