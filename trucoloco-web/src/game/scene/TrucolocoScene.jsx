@@ -1,9 +1,10 @@
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
+import { Billboard, ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
 import { PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { HeldHand, Table } from "./Table";
+import { sfx } from "../audio/sfx";
 import { TeamsAroundTable } from "./TeamsAroundTable";
 import { CharacterFigure } from "./CharacterFigure";
 import { characterSkins, tableSeats } from "../data/characters";
@@ -1118,6 +1119,64 @@ function SeatViewFocus({ match }) {
   );
 }
 
+// ¡TRUCO! / ¡ENVIDO! como momento: texto gigante sobre la mesa + stinger de audio
+function CantoVoice({ match }) {
+  const [voice, setVoice] = useState(null);
+  const groupRef = useRef(null);
+  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1 });
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    let text = null;
+    if (!prev.envido && match.envidoPending) text = "¡ENVIDO!";
+    if (!prev.truco && match.trucoPending) {
+      const bet = match.activeBet ?? 1;
+      text = bet >= 3 ? "¡VALE CUATRO!" : bet === 2 ? "¡RETRUCO!" : "¡TRUCO!";
+    }
+    if (prev.truco && !match.trucoPending && (match.activeBet ?? 1) > prev.bet) text = "¡QUIERO!";
+    prevRef.current = { envido: !!match.envidoPending, truco: !!match.trucoPending, bet: match.activeBet ?? 1 };
+    if (text) {
+      setVoice({ text, born: performance.now() });
+      sfx.ensure();
+      sfx.canto();
+    }
+  }, [match.envidoPending, match.trucoPending, match.activeBet]);
+
+  useFrame(() => {
+    if (!voice) return;
+    const age = performance.now() - voice.born;
+    if (age > 2000) {
+      setVoice(null);
+      return;
+    }
+    if (groupRef.current) {
+      // golpe de entrada con rebote, después respira
+      const punch = age < 220 ? 0.4 + (age / 220) * 0.75 : 1.15 - Math.min(0.15, (age - 220) / 1400);
+      groupRef.current.scale.setScalar(punch);
+    }
+  });
+
+  if (!voice) return null;
+
+  return (
+    <Billboard position={[0, 0.85, 0.33]} follow>
+      <group ref={groupRef}>
+        <Text
+          fontSize={0.52}
+          color="#ffce6e"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.06}
+          outlineWidth={0.02}
+          outlineColor="#2a0d05"
+        >
+          {voice.text}
+        </Text>
+      </group>
+    </Billboard>
+  );
+}
+
 const ROOM_OFFSET = { x: 0, y: -1.35, z: 0.25 };
 
 function getOwnSeat(match) {
@@ -1400,6 +1459,8 @@ export function TrucolocoScene({
           <HeldHand match={match} />
         </Suspense>
       ) : null}
+
+      {!isRingMode ? <CantoVoice match={match} /> : null}
 
       <group name="Room_Runtime" position={[0, -1.35, 0.25]}>
         <RoundedBox name="Floor_Antro" args={[14, 0.4, 10]} radius={0.18} position={[0, -1.9, 0]} receiveShadow>

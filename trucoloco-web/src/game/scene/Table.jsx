@@ -4,6 +4,7 @@ import { RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
+import { sfx } from "../audio/sfx";
 
 const suitColor = {
   Espada: "#d9d1af",
@@ -1229,6 +1230,7 @@ export function HeldHand({ match }) {
           onOver={() => {
             if (!canPlay) return;
             setHoverId(card.handIndex);
+            sfx.tick();
             document.body.style.cursor = "pointer";
           }}
           onOut={() => {

@@ -33,18 +33,22 @@
 - **Armas con nombre real** — "Sustancia X en el Naipe" (+2) y "Pucho en el Ojo" (−2).
 - **Vista "Mesa" → "Aérea · plano general"**.
 
+## ✅ HECHO (2026-07-03)
+
+- **SONIDO cableado** — synth WebAudio cero assets: golpe de carta al fieltro,
+  tick de hover en la mano 3D, stinger de canto, jingle de mano/partida ganada o perdida.
+- **CANTOS DRAMÁTICOS 3D** — "¡TRUCO! / ¡RETRUCO! / ¡VALE CUATRO! / ¡ENVIDO! / ¡QUIERO!"
+  aparece gigante sobre la mesa con golpe de escala + sonido, mirando siempre a cámara.
+- **Personajes con lenguaje corporal** — se inclinan hacia la mesa cuando les toca,
+  el equipo ganador salta al cerrar la mano, el perdedor se hunde.
+
 ## 🔧 EN CURSO (Claude, próxima sesión)
 
-- [ ] **Cablear el sonido** — `src/game/audio/sfx.js` ya existe (synth WebAudio, cero
-  assets: golpe de carta, canto, cierre de mano/partida). Falta conectarlo a los
-  eventos del match + cantos TRUCO/ENVIDO como texto 3D dramático sobre la mesa.
-- [ ] **Personajes vivos (procedural)** — inclinarse al jugar, festejo/lamento al
-  cerrar mano, peso de pie a pie. (Los guiños faciales NO se pueden: los GLB no
-  traen blendshapes — ver plan Mixamo abajo.)
-- [ ] **Dorso de carta con diseño** — ponerle a las cartas el dorso "TRUCO · LA TRAICIÓN".
 - [ ] **Habitación con jugadores que ENTRAN** — pedido de Edu: en la sala solo deberían
   estar los jugadores que van entrando y eligiendo personaje (clave para el modo online);
   mientras tanto, los 6 miran la mesa.
+- [ ] Guiños faciales NO se pueden con los GLB actuales (sin blendshapes) — ver plan
+  Mixamo en backlog #7.
 
 ## 📦 BACKLOG PRIORIZADO (pedidos de Edu)
 

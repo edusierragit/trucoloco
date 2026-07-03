@@ -7,6 +7,7 @@ import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 import { deck } from "./game/data/cards";
+import { sfx } from "./game/audio/sfx";
 
 // las caras de las cartas se precargan apenas hay un respiro: nunca más
 // naipes blancos "cargando" en la mano
@@ -577,6 +578,32 @@ export default function App() {
     }));
     setCameraView(viewId);
   }, []);
+
+  // audio: el contexto se despierta con el primer gesto (política de autoplay)
+  useEffect(() => {
+    const wake = () => sfx.ensure();
+    window.addEventListener("pointerdown", wake, { once: true });
+    return () => window.removeEventListener("pointerdown", wake);
+  }, []);
+
+  // cada carta que toca el fieltro suena
+  const slapKeyRef = useRef(match.pendingAnimationKey);
+  useEffect(() => {
+    if (match.pendingAnimationKey !== slapKeyRef.current) {
+      slapKeyRef.current = match.pendingAnimationKey;
+      if (match.handStarted && !match.handClosed) sfx.slap();
+    }
+  }, [match.pendingAnimationKey, match.handStarted, match.handClosed]);
+
+  // cierre de mano y de partida
+  const handClosedRef = useRef(match.handClosed);
+  useEffect(() => {
+    if (match.handClosed && !handClosedRef.current) {
+      if (match.matchWinner) sfx.matchEnd(match.outcomeTone === "win");
+      else sfx.handEnd(match.outcomeTone === "win");
+    }
+    handClosedRef.current = match.handClosed;
+  }, [match.handClosed, match.matchWinner, match.outcomeTone]);
 
   // repartir = sentarse: dealing a hand drops you into the seated Liar's-Bar view
   const prevPhaseRef = useRef(match.phase);

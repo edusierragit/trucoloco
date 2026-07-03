@@ -191,6 +191,22 @@ function CharacterSeat({
       while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
       while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
       groupRef.current.rotation.y += yawDelta * Math.min(1, delta * 2.4);
+
+      // ---- Body language: lean in when acting, hop when you win, sag when you lose ----
+      const len = Math.hypot(seat.position[0], seat.position[2]) || 1;
+      const leanAmount = isCurrentActor && !handClosed && !isRoleSelect ? 0.17 : 0;
+      const targetX = seat.position[0] - (seat.position[0] / len) * leanAmount;
+      const targetZ = seat.position[2] - (seat.position[2] / len) * leanAmount;
+      let targetY = seat.position[1];
+      if (handClosed && !isRoleSelect) {
+        const won = lastWinner === seat.team;
+        if (won && outcomeTone !== "draw") targetY += Math.abs(Math.sin(t * 5.2)) * 0.11;
+        else if (!won && outcomeTone !== "draw") targetY -= 0.06;
+      }
+      const moveAlpha = Math.min(1, delta * 3.2);
+      groupRef.current.position.x += (targetX - groupRef.current.position.x) * moveAlpha;
+      groupRef.current.position.z += (targetZ - groupRef.current.position.z) * moveAlpha;
+      groupRef.current.position.y += (targetY - groupRef.current.position.y) * Math.min(1, delta * 6);
     }
   });
 
