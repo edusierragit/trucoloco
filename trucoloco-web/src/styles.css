@@ -4370,3 +4370,28 @@ select {
 .stage-seat-mode .hand-empty {
   display: none;
 }
+
+/* vista aérea: la mano HTML se achica y no tapa la mesa */
+.stage-table-mode .hand-panel .panel-header {
+  display: none;
+}
+
+.stage-table-mode .hand-fan,
+.stage-table-mode .hand-panel-play .hand-fan,
+.stage-table-mode .hand-panel-focus .hand-fan {
+  min-height: 0;
+  padding: 6px 10px 2px;
+}
+
+.stage-table-mode .card-button,
+.stage-table-mode .hand-panel-play .card-button,
+.stage-table-mode .hand-panel-focus .card-button {
+  width: 92px;
+  min-width: 92px;
+  min-height: 128px;
+  margin: 0 -7px;
+}
+
+.stage-table-mode .hand-panel {
+  background: rgba(8, 6, 4, 0.5);
+}

@@ -53,7 +53,9 @@ function CharacterSeat({
   const seatYaw = Math.atan2(-seat.position[0], -seat.position[2]);
   const chairPull = isPlayerSeat && isRoleSelect ? -0.2 : isPlayerSeat ? 0.08 : 0;
   const chairScale = isPlayerSeat ? 1.04 : 1;
-  const useSimplifiedModel = lowPower && !isPlayerSeat && !isSelectedCharacter && !isCurrentActor;
+  // los GLB ya están decimados al 30% — nunca degradar a conos: los amigos SON el juego
+  const useSimplifiedModel = false;
+  void lowPower;
 
   // Is this character "special" under any active modifier?
   const isGazpacho = character.id === "gazpacho";

@@ -66,6 +66,7 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   useEffect(() => {
     progressRef.current = 0;
     if (groupRef.current) {
+      groupRef.current.rotation.order = "YXZ";
       groupRef.current.position.set(fromX, fromY, fromZ);
       groupRef.current.rotation.set(initialRotX, initialRotY, initialRotZ);
       groupRef.current.scale.setScalar(0.82 * TABLE_CARD_SCALE);
@@ -302,14 +303,16 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
   );
 }
 
-const tableCardPoses = [
-  { position: [-1.48, 0.405, 1.18], rotation: [0, -0.18, -0.035] },
-  { position: [-0.52, 0.415, 1.34], rotation: [0, -0.06, 0.012] },
-  { position: [0.62, 0.405, 1.18], rotation: [0, 0.12, 0.035] },
-  { position: [1.48, 0.405, -1.18], rotation: [0, Math.PI - 0.18, -0.035] },
-  { position: [0.52, 0.415, -1.34], rotation: [0, Math.PI - 0.06, 0.012] },
-  { position: [-0.62, 0.405, -1.18], rotation: [0, Math.PI + 0.12, 0.035] }
-];
+// las cartas jugadas se PARAN inclinadas en anillo alrededor del centro,
+// de cara hacia afuera: desde cualquier asiento leés las del lado opuesto
+// de frente (una carta plana sobre el fieltro es invisible a la altura de ojos)
+const tableCardPoses = Array.from({ length: 6 }, (_, i) => {
+  const angle = (Math.PI * 2 * i) / 6 + Math.PI / 6;
+  return {
+    position: [Math.sin(angle) * 1.18, 0.55, Math.cos(angle) * 1.18 + 0.08],
+    rotation: [0.95, angle, 0] // orden YXZ: yaw radial primero, después la inclinación
+  };
+});
 
 function CardTableauGuides({ active, playedCount }) {
   return (
@@ -368,11 +371,22 @@ function LastPlayedMarker({ tableCards }) {
   );
 }
 
-const getTableCardPose = (card, index) =>
-  tableCardPoses[card.tableIndex ?? index] ?? {
+// cada carta se para frente a SU dueño, mirando hacia afuera: así ves de frente
+// las cartas de los rivales de enfrente, y de atrás las de tu lado
+const getTableCardPose = (card, index) => {
+  const seat = card.seatId ? tableSeats.find((s) => s.seatId === card.seatId) : null;
+  if (seat) {
+    const angle = Math.atan2(seat.position[0], seat.position[2]);
+    return {
+      position: [Math.sin(angle) * 1.18, 0.55, Math.cos(angle) * 1.18 + 0.08],
+      rotation: [0.95, angle, 0]
+    };
+  }
+  return tableCardPoses[card.tableIndex ?? index] ?? {
     position: [card.side === "A" ? -0.82 : 0.82, 0.42, 0.18],
     rotation: [0, 0, (card.side === "A" ? -1 : 1) * 0.08]
   };
+};
 
 // Pulsing tension ring around center badge — intensity driven by match state
 function TensionRing({ handClosed, outcomeTone, modId }) {

@@ -422,12 +422,9 @@ function getInitialPerformanceProfile() {
     return { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false };
   }
 
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-  const narrowViewport = window.innerWidth < 820;
   const perfOverride = new URLSearchParams(window.location.search).get("perf");
-  const lowPower = perfOverride === "high"
-    ? false
-    : perfOverride === "low" || perfOverride === "mobile" || coarsePointer || narrowViewport;
+  // low es el default: el modo high (sombras + bloom + AA) es opt-in con ?perf=high
+  const lowPower = perfOverride !== "high";
 
   return lowPower
     ? { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false }
