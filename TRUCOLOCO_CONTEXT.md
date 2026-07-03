@@ -85,6 +85,7 @@ Cada vez que el usuario aclare una regla real, un nombre canonico, un flujo impo
 - El `ring de conflicto` no debe sentirse como un boton de interfaz: debe existir como habitacion fisica separada del antro/mesa, a la que se entra caminando cuando una discusion de reglas o mesa necesita resolverse de forma absurda
 - La mecanica futura del ring apunta a pelea fisica graciosa tipo muñecos torpes/borrachos, no a paneles de texto; el MVP puede prototipar movimiento, empujones y golpes simples
 - La Sala del Conflicto debe ser combate de arena en tiempo real, no por turnos: movimiento libre, golpes, bloqueo/esquive, HP, cooldowns, feedback de impacto y KO sin usar reglas de truco/cartas
+- La Sala del Conflicto esta pensada para PvP humano entre amigos. No debe gastar diseño en IA/NPC por defecto; si falta networking, el segundo jugador puede controlarse localmente o quedar como dummy quieto solo para probar golpes
 - El chat de voz es parte importante de la fantasia social de Trucoloco, pero tecnicamente no lo resuelve Three.js: la escena lo acompaña visualmente; la voz real deberia integrarse con WebRTC/Web Audio y signaling cuando exista multiplayer
 
 ## Reglas del slice actual

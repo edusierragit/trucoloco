@@ -8,6 +8,7 @@ import {
   getManoTeam,
   getMatchWinner,
   getPardaCount,
+  getWeaponPowerAdjustment,
   resolveVuelta
 } from "../src/game/rules/truco.js";
 
@@ -80,5 +81,60 @@ const boosted = resolveVuelta(
 );
 assert.equal(boosted.result, "A", "Parca de Utileria debe poder cambiar una vuelta.");
 assert.equal(boosted.humanPower, 7);
+
+assert.deepEqual(
+  getWeaponPowerAdjustment({
+    basePower: 5,
+    seatId: "A-cartachin",
+    selectedSeatId: "A-cartachin",
+    oppositeSeatId: "B-cartachin",
+    selectedRole: "Cartachin",
+    activeWeapon: { id: "parca-utileria", name: "Parca de Utileria", effectValue: 2 }
+  }),
+  {
+    power: 7,
+    effect: {
+      weaponId: "parca-utileria",
+      weaponName: "Parca de Utileria",
+      delta: 2,
+      target: "self"
+    }
+  },
+  "Parca debe subir la carta del Cartachin elegido en mesa 3v3."
+);
+
+assert.deepEqual(
+  getWeaponPowerAdjustment({
+    basePower: 2,
+    seatId: "B-cartachin",
+    selectedSeatId: "A-cartachin",
+    oppositeSeatId: "B-cartachin",
+    selectedRole: "Cartachin",
+    activeWeapon: { id: "bocanada-humo", name: "Bocanada de Humo", effectValue: 4 }
+  }),
+  {
+    power: 1,
+    effect: {
+      weaponId: "bocanada-humo",
+      weaponName: "Bocanada de Humo",
+      delta: -4,
+      target: "rival"
+    }
+  },
+  "Bocanada debe bajar la carta rival sin pasar de 1."
+);
+
+assert.deepEqual(
+  getWeaponPowerAdjustment({
+    basePower: 5,
+    seatId: "A-cartachin",
+    selectedSeatId: "A-cartachin",
+    oppositeSeatId: "B-cartachin",
+    selectedRole: "Negociante",
+    activeWeapon: { id: "parca-utileria", name: "Parca de Utileria", effectValue: 2 }
+  }),
+  { power: 5, effect: null },
+  "Las armas no deben afectar roles que no sean Cartachin."
+);
 
 console.log("Truco rules OK");

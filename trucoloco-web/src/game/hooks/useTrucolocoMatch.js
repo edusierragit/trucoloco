@@ -12,6 +12,7 @@ import {
   getMatchWinner,
   getPardaCount,
   getPlayerName,
+  getWeaponPowerAdjustment,
   resolveEnvido
 } from "../rules/truco";
 
@@ -220,9 +221,26 @@ const syncLaneHands = (state, selectedRole) => {
   };
 };
 
-const buildTablePlay = (seatId, card, tableIndex) => {
+const describeWeaponEffect = (effect) => {
+  if (!effect) return "";
+  return effect.delta > 0
+    ? `${effect.weaponName} empuja esa carta.`
+    : `${effect.weaponName} ensucia esa carta rival.`;
+};
+
+const joinEventParts = (...parts) => parts.filter(Boolean).join(" ");
+
+const buildTablePlay = (seatId, card, tableIndex, activeWeapon, selectedRole) => {
   const seat = getSeatById(seatId);
   const player = getPlayerBySeatId(seatId);
+  const weaponAdjustment = getWeaponPowerAdjustment({
+    basePower: card.power,
+    seatId,
+    selectedSeatId: getSelectedSeatId(selectedRole),
+    oppositeSeatId: getOppositeSeatId(selectedRole),
+    selectedRole,
+    activeWeapon
+  });
 
   return {
     ...card,
@@ -234,7 +252,9 @@ const buildTablePlay = (seatId, card, tableIndex) => {
     seatId,
     seatLabel: seat.label,
     tableIndex,
-    power: card.power
+    basePower: card.power,
+    power: weaponAdjustment.power,
+    weaponEffect: weaponAdjustment.effect
   };
 };
 
@@ -250,17 +270,19 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
     ...current.handsBySeat,
     [seatId]: (current.handsBySeat?.[seatId] ?? []).filter((item) => item.handIndex !== card.handIndex)
   };
-  const nextTableCards = [...current.tableCards, buildTablePlay(seatId, card, current.tableCards.length)];
+  const playedCard = buildTablePlay(seatId, card, current.tableCards.length, current.activeWeapon, selectedRole);
+  const nextTableCards = [...current.tableCards, playedCard];
   const currentVuelta = current.vueltaIndex + 1;
 
   if (nextTableCards.length < tableSeats.length) {
     const nextTurnSeatId = getNextSeatId(seatId);
+    const weaponEffectLog = describeWeaponEffect(playedCard.weaponEffect);
     const nextState = {
       ...current,
       handsBySeat: nextHandsBySeat,
       currentTurnSeatId: nextTurnSeatId,
       tableCards: nextTableCards,
-      eventLog: `${getSeatPlayerName(seatId)} juega. Sigue ${getSeatPlayerName(nextTurnSeatId)}.`,
+      eventLog: joinEventParts(`${getSeatPlayerName(seatId)} juega.`, weaponEffectLog, `Sigue ${getSeatPlayerName(nextTurnSeatId)}.`),
       highlight: `Vuelta ${currentVuelta}. Actua ${getSeatPlayerName(nextTurnSeatId)}.`,
       outcomeTone: seat.team === "A" ? "neutral" : "neutral",
       pendingAnimationKey: current.pendingAnimationKey + 1
@@ -307,7 +329,11 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
     currentTurnSeatId: null,
     activeWeapon: null,
     pendingAnimationKey: current.pendingAnimationKey + 1,
-    eventLog: `${describeTableCards(nextTableCards)}. ${resolution.highlight}`,
+    eventLog: joinEventParts(
+      `${describeTableCards(nextTableCards)}.`,
+      nextTableCards.map((play) => describeWeaponEffect(play.weaponEffect)).filter(Boolean).join(" "),
+      resolution.highlight
+    ),
     highlight: resolution.highlight,
     outcomeTone: resolution.outcomeTone
   };
