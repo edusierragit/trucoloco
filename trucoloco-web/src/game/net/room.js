@@ -80,3 +80,51 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     }
   };
 }
+
+// Cola de espera global: dos desconocidos que buscan mesa se emparejan y
+// caen juntos en una sala nueva. El de id mayor la crea (es host).
+export function findRandomSala(onMatched) {
+  const queue = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, "espera-v1");
+  const announce = queue.makeAction("busco");
+  const invite = queue.makeAction("anda");
+  let done = false;
+  let interval = 0;
+
+  const finish = (code, isHost) => {
+    if (done) return;
+    done = true;
+    window.clearInterval(interval);
+    window.setTimeout(() => void queue.leave(), 800);
+    onMatched(code, isHost);
+  };
+
+  invite.onMessage = (data) => {
+    if (done || !data || typeof data !== "object") return;
+    if (data.target === selfId && typeof data.code === "string") finish(data.code, false);
+  };
+
+  announce.onMessage = (peerId2, context) => {
+    if (done) return;
+    const other = String(peerId2 ?? context.peerId);
+    // el de id mayor acuña la sala y le pasa el código al otro
+    if (selfId > other) {
+      const code = genRoomCode();
+      void invite.send({ target: other, code });
+      finish(code, true);
+    }
+  };
+
+  const shout = () => void announce.send(selfId);
+  queue.onPeerJoin = shout;
+  interval = window.setInterval(shout, 1600);
+  shout();
+
+  return {
+    cancel() {
+      if (done) return;
+      done = true;
+      window.clearInterval(interval);
+      void queue.leave();
+    }
+  };
+}

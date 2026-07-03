@@ -9,6 +9,7 @@ import {
   getMatchWinner,
   getPardaCount,
   getWeaponPowerAdjustment,
+  resolveEnvido,
   resolveVuelta
 } from "../src/game/rules/truco.js";
 
@@ -138,3 +139,35 @@ assert.deepEqual(
 );
 
 console.log("Truco rules OK");
+
+
+// ── auditoría de puntos de cantos (sesión 2026-07-03) ────────────────────────
+// La escalera del truco: querido paga 2/3/4, no querido paga 1/2/3.
+{
+  const base = { A: 0, B: 0 };
+  assert.deepEqual(applyHandPoints(base, "A", 2, false).scores, { A: 2, B: 0 }, "Truco querido paga 2.");
+  assert.deepEqual(applyHandPoints(base, "A", 3, false).scores, { A: 3, B: 0 }, "Retruco querido paga 3.");
+  assert.deepEqual(applyHandPoints(base, "A", 4, false).scores, { A: 4, B: 0 }, "Vale cuatro querido paga 4.");
+  assert.deepEqual(applyHandPoints(base, "B", 1, false).scores, { A: 0, B: 1 }, "Truco no querido paga 1 al cantor.");
+  assert.deepEqual(applyHandPoints(base, "B", 3, false).scores, { A: 0, B: 3 }, "Vale cuatro no querido paga 3 al cantor.");
+  // cobro invertido (modificador trucoloco): el que gana no cobra, cobra el otro
+  const inverted = applyHandPoints(base, "A", 4, true);
+  assert.equal(inverted.scoringWinner, "B", "Con cobro invertido, vale cuatro lo cobra el rival.");
+  assert.deepEqual(inverted.scores, { A: 0, B: 4 }, "Cobro invertido acredita los 4 al otro lado.");
+}
+
+// El envido: 20 + dos cartas del mismo palo; figuras valen 0.
+{
+  const mk = (name, suit, power) => ({ name, suit, power });
+  const flor33 = [mk("Siete de Oro", "Oro", 11), mk("Seis de Oro", "Oro", 4), mk("Rey de Basto", "Basto", 6)];
+  assert.equal(getEnvidoValue(flor33), 33, "7 y 6 del mismo palo = 33 de envido.");
+  const negras = [mk("Rey de Espada", "Espada", 6), mk("Caballo de Espada", "Espada", 5), mk("Sota de Oro", "Oro", 4)];
+  assert.equal(getEnvidoValue(negras), 20, "Dos figuras del mismo palo = 20 justas.");
+  const sueltas = [mk("Cinco de Copa", "Copa", 2), mk("Tres de Basto", "Basto", 10), mk("Sota de Oro", "Oro", 4)];
+  assert.equal(getEnvidoValue(sueltas), 5, "Sin palo repetido vale la carta más alta de envido.");
+  // empate de envido lo gana el mano
+  const r = resolveEnvido(negras, negras, "B");
+  assert.equal(r.winner, "B", "Envido parejo lo cobra el que es mano.");
+}
+
+console.log("Cantos y puntos OK");

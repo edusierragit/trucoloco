@@ -9,7 +9,7 @@ import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
-import { createTrucolocoRoom, genRoomCode, ROOM_LIMIT } from "./game/net/room";
+import { createTrucolocoRoom, findRandomSala, genRoomCode, ROOM_LIMIT } from "./game/net/room";
 
 // las caras de las cartas se precargan apenas hay un respiro: nunca más
 // naipes blancos "cargando" en la mano
@@ -596,6 +596,25 @@ export default function App() {
     netRoomRef.current = room;
     setNetRoom(room);
   }, [match.selectedCharacter, match.selectedRole]);
+
+  const [searchingRandom, setSearchingRandom] = useState(false);
+  const searchRef = useRef(null);
+
+  const buscarRandom = useCallback(() => {
+    if (searchRef.current) return;
+    setSearchingRandom(true);
+    searchRef.current = findRandomSala((code, isHost) => {
+      searchRef.current = null;
+      setSearchingRandom(false);
+      joinSala(code, isHost);
+    });
+  }, [joinSala]);
+
+  const cancelarRandom = useCallback(() => {
+    searchRef.current?.cancel();
+    searchRef.current = null;
+    setSearchingRandom(false);
+  }, []);
 
   const leaveSala = useCallback(() => {
     netRoomRef.current?.leave();
@@ -1347,13 +1366,22 @@ export default function App() {
                 Salir
               </button>
             </div>
-            <p className="sala-note">Presencia en vivo · la partida compartida llega en la próxima etapa</p>
+            <p className="sala-note">⚠ Los bots de la mesa son PRÁCTICA mientras se llena la sala. La partida compartida entre humanos está en construcción.</p>
           </div>
         ) : (
           <div className="sala-join-box">
             <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
               🌐 Crear sala
             </button>
+            {searchingRandom ? (
+              <button className="canto-chip sala-btn" type="button" onClick={cancelarRandom}>
+                Buscando random… (cancelar)
+              </button>
+            ) : (
+              <button className="canto-chip sala-btn" type="button" onClick={buscarRandom}>
+                🎲 Buscar random
+              </button>
+            )}
             <div className="sala-join-row">
               <input
                 className="sala-code-input"

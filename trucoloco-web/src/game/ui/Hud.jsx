@@ -956,9 +956,11 @@ function BottomDock({ match, handFocus, setHandFocus }) {
         : `${scoringWinnerName} cobra ${match.activeBet}.`;
 
     return (
-      <footer className="bottom-dock bottom-dock-result">
+      <>
         <AgreementPill match={match} />
-        <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
+        {createPortal(
+          <footer className="bottom-dock bottom-dock-result result-dock-right">
+            <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
           <div className="hand-result-copy">
             <strong>{resultTitle}</strong>
             <p>{resultCopy}</p>
@@ -994,7 +996,10 @@ function BottomDock({ match, handFocus, setHandFocus }) {
             {match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied ? "Falta el acuerdo" : nextLabel}
           </button>
         </section>
-      </footer>
+          </footer>,
+          document.body
+        )}
+      </>
     );
   }
 

@@ -67,7 +67,7 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   const initialRotZ = card.side === "A" ? -0.34 : 0.34;
 
   // played cards read as real naipes, not furniture — keep them modest on the felt
-  const TABLE_CARD_SCALE = 0.8;
+  const TABLE_CARD_SCALE = 0.7;
 
   useEffect(() => {
     progressRef.current = 0;
@@ -352,7 +352,7 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
 const tableCardPoses = Array.from({ length: 6 }, (_, i) => {
   const angle = (Math.PI * 2 * i) / 6 + Math.PI / 6;
   return {
-    position: [Math.sin(angle) * 1.46, 0.415, Math.cos(angle) * 1.46 + 0.08],
+    position: [Math.sin(angle) * 1.32, 0.415, Math.cos(angle) * 1.32 + 0.08],
     rotation: [0, angle + Math.PI, 0] // plana frente a su dueño, cabecera hacia el centro
   };
 });
@@ -421,7 +421,7 @@ const getTableCardPose = (card, index) => {
   if (seat) {
     const angle = Math.atan2(seat.position[0], seat.position[2]);
     return {
-      position: [Math.sin(angle) * 1.46, 0.415, Math.cos(angle) * 1.46 + 0.08],
+      position: [Math.sin(angle) * 1.32, 0.415, Math.cos(angle) * 1.32 + 0.08],
       rotation: [0, angle + Math.PI, 0]
     };
   }

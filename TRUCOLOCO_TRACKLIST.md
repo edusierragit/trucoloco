@@ -102,6 +102,19 @@
 - **Panel de mano cerrada minimal** — fuera chips de meta y kicker.
 - CLAUDE.md actualizado con el mindset de dirección técnica/creativa de Edu.
 
+## ✅ HECHO (2026-07-03, ronda a fondo)
+
+- **Auditoría de cantos VERIFICADA con tests** — Truco/Retruco/Vale4 pagan
+  2/3/4 querido y 1/2/3 no querido; cobro invertido acredita al otro lado;
+  envido 33/20/carta alta y empate lo gana el mano. Todo en check:rules
+  ("Cantos y puntos OK"). La lógica ESTABA bien; ahora está blindada.
+- **🎲 BUSCAR RANDOM** — cola de espera P2P global: dos desconocidos se
+  emparejan y caen en la misma sala. Verificado E2E con dos navegadores.
+- **Cuadro de cierre a la derecha** (portal) — nunca más sobre tus naipes;
+  el acuerdo de negociantes convive a su izquierda.
+- **Cartas de mesa a proporción** (0.7, radio 1.32 — lejos del borde).
+- **Copy honesto en sala**: los bots son PRÁCTICA mientras se llena.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

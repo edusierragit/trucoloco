@@ -4853,3 +4853,33 @@ select {
   display: inline-block;
   animation: scorePop 0.7s ease-out;
 }
+
+/* el cuadro de cierre vive a la derecha, nunca sobre tus naipes */
+.result-dock-right {
+  position: fixed;
+  right: 18px;
+  bottom: 90px;
+  z-index: 44;
+  width: 330px;
+  max-width: 88vw;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.result-dock-right .hand-result-panel {
+  border-radius: 16px;
+}
+
+/* el acuerdo se corre a la izquierda del cuadro cuando conviven */
+.agreement-pill {
+  right: 366px;
+}
+
+@media (max-width: 900px) {
+  .agreement-pill {
+    right: 18px;
+    bottom: 320px;
+  }
+}
