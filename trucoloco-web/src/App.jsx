@@ -9,7 +9,7 @@ import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
-import { createTrucolocoRoom, findRandomSala, genRoomCode, ROOM_LIMIT } from "./game/net/room";
+import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
 
 // las caras de las cartas se precargan apenas hay un respiro: nunca más
 // naipes blancos "cargando" en la mano
@@ -587,6 +587,7 @@ export default function App() {
   const joinSala = useCallback((code, isHost) => {
     netRoomRef.current?.leave();
     const profile = {
+      playerId: getPlayerId(),
       name: match.selectedCharacter?.name ?? "Pibe",
       role: match.selectedRole,
       characterId: match.selectedCharacter?.id ?? null
@@ -595,32 +596,57 @@ export default function App() {
     room.onRoster(setRoster);
     netRoomRef.current = room;
     setNetRoom(room);
+    // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
+    window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
   }, [match.selectedCharacter, match.selectedRole]);
 
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
+  const [backfillOpen, setBackfillOpen] = useState(false);
+  const backfillRef = useRef(null);
+  const rosterRef = useRef([]);
+  rosterRef.current = roster;
 
-  const buscarRandom = useCallback(() => {
+  // buscar una sala ABIERTA existente (la otra cara del backfill)
+  const buscarSalaAbierta = useCallback(() => {
     if (searchRef.current) return;
     setSearchingRandom(true);
-    searchRef.current = findRandomSala((code, isHost) => {
+    searchRef.current = findOpenSala((code) => {
       searchRef.current = null;
       setSearchingRandom(false);
-      joinSala(code, isHost);
+      joinSala(code, false);
     });
   }, [joinSala]);
 
-  const cancelarRandom = useCallback(() => {
+  const cancelarBusqueda = useCallback(() => {
     searchRef.current?.cancel();
     searchRef.current = null;
     setSearchingRandom(false);
   }, []);
 
+  // el host abre su sala a randoms cuando le faltan jugadores
+  const toggleBackfill = useCallback(() => {
+    if (backfillRef.current) {
+      backfillRef.current.close();
+      backfillRef.current = null;
+      setBackfillOpen(false);
+      return;
+    }
+    const code = netRoomRef.current?.code;
+    if (!code) return;
+    backfillRef.current = openSalaBackfill(code, () => Math.max(0, ROOM_LIMIT - rosterRef.current.length));
+    setBackfillOpen(true);
+  }, []);
+
   const leaveSala = useCallback(() => {
+    backfillRef.current?.close();
+    backfillRef.current = null;
+    setBackfillOpen(false);
     netRoomRef.current?.leave();
     netRoomRef.current = null;
     setNetRoom(null);
     setRoster([]);
+    window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
   // el perfil viaja solo cuando cambiás de rol o personaje
@@ -641,7 +667,6 @@ export default function App() {
     autoJoinedRef.current = true;
     const code = new URLSearchParams(window.location.search).get("sala");
     if (code && code.length === 4) {
-      window.history.replaceState(null, "", window.location.pathname);
       joinSala(code.toUpperCase(), false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1348,6 +1373,11 @@ export default function App() {
               ))}
             </div>
             <div className="sala-actions">
+              {netRoom.isHost ? (
+                <button className={backfillOpen ? "canto-chip canto-chip-gold sala-btn" : "canto-chip sala-btn"} type="button" onClick={toggleBackfill}>
+                  {backfillOpen ? `📢 Abierta (faltan ${Math.max(0, ROOM_LIMIT - roster.length)})` : "🎲 Abrir a randoms"}
+                </button>
+              ) : null}
               <button
                 className="canto-chip canto-chip-advance sala-btn"
                 type="button"
@@ -1374,12 +1404,12 @@ export default function App() {
               🌐 Crear sala
             </button>
             {searchingRandom ? (
-              <button className="canto-chip sala-btn" type="button" onClick={cancelarRandom}>
-                Buscando random… (cancelar)
+              <button className="canto-chip sala-btn" type="button" onClick={cancelarBusqueda}>
+                Buscando sala abierta… (cancelar)
               </button>
             ) : (
-              <button className="canto-chip sala-btn" type="button" onClick={buscarRandom}>
-                🎲 Buscar random
+              <button className="canto-chip sala-btn" type="button" onClick={buscarSalaAbierta}>
+                🚪 Entrar a sala abierta
               </button>
             )}
             <div className="sala-join-row">

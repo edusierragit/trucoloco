@@ -81,41 +81,49 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   };
 }
 
-// Cola de espera global: dos desconocidos que buscan mesa se emparejan y
-// caen juntos en una sala nueva. El de id mayor la crea (es host).
-export function findRandomSala(onMatched) {
-  const queue = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, "espera-v1");
-  const announce = queue.makeAction("busco");
-  const invite = queue.makeAction("anda");
+// ── Backfill (matchmaking real): salas abiertas reciben randoms ─────────────
+// El host publica su sala en el canal global; el que busca toma la primera
+// oferta con lugar. Party-first, backfill segundo (ver MULTIPLAYER_DESIGN.md).
+const LOBBY_CHANNEL = "salas-abiertas-v1";
+const lobbyConfig = { appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } };
+
+export function openSalaBackfill(code, getFreeSeats) {
+  const lobby = joinRoom(lobbyConfig, LOBBY_CHANNEL);
+  const offer = lobby.makeAction("oferta");
+  const seek = lobby.makeAction("busco");
+
+  const respond = (target) => {
+    const free = getFreeSeats();
+    if (free > 0) void offer.send({ code, free }, target ? { target } : undefined);
+  };
+
+  seek.onMessage = (_data, context) => respond(context?.peerId);
+  lobby.onPeerJoin = (peerId) => respond(peerId);
+
+  return {
+    close() {
+      void lobby.leave();
+    }
+  };
+}
+
+export function findOpenSala(onFound) {
+  const lobby = joinRoom(lobbyConfig, LOBBY_CHANNEL);
+  const offer = lobby.makeAction("oferta");
+  const seek = lobby.makeAction("busco");
   let done = false;
   let interval = 0;
 
-  const finish = (code, isHost) => {
-    if (done) return;
+  offer.onMessage = (data) => {
+    if (done || !data || typeof data.code !== "string" || !(data.free > 0)) return;
     done = true;
     window.clearInterval(interval);
-    window.setTimeout(() => void queue.leave(), 800);
-    onMatched(code, isHost);
+    window.setTimeout(() => void lobby.leave(), 600);
+    onFound(data.code.toUpperCase());
   };
 
-  invite.onMessage = (data) => {
-    if (done || !data || typeof data !== "object") return;
-    if (data.target === selfId && typeof data.code === "string") finish(data.code, false);
-  };
-
-  announce.onMessage = (peerId2, context) => {
-    if (done) return;
-    const other = String(peerId2 ?? context.peerId);
-    // el de id mayor acuña la sala y le pasa el código al otro
-    if (selfId > other) {
-      const code = genRoomCode();
-      void invite.send({ target: other, code });
-      finish(code, true);
-    }
-  };
-
-  const shout = () => void announce.send(selfId);
-  queue.onPeerJoin = shout;
+  const shout = () => void seek.send(1);
+  lobby.onPeerJoin = shout;
   interval = window.setInterval(shout, 1600);
   shout();
 
@@ -124,7 +132,17 @@ export function findRandomSala(onMatched) {
       if (done) return;
       done = true;
       window.clearInterval(interval);
-      void queue.leave();
+      void lobby.leave();
     }
   };
+}
+
+// identidad persistente: sobrevive refresh y crash (base de la reconexión)
+export function getPlayerId() {
+  let id = localStorage.getItem("trucoloco.playerId");
+  if (!id) {
+    id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    localStorage.setItem("trucoloco.playerId", id);
+  }
+  return id;
 }

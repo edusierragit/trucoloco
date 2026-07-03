@@ -115,6 +115,22 @@
 - **Cartas de mesa a proporción** (0.7, radio 1.32 — lejos del borde).
 - **Copy honesto en sala**: los bots son PRÁCTICA mientras se llena.
 
+## ✅ HECHO (2026-07-03, diseño multiplayer)
+
+- **MULTIPLAYER_DESIGN.md** — la arquitectura completa de la etapa 2, pensada
+  y no manoteada: party-first + backfill, playerId persistente, la URL es la
+  sala (refresh-proof), host autoritativo con snapshots, migración de host,
+  reconexión con asiento reservado y bot suplente, refactor de perspectiva
+  del hook, voz con addStream. Orden de ejecución en 6 pasos.
+- **Matchmaking re-semantizado (backfill real)** — fuera el emparejamiento 1v1
+  sin propósito: ahora el HOST togglea "📢 Abrir a randoms" en SU sala y el
+  buscador usa "🚪 Entrar a sala abierta". Verificado E2E: el random cayó en
+  la sala del host, con URL persistente.
+- **La URL es la sala**: ?sala=CODE queda en la barra — refresh te devuelve
+  adentro. playerId persistente en localStorage (base de reconexión).
+- **Codex completó su pasada 1** (soportes de estantes + vigas del techo,
+  checks verdes) — CODEX_TASK_2.md (máquina de humo) listo para dárselo.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
