@@ -595,6 +595,10 @@ export default function App() {
     };
     const room = createTrucolocoRoom(code, { isHost, profile });
     room.onRoster(setRoster);
+    if (!isHost) {
+      // espejo v1: tu pantalla ES la partida del host
+      room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
+    }
     netRoomRef.current = room;
     setNetRoom(room);
     // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
@@ -602,6 +606,26 @@ export default function App() {
   }, [match.selectedCharacter, match.selectedRole]);
 
   const [micOn, setMicOn] = useState(false);
+
+  // host: cada cambio de la mesa viaja como snapshot a los guests
+  useEffect(() => {
+    const room = netRoomRef.current;
+    if (!room || !room.isHost || !match.getSnapshot) return;
+    const timer = window.setTimeout(() => room.sendSnapshot(match.getSnapshot()), 120);
+    return () => window.clearTimeout(timer);
+  }, [
+    match.pendingAnimationKey,
+    match.phase,
+    match.scores.A,
+    match.scores.B,
+    match.handNumber,
+    match.activeBet,
+    match.handClosed,
+    match.trucoPending,
+    match.envidoPending,
+    match.agreementApplied,
+    match.highlight
+  ]);
 
   // cuando entra alguien a la sala, suena y se siente
   const rosterCountRef = useRef(0);
@@ -728,6 +752,7 @@ export default function App() {
   );
   useEffect(() => {
     if (!autoPlayEnabled) return undefined;
+    if (netRoom && !netRoom.isHost) return undefined; // espejo: manda el host
     if (!match.handStarted || match.matchWinner) return undefined;
     if (!match.canAdvance || match.canPlayCard) return undefined;
     const autoPhases = ["table-auto-turn", "pre-rival-lead", "rival-leads", "trick-closed", "envido-resolution"];
@@ -964,7 +989,8 @@ export default function App() {
     cameraView === "walk" && !isSeatingRitual ? "stage-walk-mode" : "",
     cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : "",
     cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : "",
-    cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : ""
+    cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : "",
+    netRoom && !netRoom.isHost ? "stage-espectador" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {
@@ -1412,6 +1438,9 @@ export default function App() {
               <strong className="sala-code">{netRoom.code}</strong>
               <span className="sala-count">{roster.length}/{ROOM_LIMIT}</span>
             </div>
+            {!netRoom.isHost ? (
+              <p className="sala-wait">👁 Espejo en vivo de la mesa del host — jugar tu silla llega en la próxima etapa</p>
+            ) : null}
             {roster.length === 1 ? (
               <p className="sala-wait">Sos el único adentro — copiá el link y mandáselo a los pibes<span className="waitdots">…</span></p>
             ) : null}

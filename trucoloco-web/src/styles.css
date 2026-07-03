@@ -4968,3 +4968,12 @@ select {
   color: #91e9f6;
   opacity: 0.85;
 }
+
+/* espectador (espejo del host): mirás, todavía no jugás */
+.stage-espectador .canto-bar,
+.stage-espectador .bottom-dock,
+.stage-espectador .agreement-pill {
+  pointer-events: none;
+  opacity: 0.45;
+  filter: saturate(0.6);
+}

@@ -156,6 +156,17 @@
 - ⚠ **CODEX_TASK_3 la toma CLAUDE** (Codex sin cupo ~1h): no dársela cuando
   vuelva — Claude hace el refactor de perspectiva y el protocolo juntos.
 
+## ✅ HECHO (2026-07-03, ESPEJO EN VIVO)
+
+- **UNIRSE A UNA SALA YA SIGNIFICA ALGO**: el guest ve EN VIVO la partida del
+  host (snapshots P2P: el host serializa la mesa en cada jugada, el que entra
+  tarde recibe el estado actual al conectar). Modo espectador visible (UI de
+  acciones atenuada + banner "Espejo en vivo"). Verificado E2E: el marcador
+  del guest es idéntico al del host tras jugar cartas. La voz funciona encima.
+  **Falta**: que cada guest JUEGUE su silla (refactor de perspectiva — Claude).
+- **CODEX_TASK_3 reescrita**: ahora es la Sala del Conflicto (extracción de
+  App.jsx a src/game/conflict/ + cámara + hit timing + armas + feel).
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

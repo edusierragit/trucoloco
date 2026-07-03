@@ -1285,6 +1285,14 @@ export function useTrucolocoMatch() {
     clearTrick,
     startNextHand,
     applyAgreement,
+    // espejo multiplayer v1: el host serializa, los guests hidratan
+    getSnapshot: () => JSON.parse(JSON.stringify({ state, selectedRole, selectedCharacterIdsByRole })),
+    hydrate: (snap) => {
+      if (!snap || typeof snap !== "object" || !snap.state) return;
+      if (snap.selectedRole) setSelectedRole(snap.selectedRole);
+      if (snap.selectedCharacterIdsByRole) setSelectedCharacterIdsByRole(snap.selectedCharacterIdsByRole);
+      setState(snap.state);
+    },
     restartMatch,
     advance,
     nextHand: advance,

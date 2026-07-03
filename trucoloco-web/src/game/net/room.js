@@ -22,6 +22,11 @@ export const myPeerId = selfId;
 export function createTrucolocoRoom(code, { isHost, profile }) {
   const room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, `sala-${code}`);
   const hello = room.makeAction("hello");
+  const snap = room.makeAction("snap");
+  let onSnapshotCb = null;
+  snap.onMessage = (data) => {
+    if (data && typeof data === "object") onSnapshotCb?.(data);
+  };
 
   // ── chat de voz P2P (full mesh, 6 peers es viable) ──
   let micStream = null;
@@ -69,8 +74,10 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     emitRoster();
   };
 
+  let latestSnapshot = null;
   room.onPeerJoin = (peerId) => {
     void hello.send(myProfile, { target: peerId });
+    if (isHost && latestSnapshot) void snap.send(latestSnapshot, { target: peerId });
     // si ya tengo el mic prendido, el recién llegado también me escucha
     if (micStream) room.addStream(micStream, peerId);
   };
@@ -99,6 +106,13 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     onRoster(cb) {
       onRosterChange = cb;
       emitRoster();
+    },
+    sendSnapshot(payload) {
+      latestSnapshot = payload;
+      void snap.send(payload);
+    },
+    onSnapshot(cb) {
+      onSnapshotCb = cb;
     },
     async enableMic() {
       if (micStream) return true;
