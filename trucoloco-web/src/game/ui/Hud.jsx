@@ -672,6 +672,45 @@ function TrucoResponsePanel({ match }) {
   );
 }
 
+function AgreementRow({ match }) {
+  const [deltaSelf, setDeltaSelf] = useState(0);
+  const [deltaRival, setDeltaRival] = useState(0);
+
+  if (match.selectedRole !== "Negociante" || match.matchWinner || match.agreementApplied || !match.applyAgreement) {
+    return null;
+  }
+
+  const clamp = (value) => Math.max(-2, Math.min(2, value));
+  const fmt = (value) => (value >= 0 ? `+${value}` : `${value}`);
+  const rivalAccepts = deltaRival >= 0 && deltaSelf <= 1;
+
+  return (
+    <div className="agreement-row">
+      <span className="agreement-label">Acuerdo</span>
+      <div className="agreement-side">
+        <span>Vos</span>
+        <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v - 1))} type="button">−</button>
+        <strong>{fmt(deltaSelf)}</strong>
+        <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v + 1))} type="button">+</button>
+      </div>
+      <div className="agreement-side">
+        <span>{match.activeLane.rival.name}</span>
+        <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v - 1))} type="button">−</button>
+        <strong>{fmt(deltaRival)}</strong>
+        <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v + 1))} type="button">+</button>
+      </div>
+      <button
+        className="canto-chip canto-chip-gold agreement-seal"
+        onClick={() => (rivalAccepts ? match.applyAgreement(deltaSelf, deltaRival) : match.applyAgreement(0, 0))}
+        type="button"
+        title={rivalAccepts ? "Ambos negociantes firman" : "El rival no firma eso: queda el cobro automático"}
+      >
+        {rivalAccepts ? "Sellar acuerdo" : "Sellar (rechaza)"}
+      </button>
+    </div>
+  );
+}
+
 function WeaponButton({ weapon, disabled, onUse }) {
   return (
     <button
@@ -881,17 +920,11 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       <footer className="bottom-dock bottom-dock-result">
         <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
           <div className="hand-result-copy">
-            <span className="panel-kicker">{match.matchWinner ? "Partida cerrada" : "Mano cerrada"}</span>
             <strong>{resultTitle}</strong>
             <p>{resultCopy}</p>
           </div>
 
-          <div className="hand-result-meta">
-            <span>Vuelta {match.displayVueltaNumber}/3</span>
-            <span>Vos {match.trickWins.A}</span>
-            <span>{match.activeLane.rival.name} {match.trickWins.B}</span>
-            <span>{match.pointsInverted ? "Cobro invertido" : "Cobro normal"}</span>
-          </div>
+          <AgreementRow match={match} />
 
           {match.canSwitchRole && !match.matchWinner ? (
             <div className="role-switch-row">
@@ -915,11 +948,11 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
           <button
             className="action-button action-button-primary next-hand"
-            disabled={!match.canAdvance}
+            disabled={!match.canAdvance || (match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied)}
             onClick={advanceHandler}
             type="button"
           >
-            {nextLabel}
+            {match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied ? "Falta el acuerdo" : nextLabel}
           </button>
         </section>
       </footer>
@@ -960,11 +993,6 @@ function BottomDock({ match, handFocus, setHandFocus }) {
       {match.handStarted && !match.handClosed && !match.matchWinner ? createPortal(
         <div className="canto-bar">
           <span className="canto-copy">{getHandPanelCopy(match)}</span>
-          {match.canUseRolePower && match.selectedRole === "Negociante" ? (
-            <button className="canto-chip canto-chip-gold" onClick={match.negotiatePoints} type="button">
-              {match.rolePowerButtonLabel}
-            </button>
-          ) : null}
           {match.canCallEnvido ? (
             <button className="canto-chip canto-chip-envido" onClick={match.callEnvido} type="button">
               Envido
@@ -1123,7 +1151,6 @@ export function Hud({ match, cameraView = "table", onReturnToTable }) {
           <AwayFromTablePanel match={match} onReturnToTable={onReturnToTable} />
         ) : (
           <>
-            <ActionFocus match={match} />
             <TableFlowPanel match={match} />
             <StatusStrip match={match} />
             <RolePowerBar match={match} />

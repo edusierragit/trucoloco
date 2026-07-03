@@ -1126,6 +1126,28 @@ export function useTrucolocoMatch() {
     setState((current) => clearResolvedTrick(current, activeLane, activeLane.role));
   };
 
+  // Acto de acuerdo de negociantes: al cierre de la mano, ambos equipos
+  // confirman el cobro (con ajuste chico si negocian). Una sola vez por mano.
+  const applyAgreement = (deltaA = 0, deltaB = 0) => {
+    setState((current) => {
+      if (!current.handClosed || current.matchWinner || current.agreementApplied) return current;
+      const da = Math.max(-2, Math.min(2, Math.round(deltaA)));
+      const db = Math.max(-2, Math.min(2, Math.round(deltaB)));
+      const scores = { A: Math.max(0, current.scores.A + da), B: Math.max(0, current.scores.B + db) };
+      const matchWinner = getMatchWinner(scores);
+      return {
+        ...current,
+        scores,
+        matchWinner,
+        agreementApplied: true,
+        eventLog: da || db
+          ? `Acuerdo sellado: ${da >= 0 ? `+${da}` : da} casa, ${db >= 0 ? `+${db}` : db} visita.`
+          : "Acuerdo sellado: cobro automático.",
+        highlight: da || db ? "Los negociantes movieron la aguja." : "Cobro confirmado."
+      };
+    });
+  };
+
   const startNextHand = () => {
     setState((current) => {
       if (!current.handClosed || current.matchWinner) return current;
@@ -1262,6 +1284,7 @@ export function useTrucolocoMatch() {
     revealRivalLead: revealRivalLeadAction,
     clearTrick,
     startNextHand,
+    applyAgreement,
     restartMatch,
     advance,
     nextHand: advance,

@@ -88,9 +88,23 @@
   + fog que se enturbia ~20s y se disipa) lista para delegar cuando Codex
   termine la tarea 1.
 
+## ✅ HECHO (2026-07-03, ronda final)
+
+- **Deploy público ARREGLADO** — assetUrl() con BASE_URL (las rutas absolutas
+  /assets/ daban 404 bajo /trucoloco/ en Pages). Verificado en producción.
+- **LA MESA JUEGA SOLA** — auto-avance con cadencia humana; el juego solo se
+  detiene cuando el humano decide (?auto=0 lo apaga, lo usa el validador).
+- **Panel duplicado de acciones eliminado del árbol** (arriba-derecha).
+- **ACTO DE ACUERDO de negociantes** — la negociación salió del medio de la
+  mano (era anti-reglas): ahora al cierre, el Negociante ve "Acuerdo: Vos ±n /
+  Rival ±n / Sellar". El bot rival no firma que le saquen ni regalos grandes
+  (cae al cobro automático). "Siguiente mano" espera el sello.
+- **Panel de mano cerrada minimal** — fuera chips de meta y kicker.
+- CLAUDE.md actualizado con el mindset de dirección técnica/creativa de Edu.
+
 ## 🔧 EN CURSO
 
-- [ ] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — corriendo.
+- [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
 - [ ] **Cámara silla**: si "agarrar el mundo" tampoco convence a Edu, probar
   convención FPS pura (los dos ejes espejados respecto de la actual).
 - [ ] **Auditoría fina de reglas de canto** (envido solo 1ª vuelta/mano, cadena
