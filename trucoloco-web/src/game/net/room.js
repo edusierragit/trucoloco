@@ -23,6 +23,22 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   const room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, `sala-${code}`);
   const hello = room.makeAction("hello");
 
+  // ── chat de voz P2P (full mesh, 6 peers es viable) ──
+  let micStream = null;
+  const audioEls = new Map();
+
+  room.onPeerStream = (stream, peerId) => {
+    let el = audioEls.get(peerId);
+    if (!el) {
+      el = new Audio();
+      el.autoplay = true;
+      el.playsInline = true;
+      audioEls.set(peerId, el);
+    }
+    el.srcObject = stream;
+    void el.play().catch(() => {});
+  };
+
   // peerId -> { name, role, characterId, isHost }
   const peers = new Map();
   let onRosterChange = null;
@@ -52,10 +68,17 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
 
   room.onPeerJoin = (peerId) => {
     void hello.send(myProfile, { target: peerId });
+    // si ya tengo el mic prendido, el recién llegado también me escucha
+    if (micStream) room.addStream(micStream, peerId);
   };
 
   room.onPeerLeave = (peerId) => {
     peers.delete(peerId);
+    const el = audioEls.get(peerId);
+    if (el) {
+      el.srcObject = null;
+      audioEls.delete(peerId);
+    }
     emitRoster();
   };
 
@@ -74,8 +97,37 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
       onRosterChange = cb;
       emitRoster();
     },
+    async enableMic() {
+      if (micStream) return true;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        room.addStream(micStream);
+        return true;
+      } catch {
+        micStream = null;
+        return false;
+      }
+    },
+    disableMic() {
+      if (!micStream) return;
+      try {
+        room.removeStream(micStream);
+      } catch {
+        /* el peer pudo haberse ido */
+      }
+      micStream.getTracks().forEach((track) => track.stop());
+      micStream = null;
+    },
+    get micOn() {
+      return Boolean(micStream);
+    },
     leave() {
       onRosterChange = null;
+      this.disableMic();
+      for (const el of audioEls.values()) el.srcObject = null;
+      audioEls.clear();
       void room.leave();
     }
   };

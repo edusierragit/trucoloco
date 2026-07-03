@@ -6,6 +6,7 @@ import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
+import { tableSeats } from "./game/data/characters";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
@@ -599,6 +600,42 @@ export default function App() {
     // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
     window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
   }, [match.selectedCharacter, match.selectedRole]);
+
+  const [micOn, setMicOn] = useState(false);
+
+  const toggleMic = useCallback(async () => {
+    const room = netRoomRef.current;
+    if (!room) return;
+    if (room.micOn) {
+      room.disableMic();
+      setMicOn(false);
+    } else {
+      const ok = await room.enableMic();
+      setMicOn(ok);
+    }
+  }, []);
+
+  // reclamo de silla: viaja en el perfil; conflicto lo gana el reclamo más viejo
+  // (empate: peerId menor). Todos aplican la misma regla → convergen solos.
+  const claimSeat = useCallback((seatId) => {
+    const room = netRoomRef.current;
+    if (!room) return;
+    room.updateProfile({ seatId, seatAt: Date.now() });
+    const seat = tableSeats.find((item) => item.seatId === seatId);
+    if (seat && match.canSwitchRole) match.selectRole(seat.role);
+  }, [match]);
+
+  useEffect(() => {
+    const me = roster.find((peer) => peer.self);
+    if (!me?.seatId) return;
+    const rival = roster.find(
+      (peer) =>
+        !peer.self &&
+        peer.seatId === me.seatId &&
+        (peer.seatAt < me.seatAt || (peer.seatAt === me.seatAt && peer.peerId < me.peerId))
+    );
+    if (rival) netRoomRef.current?.updateProfile({ seatId: null, seatAt: null });
+  }, [roster]);
 
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
@@ -1364,6 +1401,9 @@ export default function App() {
               <strong className="sala-code">{netRoom.code}</strong>
               <span className="sala-count">{roster.length}/{ROOM_LIMIT}</span>
             </div>
+            {roster.length === 1 ? (
+              <p className="sala-wait">Sos el único adentro — copiá el link y mandáselo a los pibes<span className="waitdots">…</span></p>
+            ) : null}
             <div className="sala-roster">
               {roster.map((peer) => (
                 <span key={peer.peerId} className={peer.self ? "sala-chip sala-chip-self" : "sala-chip"}>
@@ -1372,7 +1412,30 @@ export default function App() {
                 </span>
               ))}
             </div>
+
+            <div className="sala-seats">
+              {tableSeats.map((seat) => {
+                const owner = roster.find((peer) => peer.seatId === seat.seatId);
+                const mine = owner?.self;
+                return (
+                  <button
+                    key={seat.seatId}
+                    className={mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"}
+                    type="button"
+                    title={`${seat.label} · ${seat.role}`}
+                    onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
+                  >
+                    <small>{seat.team === "A" ? "CASA" : "VISITA"}</small>
+                    <strong>{seat.role === "Jugador Estrella" ? "Estrella" : seat.role}</strong>
+                    <span>{owner ? owner.name : "libre"}</span>
+                  </button>
+                );
+              })}
+            </div>
             <div className="sala-actions">
+              <button className={micOn ? "canto-chip canto-chip-gold sala-btn" : "canto-chip sala-btn"} type="button" onClick={toggleMic}>
+                {micOn ? "🎙 Mic ON" : "🎙 Hablar"}
+              </button>
               {netRoom.isHost ? (
                 <button className={backfillOpen ? "canto-chip canto-chip-gold sala-btn" : "canto-chip sala-btn"} type="button" onClick={toggleBackfill}>
                   {backfillOpen ? `📢 Abierta (faltan ${Math.max(0, ROOM_LIMIT - roster.length)})` : "🎲 Abrir a randoms"}
