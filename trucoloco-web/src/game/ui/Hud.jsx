@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { roleDefinitions } from "../data/characters";
 
@@ -637,7 +638,7 @@ function TrucoResponsePanel({ match }) {
 
   if (!pending) return null;
 
-  return (
+  return createPortal(
     <footer className="bottom-dock bottom-dock-decision bottom-dock-truco">
       <section className="decision-panel truco-response-panel">
         <div className="decision-copy">
@@ -666,7 +667,8 @@ function TrucoResponsePanel({ match }) {
           </button>
         </div>
       </section>
-    </footer>
+    </footer>,
+    document.body
   );
 }
 
@@ -891,6 +893,26 @@ function BottomDock({ match, handFocus, setHandFocus }) {
             <span>{match.pointsInverted ? "Cobro invertido" : "Cobro normal"}</span>
           </div>
 
+          {match.canSwitchRole && !match.matchWinner ? (
+            <div className="role-switch-row">
+              <span className="role-switch-label">Rol para la próxima</span>
+              {match.roleOptions.map((role) => (
+                <button
+                  key={role}
+                  className={
+                    role === match.selectedRole
+                      ? "canto-chip canto-chip-role canto-chip-role-active"
+                      : "canto-chip canto-chip-role"
+                  }
+                  onClick={() => match.selectRole(role)}
+                  type="button"
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <button
             className="action-button action-button-primary next-hand"
             disabled={!match.canAdvance}
@@ -935,7 +957,7 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
   return (
     <footer className={showHandCards && match.canPlayCard ? "bottom-dock bottom-dock-play" : "bottom-dock"}>
-      {match.handStarted && !match.handClosed && !match.matchWinner ? (
+      {match.handStarted && !match.handClosed && !match.matchWinner ? createPortal(
         <div className="canto-bar">
           <span className="canto-copy">{getHandPanelCopy(match)}</span>
           {match.canUseRolePower && match.selectedRole === "Negociante" ? (
@@ -971,7 +993,8 @@ function BottomDock({ match, handFocus, setHandFocus }) {
               {nextLabel}
             </button>
           ) : null}
-        </div>
+        </div>,
+        document.body
       ) : null}
       <section className={handPanelClassName}>
         <div className="panel-header">
