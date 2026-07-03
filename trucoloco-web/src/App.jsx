@@ -603,6 +603,16 @@ export default function App() {
 
   const [micOn, setMicOn] = useState(false);
 
+  // cuando entra alguien a la sala, suena y se siente
+  const rosterCountRef = useRef(0);
+  useEffect(() => {
+    if (roster.length > rosterCountRef.current && rosterCountRef.current > 0) {
+      sfx.ensure();
+      sfx.canto();
+    }
+    rosterCountRef.current = roster.length;
+  }, [roster.length]);
+
   const toggleMic = useCallback(async () => {
     const room = netRoomRef.current;
     if (!room) return;
@@ -1108,6 +1118,7 @@ export default function App() {
             <color attach="background" args={["#060403"]} />
             <fog attach="fog" args={["#060403", 7.2, 18.5]} />
             <TrucolocoScene
+              netRoster={roster}
               match={match}
               cameraView={cameraView}
               debateAction={debateState}
@@ -1460,6 +1471,7 @@ export default function App() {
               </button>
             </div>
             <p className="sala-note">⚠ Los bots de la mesa son PRÁCTICA mientras se llena la sala. La partida compartida entre humanos está en construcción.</p>
+            <p className="sala-note">¿No aparece tu amigo? En Brave bajá los Shields (🦁) para este sitio: el enlace P2P usa WebSockets que Brave suele bloquear.</p>
           </div>
         ) : (
           <div className="sala-join-box">

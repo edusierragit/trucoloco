@@ -60,6 +60,9 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
       name: String(data.name ?? "???").slice(0, 16),
       role: typeof data.role === "string" ? data.role : null,
       characterId: typeof data.characterId === "string" ? data.characterId : null,
+      playerId: typeof data.playerId === "string" ? data.playerId : null,
+      seatId: typeof data.seatId === "string" ? data.seatId : null,
+      seatAt: typeof data.seatAt === "number" ? data.seatAt : null,
       isHost: Boolean(data.isHost),
       overflow: peers.size + 1 >= ROOM_LIMIT
     });

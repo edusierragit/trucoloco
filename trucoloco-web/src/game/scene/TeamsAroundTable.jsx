@@ -34,7 +34,8 @@ function CharacterSeat({
   isAwayFromSeat,
   showFloatingLabel,
   lowPower,
-  actingSeatPos
+  actingSeatPos,
+  netPeer
 }) {
   const ringRef = useRef(null);
   const outerRingRef = useRef(null);
@@ -284,6 +285,17 @@ function CharacterSeat({
         />
       )}
 
+      {netPeer ? (
+        <Billboard position={[0, 2.35, 0]} follow>
+          <Text fontSize={0.13} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.08} outlineWidth={0.008} outlineColor="#04222a">
+            {`● ${netPeer.name}`}
+          </Text>
+          <Text position={[0, -0.16, 0]} fontSize={0.065} color="#5fb9c9" anchorX="center" anchorY="middle" letterSpacing={0.18}>
+            EN LÍNEA
+          </Text>
+        </Billboard>
+      ) : null}
+
       {showFloatingLabel && !isAwayFromSeat ? (
         <Billboard position={[0, 2.02, 0]} follow>
           <Text
@@ -323,7 +335,7 @@ function CharacterSeat({
   );
 }
 
-export function TeamsAroundTable({ match, cameraView = "table", performanceMode = "high" }) {
+export function TeamsAroundTable({ match, cameraView = "table", performanceMode = "high", netRoster = [] }) {
   const modId = match.activeModifier?.id ?? "";
   const visibleRosterSeats = getVisibleRosterSeats(match);
   const isRoleSelect = match.phase === "role-select";
@@ -374,6 +386,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
             showFloatingLabel={showFloatingLabel}
             lowPower={lowPower}
             actingSeatPos={actingSeat && actingSeat.seatId !== seat.seatId ? actingSeat.position : null}
+            netPeer={netRoster.find((peer) => peer.seatId === seat.seatId && !peer.self) ?? null}
           />
         );
       })}

@@ -320,6 +320,12 @@ function MainRoomShell() {
       <RoundedBox name="SideRoom_FloorBridge" args={[2.34, 0.34, 2.55]} radius={0.12} position={[-6.42, -1.78, -0.9]} receiveShadow>
         <meshStandardMaterial color="#160c09" roughness={0.9} metalness={0.04} />
       </RoundedBox>
+      <RoundedBox name="SideRoom_OuterSkirt" args={[0.26, 1.16, 2.82]} radius={0.08} position={[-7.64, -1.14, -0.9]} receiveShadow>
+        <meshStandardMaterial color="#090605" roughness={0.98} />
+      </RoundedBox>
+      <RoundedBox name="SideRoom_InnerSkirt" args={[0.18, 0.82, 2.72]} radius={0.06} position={[-5.22, -1.28, -0.9]} receiveShadow>
+        <meshStandardMaterial color="#100806" roughness={0.96} />
+      </RoundedBox>
       <RoundedBox name="SideRoom_CeilingBridge" args={[2.48, 0.2, 2.68]} radius={0.08} position={[-6.43, 2.22, -0.9]} receiveShadow>
         <meshStandardMaterial color="#070504" roughness={0.98} />
       </RoundedBox>
@@ -1074,42 +1080,42 @@ function DebateRoom({ debateAction, playerCharacter, rivalCharacter }) {
 function DebateEntrance() {
   return (
     <group name="Debate_Entrance" position={[-5.42, -1.08, -0.9]}>
-      <RoundedBox args={[0.18, 1.78, 1.84]} radius={0.05} position={[0.02, 0.86, 0]} receiveShadow>
-        <meshStandardMaterial color="#080605" roughness={0.94} metalness={0.08} />
+      <RoundedBox args={[0.22, 2.18, 2.14]} radius={0.07} position={[0.02, 0.98, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#070504" roughness={0.96} metalness={0.08} />
       </RoundedBox>
-      <RoundedBox args={[0.05, 1.22, 1.32]} radius={0.03} position={[0.12, 0.72, 0]} receiveShadow>
-        <meshStandardMaterial color="#120b08" roughness={0.96} emissive="#4d210f" emissiveIntensity={0.12} />
+      <RoundedBox args={[0.075, 1.54, 1.54]} radius={0.04} position={[0.14, 0.82, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#120806" roughness={0.96} emissive="#2c120b" emissiveIntensity={0.16} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 1.4, 0.055]} radius={0.025} position={[-0.02, 0.68, -0.82]} castShadow receiveShadow>
+      <RoundedBox args={[0.13, 1.72, 0.07]} radius={0.025} position={[-0.02, 0.84, -0.98]} castShadow receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.64} metalness={0.12} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 1.4, 0.055]} radius={0.025} position={[-0.02, 0.68, 0.82]} castShadow receiveShadow>
+      <RoundedBox args={[0.13, 1.72, 0.07]} radius={0.025} position={[-0.02, 0.84, 0.98]} castShadow receiveShadow>
         <meshStandardMaterial color="#2b160d" roughness={0.64} metalness={0.12} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 0.08, 1.72]} radius={0.035} position={[-0.02, 1.38, 0]} castShadow receiveShadow>
+      <RoundedBox args={[0.14, 0.09, 2.0]} radius={0.035} position={[-0.02, 1.62, 0]} castShadow receiveShadow>
         <meshStandardMaterial color="#b47a34" emissive="#6b3518" emissiveIntensity={0.1} roughness={0.38} metalness={0.5} />
       </RoundedBox>
-      <RoundedBox args={[0.72, 0.045, 1.32]} radius={0.035} position={[-0.38, 0.018, 0]} receiveShadow>
+      <RoundedBox args={[0.86, 0.05, 1.48]} radius={0.04} position={[-0.42, 0.024, 0]} receiveShadow>
         <meshStandardMaterial color="#1d0f0a" roughness={0.82} metalness={0.06} />
       </RoundedBox>
-      <RoundedBox args={[0.042, 0.045, 1.2]} radius={0.018} position={[-0.69, 0.08, 0]} receiveShadow>
+      <RoundedBox args={[0.045, 0.05, 1.34]} radius={0.018} position={[-0.79, 0.09, 0]} receiveShadow>
         <meshStandardMaterial color="#e06b4a" emissive="#e06b4a" emissiveIntensity={0.22} roughness={0.46} />
       </RoundedBox>
-      <RoundedBox args={[0.042, 0.045, 1.2]} radius={0.018} position={[-0.08, 0.08, 0]} receiveShadow>
+      <RoundedBox args={[0.045, 0.05, 1.34]} radius={0.018} position={[-0.08, 0.09, 0]} receiveShadow>
         <meshStandardMaterial color="#63d5c5" emissive="#63d5c5" emissiveIntensity={0.14} roughness={0.46} />
       </RoundedBox>
-      <mesh position={[-0.38, 0.095, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.38, 0.5, 48]} />
-        <meshBasicMaterial color="#e06b4a" transparent opacity={0.22} depthWrite={false} />
+      <mesh position={[-0.42, 0.105, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.42, 0.56, 48]} />
+        <meshBasicMaterial color="#e06b4a" transparent opacity={0.18} depthWrite={false} />
       </mesh>
-      <Text position={[-0.05, 1.08, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.07} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.15}>
-        SALA
+      <Text position={[0.18, 1.18, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.062} color="#f3dfb6" anchorX="center" anchorY="middle" letterSpacing={0.15}>
+        SALA DE
       </Text>
-      <Text position={[0.14, 0.78, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.05} color="#e06b4a" anchorX="center" anchorY="middle" letterSpacing={0.13}>
-        EN OBRA
-      </Text>
-      <Text position={[-0.38, 0.052, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.052} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+      <Text position={[0.18, 0.92, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.054} color="#e06b4a" anchorX="center" anchorY="middle" letterSpacing={0.13}>
         CONFLICTO
+      </Text>
+      <Text position={[-0.42, 0.058, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.052} color="#c99b58" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        UMBRAL
       </Text>
       <pointLight position={[-0.32, 0.58, 0]} intensity={2.4} color="#e06b4a" />
     </group>
@@ -1381,6 +1387,7 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
 
 export function TrucolocoScene({
   match,
+  netRoster = [],
   cameraView = "table",
   debateAction,
   selectedWalkCharacter,
@@ -1596,7 +1603,7 @@ export function TrucolocoScene({
               />
             ) : null}
             <Table match={match} performanceMode={performanceMode} />
-            <TeamsAroundTable match={match} cameraView={cameraView} performanceMode={performanceMode} />
+            <TeamsAroundTable match={match} cameraView={cameraView} performanceMode={performanceMode} netRoster={netRoster} />
             {cameraView === "seat" ? <SeatViewFocus match={match} /> : null}
             {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} lowPower={lowPower} /> : null}
             <WalkablePlayer

@@ -145,6 +145,17 @@
   multiplayer) especificado para Codex: lógica pura, contrato estricto,
   snapshot/hydrate + tests. CERO estética.
 
+## ✅ HECHO (2026-07-03, presencia tangible)
+
+- **La sala se VE en el mundo**: el que reclama silla aparece con cartel
+  "● Nombre · EN LÍNEA" flotando sobre su lugar en la mesa 3D; suena un
+  stinger cuando alguien entra a la sala. Sillas sincronizadas P2P
+  (verificado E2E: A ve la silla de B ocupada con su nombre).
+- **Fix**: hello descartaba seatId/seatAt/playerId al copiar el perfil.
+- **Ayuda Brave** en el panel: los Shields bloquean los WebSockets del enlace.
+- ⚠ **CODEX_TASK_3 la toma CLAUDE** (Codex sin cupo ~1h): no dársela cuando
+  vuelva — Claude hace el refactor de perspectiva y el protocolo juntos.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
