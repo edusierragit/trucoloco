@@ -41,6 +41,7 @@ function CharacterSeat({
   const torsoRef = useRef(null);
   const upperRef = useRef(null);
   const groupRef = useRef(null);
+  const spawnRef = useRef(0);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
@@ -192,6 +193,11 @@ function CharacterSeat({
       while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
       groupRef.current.rotation.y += yawDelta * Math.min(1, delta * 2.4);
 
+      // llegada: cada personaje aparece creciendo desde su silla (nadie "estuvo siempre")
+      spawnRef.current = Math.min(1, spawnRef.current + delta * 2.2);
+      const spawnEase = 1 - Math.pow(1 - spawnRef.current, 3);
+      groupRef.current.scale.setScalar(roleScale * spawnEase);
+
       // ---- Body language: lean in when acting, hop when you win, sag when you lose ----
       const len = Math.hypot(seat.position[0], seat.position[2]) || 1;
       const leanAmount = isCurrentActor && !handClosed && !isRoleSelect ? 0.17 : 0;
@@ -330,9 +336,17 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
     ? visibleRosterSeats.find((seat) => seat.character?.name === match.nextActorName)
     : null;
 
+  // en elección de rol solo estás vos frente a la mesa vacía;
+  // al repartir "llegan" los demás (antesala del modo online con salas)
+  const seatsToShow = isRoleSelect
+    ? visibleRosterSeats.filter(
+        (seat) => seat.team === "A" && seat.character.role === match.selectedRole
+      )
+    : visibleRosterSeats;
+
   return (
     <group name="Players_Ring">
-      {visibleRosterSeats.map((seat) => {
+      {seatsToShow.map((seat) => {
         const character = seat.character;
         const isSelectedLane = character.role === match.selectedRole;
         const isSelectedCharacter = isRoleSelect && character.id === selectedCharacterId;

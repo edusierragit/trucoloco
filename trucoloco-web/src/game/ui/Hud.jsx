@@ -935,6 +935,44 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
   return (
     <footer className={showHandCards && match.canPlayCard ? "bottom-dock bottom-dock-play" : "bottom-dock"}>
+      {match.handStarted && !match.handClosed && !match.matchWinner ? (
+        <div className="canto-bar">
+          <span className="canto-copy">{getHandPanelCopy(match)}</span>
+          {match.canUseRolePower && match.selectedRole === "Negociante" ? (
+            <button className="canto-chip canto-chip-gold" onClick={match.negotiatePoints} type="button">
+              {match.rolePowerButtonLabel}
+            </button>
+          ) : null}
+          {match.canCallEnvido ? (
+            <button className="canto-chip canto-chip-envido" onClick={match.callEnvido} type="button">
+              Envido
+            </button>
+          ) : null}
+          {match.canCallTruco ? (
+            <button className="canto-chip canto-chip-truco" onClick={match.callTruco} type="button">
+              {match.trucoCallLabel ?? "Truco"}
+            </button>
+          ) : null}
+          {match.canUseWeapon
+            ? match.weaponHand.map((weapon) => (
+                <button
+                  key={weapon.handIndex}
+                  className="canto-chip canto-chip-weapon"
+                  title={weapon.summary}
+                  onClick={() => match.useWeapon(weapon.handIndex)}
+                  type="button"
+                >
+                  {weapon.name}
+                </button>
+              ))
+            : null}
+          {!match.canPlayCard && match.canAdvance ? (
+            <button className="canto-chip canto-chip-advance" onClick={advanceHandler} type="button">
+              {nextLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <section className={handPanelClassName}>
         <div className="panel-header">
           <div>
