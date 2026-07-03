@@ -4806,3 +4806,39 @@ select {
   font-size: 12px;
   padding: 8px 14px;
 }
+
+/* el acuerdo es su propio momento: pildora dedicada, no una fila enterrada */
+.agreement-pill {
+  position: fixed;
+  right: 18px;
+  bottom: 90px;
+  z-index: 45;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(8, 6, 4, 0.9);
+  border: 1px solid rgba(255, 206, 110, 0.4);
+  backdrop-filter: blur(10px);
+  color: #f0ddb4;
+  box-shadow: 0 0 28px rgba(255, 206, 110, 0.14);
+}
+
+.agreement-title {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  opacity: 0.65;
+  margin-bottom: 8px;
+}
+
+.agreement-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.agreement-says {
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-style: italic;
+  color: #ffce6e;
+}

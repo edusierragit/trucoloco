@@ -1198,24 +1198,25 @@ function SeatViewFocus({ match }) {
 function CantoVoice({ match }) {
   const [voice, setVoice] = useState(null);
   const groupRef = useRef(null);
-  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1 });
+  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1, deal: false });
 
   useEffect(() => {
     const prev = prevRef.current;
     let text = null;
+    if (!prev.deal && match.agreementApplied) text = "¡TRATO!";
     if (!prev.envido && match.envidoPending) text = "¡ENVIDO!";
     if (!prev.truco && match.trucoPending) {
       const bet = match.activeBet ?? 1;
       text = bet >= 3 ? "¡VALE CUATRO!" : bet === 2 ? "¡RETRUCO!" : "¡TRUCO!";
     }
     if (prev.truco && !match.trucoPending && (match.activeBet ?? 1) > prev.bet) text = "¡QUIERO!";
-    prevRef.current = { envido: !!match.envidoPending, truco: !!match.trucoPending, bet: match.activeBet ?? 1 };
+    prevRef.current = { envido: !!match.envidoPending, truco: !!match.trucoPending, bet: match.activeBet ?? 1, deal: !!match.agreementApplied };
     if (text) {
       setVoice({ text, born: performance.now() });
       sfx.ensure();
       sfx.canto();
     }
-  }, [match.envidoPending, match.trucoPending, match.activeBet]);
+  }, [match.envidoPending, match.trucoPending, match.activeBet, match.agreementApplied]);
 
   useFrame(() => {
     if (!voice) return;
