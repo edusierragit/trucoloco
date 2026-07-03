@@ -4,6 +4,7 @@ import { RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
+import { assetUrl } from "../assetUrl.js";
 import { sfx } from "../audio/sfx";
 
 const suitColor = {
@@ -904,7 +905,7 @@ function HexagonHub({ handClosed, outcomeTone, modId }) {
 }
 
 function ImportedHexBoardAsset() {
-  const { scene } = useGLTF("/assets/characters/tablero.glb");
+  const { scene } = useGLTF(assetUrl("assets/characters/tablero.glb"));
   const modelRef = useRef(null);
   const glowRef = useRef(null);
   const { clonedScene, normalizedScale, offset } = useMemo(() => {

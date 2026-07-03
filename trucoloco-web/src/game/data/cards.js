@@ -1,5 +1,6 @@
+import { assetUrl } from "../assetUrl.js";
 const CARD_ASSET_VERSION = "light-deck-2";
-const CARD_BACK_IMAGE = "/assets/cards/backs/truco-back.svg";
+const CARD_BACK_IMAGE = assetUrl("assets/cards/backs/truco-back.svg");
 
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({
   id,
@@ -10,7 +11,7 @@ const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", grou
   lane,
   flavor,
   group,
-  image: group === "truco" ? `/assets/cards/fronts/${id}.svg?v=${CARD_ASSET_VERSION}` : null,
+  image: group === "truco" ? assetUrl(`assets/cards/fronts/${id}.svg?v=${CARD_ASSET_VERSION}`) : null,
   backImage: CARD_BACK_IMAGE
 });
 

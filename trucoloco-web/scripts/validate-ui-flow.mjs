@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const APP_URL = process.env.TRUCOLOCO_URL ?? "http://127.0.0.1:5173";
+const APP_URL = process.env.TRUCOLOCO_URL ?? "http://127.0.0.1:5173/?auto=0";
 const DEBUG_PORT = Number(process.env.TRUCOLOCO_CDP_PORT ?? 9223);
 const EDGE_PATHS = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",

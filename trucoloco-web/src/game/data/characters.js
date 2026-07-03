@@ -1,8 +1,9 @@
+import { assetUrl } from "../assetUrl.js";
 export const roleOptions = ["Negociante", "Jugador Estrella", "Cartachin"];
 
 export const characterSkins = {
   "irvyn-negociante-glb": {
-    modelSrc: "/assets/characters/irvyn.glb",
+    modelSrc: assetUrl("assets/characters/irvyn.glb"),
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
@@ -26,7 +27,7 @@ export const characterSkins = {
     chairBackColor: "#1f1410"
   },
   "marvyn-negociante-glb": {
-    modelSrc: "/assets/characters/marvyn.glb",
+    modelSrc: assetUrl("assets/characters/marvyn.glb"),
     modelScale: 1.04,
     modelPosition: [0, 0.03, -0.02],
     modelRotation: [0, 0, 0],
@@ -50,7 +51,7 @@ export const characterSkins = {
     chairBackColor: "#17272b"
   },
   "pochex-cartachin-glb": {
-    modelSrc: "/assets/characters/pocho.glb",
+    modelSrc: assetUrl("assets/characters/pocho.glb"),
     modelScale: 0.9,
     modelPosition: [0, 0.02, 0.04],
     modelRotation: [0, 0, 0],
@@ -74,7 +75,7 @@ export const characterSkins = {
     chairBackColor: "#1f1410"
   },
   "cubano-cartachin-glb": {
-    modelSrc: "/assets/characters/cubano.glb",
+    modelSrc: assetUrl("assets/characters/cubano.glb"),
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
@@ -98,7 +99,7 @@ export const characterSkins = {
     chairBackColor: "#1f1510"
   },
   "pol-cartachin-glb": {
-    modelSrc: "/assets/characters/pol.glb",
+    modelSrc: assetUrl("assets/characters/pol.glb"),
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
@@ -133,7 +134,7 @@ export const characterSkins = {
     chairBackColor: "#1f1410"
   },
   "gazpacho-star-skin": {
-    modelSrc: "/assets/characters/gazpacho.glb",
+    modelSrc: assetUrl("assets/characters/gazpacho.glb"),
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
@@ -163,7 +164,7 @@ export const characterSkins = {
     chairBackColor: "#22120c"
   },
   "myke-keta-star-skin": {
-    modelSrc: "/assets/characters/myketa.glb",
+    modelSrc: assetUrl("assets/characters/myketa.glb"),
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],

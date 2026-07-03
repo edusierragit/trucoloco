@@ -628,6 +628,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ─── LA MESA JUEGA SOLA ───────────────────────────────────────────────────
+  // los turnos de los bots avanzan con cadencia humana: nada de apretar
+  // "Dejar jugar a X" seis veces por vuelta. ?auto=0 lo desactiva (validador).
+  const autoPlayEnabled = useMemo(
+    () => new URLSearchParams(window.location.search).get("auto") !== "0",
+    []
+  );
+  useEffect(() => {
+    if (!autoPlayEnabled) return undefined;
+    if (!match.handStarted || match.matchWinner) return undefined;
+    if (!match.canAdvance || match.canPlayCard) return undefined;
+    const autoPhases = ["table-auto-turn", "pre-rival-lead", "rival-leads", "trick-closed", "envido-resolution"];
+    if (!autoPhases.includes(match.phase)) return undefined;
+    const delay = match.phase === "trick-closed" ? 2100 : match.phase === "envido-resolution" ? 2300 : 1000;
+    const timer = window.setTimeout(() => {
+      if (match.phase === "envido-resolution") match.settleEnvido();
+      else if (match.phase === "trick-closed") match.clearTrick();
+      else if (match.phase === "pre-rival-lead" || match.phase === "rival-leads") match.revealRivalLead();
+      else match.advance();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [autoPlayEnabled, match]);
+
   // audio: el contexto se despierta con el primer gesto (política de autoplay)
   useEffect(() => {
     const wake = () => sfx.ensure();
