@@ -18,10 +18,8 @@ if (typeof window !== "undefined") {
 }
 
 const cameraViews = [
-  { id: "entry", label: "Puerta", hint: "1 · entrar" },
-  { id: "table", label: "Aérea", hint: "2 · plano general" },
-  { id: "seat", label: "Silla", hint: "3 · sentarte" },
-  { id: "walk", label: "Caminar", hint: "4 · WASD" }
+  { id: "seat", label: "Silla", hint: "1 · sentarte" },
+  { id: "walk", label: "Caminar", hint: "2 · WASD" }
 ];
 
 const RING_START_STATE = {
@@ -802,10 +800,8 @@ export default function App() {
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
       if (isTyping) return;
 
-      if (event.key === "1") handleCameraViewChange("entry");
-      if (event.key === "2") handleCameraViewChange("table");
-      if (event.key === "3") handleCameraViewChange("seat");
-      if (event.key === "4") handleCameraViewChange("walk");
+      if (event.key === "1") handleCameraViewChange("seat");
+      if (event.key === "2") handleCameraViewChange("walk");
 
       if (cameraView === "ring") {
         const key = event.key.toLowerCase();

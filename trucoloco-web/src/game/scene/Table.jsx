@@ -327,13 +327,14 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
         const cards = trick.cards ?? [trick.humanCard, trick.rivalCard].filter(Boolean);
 
         return (
-          <group key={`trick-${trick.index}`} position={[0, 0.05 + index * 0.05, 0]} scale={0.5}>
+          <group key={`trick-${trick.index}`} position={[0, 0.05 + index * 0.075, 0]} rotation={[0, index * 0.22, 0]} scale={0.42}>
+            {/* pila prolija: las seis cartas dobladas casi alineadas, apenas giradas */}
             {cards.slice(0, 6).map((play, cardIndex) => (
               <SceneHandCard
                 key={`${trick.index}-${play.seatId ?? cardIndex}`}
                 card={play.card ?? play}
-                position={[cardIndex * 0.05 - 0.12, cardIndex * 0.012, cardIndex * 0.035]}
-                rotation={[0, ((cardIndex % 3) - 1) * 0.14, 0]}
+                position={[cardIndex * 0.008 - 0.02, cardIndex * 0.012, cardIndex * 0.006]}
+                rotation={[0, (cardIndex % 2 === 0 ? -1 : 1) * 0.05, 0]}
                 faceDown
               />
             ))}

@@ -1353,8 +1353,8 @@ export function TrucolocoScene({
       lastX = event.clientX;
       lastY = event.clientY;
       const look = seatLookRef.current;
-      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw - dx * 0.0042));
-      look.pitch = Math.max(-0.55, Math.min(0.4, look.pitch - dy * 0.003));
+      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw + dx * 0.0042));
+      look.pitch = Math.max(-0.55, Math.min(0.4, look.pitch + dy * 0.003));
     };
     const up = () => {
       dragging = false;

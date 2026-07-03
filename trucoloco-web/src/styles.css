@@ -4418,3 +4418,10 @@ select {
 .stage-seat-mode .weapons-panel .panel-kicker {
   display: none;
 }
+
+/* armas: que nunca choquen con la barra de camara (esquina inferior izquierda) */
+.stage-seat-mode .weapons-panel {
+  bottom: 200px;
+  left: 14px;
+  z-index: 30;
+}
