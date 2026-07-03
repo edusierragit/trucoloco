@@ -42,13 +42,23 @@
 - **Personajes con lenguaje corporal** — se inclinan hacia la mesa cuando les toca,
   el equipo ganador salta al cerrar la mano, el perdedor se hunde.
 
-## 🔧 EN CURSO (Claude, próxima sesión)
+## ✅ HECHO (2026-07-03, tarde)
 
-- [ ] **Habitación con jugadores que ENTRAN** — pedido de Edu: en la sala solo deberían
-  estar los jugadores que van entrando y eligiendo personaje (clave para el modo online);
-  mientras tanto, los 6 miran la mesa.
-- [ ] Guiños faciales NO se pueden con los GLB actuales (sin blendshapes) — ver plan
-  Mixamo en backlog #7.
+- **CANTO-BAR única contextual** — una sola píldora abajo al centro con solo lo
+  cantable en ese momento: Envido/Truco (gates del hook), poder del Negociante,
+  armas del Cartachin como chips, botón de avance. QUIERO/NO QUIERO como píldora
+  grande. ActionFocus duplicado eliminado en silla. Chau cajas apiladas.
+- **Jugadores que LLEGAN** — en elección de rol estás solo vos frente a la mesa;
+  al repartir aparecen los demás con crecimiento suave (antesala de salas online).
+- **Cámara drag corregida** (ya no invertida) · **vista aérea eliminada** ·
+  **pilas de vueltas prolijas** · `CODEX_TASK.md` creado (Codex corriendo escenario).
+
+## 🔧 EN CURSO
+
+- [ ] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — corriendo.
+- [ ] **Auditoría fina de reglas de canto** (envido solo 1ª vuelta/mano, cadena
+  truco-retruco-vale4 y quién tiene el quiero) — con tests en check:rules.
+- [ ] Guiños faciales NO se pueden con los GLB actuales (sin blendshapes) — plan Mixamo.
 
 ## 📦 BACKLOG PRIORIZADO (pedidos de Edu)
 
