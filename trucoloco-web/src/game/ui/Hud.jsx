@@ -57,21 +57,25 @@ function Header({ match }) {
     ? `Reparte ${match.dealerName} · sale ${match.whoStartsName}`
     : `${match.activeLane.human.name} vs ${match.activeLane.rival.name}`;
 
+  const isRoleSelect = match.phase === "role-select";
+
   return (
-    <header className={match.phase === "role-select" ? "hud-top hud-top-select" : "hud-top hud-top-compact"}>
+    <header className={isRoleSelect ? "hud-top hud-top-select" : "hud-top hud-top-compact"}>
       <div className="title-block">
-        <h1>TRUCOLOCO 5.0</h1>
-        <p>{subtitle}</p>
+        <h1>TRUCOLOCO</h1>
+        {isRoleSelect ? null : <p>{subtitle}</p>}
       </div>
 
-      <div className="scoreboard">
-        <span className="score-label">Mano {match.handNumber} · Mano vale {match.activeBet}</span>
-        <strong key={`${match.scores.A}-${match.scores.B}`} className="score-pop">
-          {match.scores.A} - {match.scores.B}
-        </strong>
-        <span className="score-names">{scoreNames}</span>
-        <span className="score-label">primero a {match.config.winningScore}</span>
-      </div>
+      {isRoleSelect ? null : (
+        <div className="scoreboard">
+          <span className="score-label">Mano {match.handNumber} · Mano vale {match.activeBet}</span>
+          <strong key={`${match.scores.A}-${match.scores.B}`} className="score-pop">
+            {match.scores.A} - {match.scores.B}
+          </strong>
+          <span className="score-names">{scoreNames}</span>
+          <span className="score-label">primero a {match.config.winningScore}</span>
+        </div>
+      )}
     </header>
   );
 }
@@ -157,18 +161,14 @@ function RoleSelector({ match }) {
       </div>
 
       <article className="role-ready-strip">
-        <div>
-          <span className="panel-kicker">Antes de repartir</span>
-          <strong>{selectedCharacter.name} · {selectedRoleDef.title}</strong>
-          <p>Sale {match.whoStartsName}. Reparte {match.dealerName}.</p>
-        </div>
         <button
-          className="action-button action-button-primary"
+          className="role-start-button"
           disabled={!match.canAdvance}
           onClick={startSelectedRole}
           type="button"
         >
-          Sentarse y repartir
+          <span className="role-start-main">▶ JUGAR</span>
+          <span className="role-start-sub">{selectedCharacter.name} · {match.selectedRole}</span>
         </button>
       </article>
     </section>

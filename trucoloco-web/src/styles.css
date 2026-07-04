@@ -5010,3 +5010,92 @@ select {
 .sala-lower {
   top: 150px;
 }
+
+/* ─── pantalla inicial repensada: todo visible sin scroll + JUGAR fijo ─────── */
+.role-selector-arcade {
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+/* hero compacto */
+.role-select-hero h2 {
+  font-size: 1.9rem;
+}
+.role-select-hero .panel-kicker {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* roles: tarjetas compactas horizontales, sin el escalonado que ocupaba alto */
+.role-card {
+  min-height: 0 !important;
+  padding: 10px 12px 10px 44px !important;
+  align-content: center !important;
+  justify-items: start !important;
+  text-align: left !important;
+  transform: none !important;
+}
+.role-card:hover { transform: translateY(-2px) !important; }
+.role-card-active { transform: translateY(-2px) !important; }
+.role-card-row { gap: 8px; }
+.role-card-number {
+  top: 50% !important;
+  transform: translateY(-50%);
+  font-size: 1.5rem !important;
+}
+.role-card strong {
+  margin-top: 0 !important;
+  min-height: 0 !important;
+  font-size: 1.05rem !important;
+}
+.role-card small { font-size: 0.72rem; opacity: 0.7; }
+
+/* personaje: fila compacta */
+.character-picker { gap: 6px; }
+.character-card {
+  min-height: 0 !important;
+  padding: 8px 12px !important;
+}
+.character-card strong { font-size: 0.95rem !important; }
+.character-card small { font-size: 0.68rem; }
+
+/* JUGAR: siempre visible, pegado abajo del panel, imposible de no ver */
+.role-ready-strip {
+  position: sticky;
+  bottom: 0;
+  margin: 6px -14px 0;
+  padding: 12px 14px 14px;
+  background: linear-gradient(180deg, transparent, rgba(8, 6, 4, 0.96) 40%);
+  display: block !important;
+}
+.role-start-button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 206, 110, 0.5);
+  background: linear-gradient(160deg, #d4941f, #7a4a0e);
+  color: #fff6e2;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(255, 206, 110, 0.25);
+  transition: transform 0.08s, box-shadow 0.15s;
+}
+.role-start-button:hover:not(:disabled) {
+  box-shadow: 0 0 32px rgba(255, 206, 110, 0.45);
+}
+.role-start-button:active:not(:disabled) { transform: scale(0.98); }
+.role-start-button:disabled { opacity: 0.5; cursor: default; }
+.role-start-main {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.role-start-sub {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  letter-spacing: 0.04em;
+}
