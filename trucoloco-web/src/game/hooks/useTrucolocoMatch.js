@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { MATCH_CONFIG } from "../config";
+import { useMemo, useRef, useState } from "react";
+import { GAME_MODES, MATCH_CONFIG } from "../config";
 import { bonusCards, deck, modifiers } from "../data/cards";
 import { characterOptionsByRole, roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
 import { weaponPool } from "../data/weapons";
@@ -147,7 +147,7 @@ const drawWeapons = () =>
     handIndex: `${weapon.id}-${index}-${Math.random()}`
   }));
 
-const dealSeatHands = (pool) => {
+const dealSeatHands = (pool, gameMode = "trucoloco") => {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
 
   const hands = orderedSeats.reduce((acc, seat, seatIndex) => {
@@ -157,6 +157,9 @@ const dealSeatHands = (pool) => {
     }));
     return acc;
   }, {});
+
+  // truco común: mazo español puro, sin cartas absurdas
+  if (gameMode === "comun") return hands;
 
   // Mazo Trucoloco: el Jugador Estrella de cada equipo recibe UNA carta
   // absurda que le gana el lugar a su carta mas baja (canon: solo una por
@@ -462,12 +465,12 @@ const buildRoleSelectState = (handNumber, scores, activeLane) => {
   };
 };
 
-const buildOpeningState = (handNumber, scores, activeLane) => {
+const buildOpeningState = (handNumber, scores, activeLane, gameMode = "trucoloco") => {
   const pool = buildSharedPool();
   const manoSeat = getManoSeatForHand(handNumber);
   const manoTeam = manoSeat.team;
   const whoStartsName = getSeatPlayerName(manoSeat.seatId);
-  const handsBySeat = dealSeatHands(pool);
+  const handsBySeat = dealSeatHands(pool, gameMode);
   const selectedSeatId = getSelectedSeatId(activeLane.role);
   const oppositeSeatId = getOppositeSeatId(activeLane.role);
 
@@ -485,7 +488,7 @@ const buildOpeningState = (handNumber, scores, activeLane) => {
     currentTurnSeatId: manoSeat.seatId,
     humanHand: handsBySeat[selectedSeatId] ?? [],
     rivalHand: handsBySeat[oppositeSeatId] ?? [],
-    weaponHand: drawWeapons(),
+    weaponHand: gameMode === "comun" ? [] : drawWeapons(),
     activeWeapon: null,
     weaponUsed: false,
     handClosed: false,
@@ -828,6 +831,17 @@ const getPhaseData = (state, activeLane) => {
 
 export function useTrucolocoMatch() {
   const [selectedRole, setSelectedRole] = useState(MATCH_CONFIG.defaultRole);
+  // modo de juego: "comun" (truco puro) o "trucoloco" (con todo el delirio).
+  // ?modo=comun en la URL permite probarlo sin UI; el snapshot P2P lo propaga.
+  const [gameMode, setGameModeState] = useState(() => {
+    if (typeof window !== "undefined") {
+      const fromUrl = new URLSearchParams(window.location.search).get("modo");
+      if (fromUrl === "comun" || fromUrl === "trucoloco") return fromUrl;
+    }
+    return MATCH_CONFIG.defaultGameMode ?? "trucoloco";
+  });
+  const gameModeRef = useRef(gameMode);
+  gameModeRef.current = gameMode;
   const [selectedCharacterIdsByRole, setSelectedCharacterIdsByRole] = useState(() => getDefaultCharacterIdsByRole());
   const selectedRoleCharacters = useMemo(() => characterOptionsByRole[selectedRole] ?? [], [selectedRole]);
   const selectedCharacter = useMemo(
@@ -1124,7 +1138,7 @@ export function useTrucolocoMatch() {
   const startHand = () => {
     setState((current) => {
       if (current.handStarted || current.matchWinner) return current;
-      return buildOpeningState(current.handNumber, current.scores, activeLane);
+      return buildOpeningState(current.handNumber, current.scores, activeLane, gameModeRef.current);
     });
   };
 
@@ -1167,7 +1181,7 @@ export function useTrucolocoMatch() {
   const startNextHand = () => {
     setState((current) => {
       if (!current.handClosed || current.matchWinner) return current;
-      return buildOpeningState(current.handNumber + 1, current.scores, activeLane);
+      return buildOpeningState(current.handNumber + 1, current.scores, activeLane, gameModeRef.current);
     });
   };
 
@@ -1181,6 +1195,14 @@ export function useTrucolocoMatch() {
         highlight: "Nueva partida."
       };
     });
+  };
+
+  const returnToRoleSelect = () => {
+    setState((current) => ({
+      ...buildRoleSelectState(current.handNumber, current.scores, activeLane),
+      eventLog: "Volviste a elegir rol.",
+      highlight: "Elegí rol y personaje antes de repartir."
+    }));
   };
 
   const advance = () => {
@@ -1217,7 +1239,7 @@ export function useTrucolocoMatch() {
       }
 
       if (!current.handStarted) {
-        return buildOpeningState(current.handNumber, current.scores, activeLane);
+        return buildOpeningState(current.handNumber, current.scores, activeLane, gameModeRef.current);
       }
 
       if (
@@ -1238,8 +1260,14 @@ export function useTrucolocoMatch() {
         return current;
       }
 
-      return buildOpeningState(current.handNumber + 1, current.scores, activeLane);
+      return buildOpeningState(current.handNumber + 1, current.scores, activeLane, gameModeRef.current);
     });
+  };
+
+  const setGameMode = (mode) => {
+    if (mode !== "comun" && mode !== "trucoloco") return;
+    if (state.handStarted && !state.matchWinner) return;
+    setGameModeState(mode);
   };
 
   const selectRole = (role) => {
@@ -1279,6 +1307,9 @@ export function useTrucolocoMatch() {
     roster,
     config: MATCH_CONFIG,
     roleOptions: availableRoles,
+    gameMode,
+    gameModeInfo: GAME_MODES[gameMode],
+    setGameMode,
     selectedRole,
     selectedCharacter,
     selectedRoleCharacters,
@@ -1287,6 +1318,16 @@ export function useTrucolocoMatch() {
     dealerName,
     tableFlow,
     ...phaseData,
+    // truco común: se apaga todo lo que no es truco (armas, poderes, acuerdo).
+    // El acuerdo se reporta sellado apenas cierra la mano para no gatear nada.
+    ...(gameMode === "comun"
+      ? {
+          canUseWeapon: false,
+          canUseRolePower: false,
+          weaponHand: [],
+          agreementApplied: state.handClosed ? true : state.agreementApplied
+        }
+      : null),
     playCard,
     useWeapon,
     negotiatePoints,
@@ -1302,14 +1343,16 @@ export function useTrucolocoMatch() {
     startNextHand,
     applyAgreement,
     // espejo multiplayer v1: el host serializa, los guests hidratan
-    getSnapshot: () => JSON.parse(JSON.stringify({ state, selectedRole, selectedCharacterIdsByRole })),
+    getSnapshot: () => JSON.parse(JSON.stringify({ state, selectedRole, selectedCharacterIdsByRole, gameMode })),
     hydrate: (snap) => {
       if (!snap || typeof snap !== "object" || !snap.state) return;
       if (snap.selectedRole) setSelectedRole(snap.selectedRole);
       if (snap.selectedCharacterIdsByRole) setSelectedCharacterIdsByRole(snap.selectedCharacterIdsByRole);
+      if (snap.gameMode === "comun" || snap.gameMode === "trucoloco") setGameModeState(snap.gameMode);
       setState(snap.state);
     },
     restartMatch,
+    returnToRoleSelect,
     advance,
     nextHand: advance,
     selectRole,

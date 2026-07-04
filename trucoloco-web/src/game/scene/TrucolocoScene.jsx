@@ -1339,21 +1339,21 @@ function getRingCameraPose(debateAction, isNarrow) {
   const rival = debateAction?.rivalPos ?? { x: 0.72, z: -0.18 };
   const midpointX = clamp(((player.x ?? -0.72) + (rival.x ?? 0.72)) * 0.5, -0.72, 0.72);
   const midpointZ = clamp(((player.z ?? 0.18) + (rival.z ?? -0.18)) * 0.5, -0.5, 0.5);
-  const followX = midpointX * 0.22;
-  const followZ = midpointZ * 0.16;
+  const followX = midpointX * 0.16;
+  const followZ = midpointZ * 0.1;
 
   return {
     position: [
       RING_WORLD_ORIGIN.x + followX,
-      RING_WORLD_ORIGIN.y + (isNarrow ? 2.35 : 2.18),
-      RING_WORLD_ORIGIN.z + (isNarrow ? 2.35 : 2.75) + followZ
+      RING_WORLD_ORIGIN.y + (isNarrow ? 2.04 : 2.12),
+      RING_WORLD_ORIGIN.z + (isNarrow ? 1.12 : 1.24) + followZ
     ],
     target: [
       RING_WORLD_ORIGIN.x + followX * 0.55,
-      RING_WORLD_ORIGIN.y + 0.16,
-      RING_WORLD_ORIGIN.z + midpointZ * 0.18
+      RING_WORLD_ORIGIN.y + 0.08,
+      RING_WORLD_ORIGIN.z - 0.1 + midpointZ * 0.1
     ],
-    fov: isNarrow ? 48 : 43
+    fov: isNarrow ? 54 : 50
   };
 }
 

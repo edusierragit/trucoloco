@@ -6,7 +6,7 @@ import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
-import { tableSeats } from "./game/data/characters";
+import { tableSeats, teams } from "./game/data/characters";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
@@ -33,6 +33,11 @@ const cameraViews = [
   { id: "seat", label: "Silla", hint: "1 · sentarte" },
   { id: "walk", label: "Caminar", hint: "2 · WASD" }
 ];
+
+const playerById = [...teams.A, ...teams.B].reduce((players, player) => {
+  players[player.id] = player;
+  return players;
+}, {});
 
 const RING_START_STATE = {
   mode: "ring",
@@ -635,8 +640,20 @@ export default function App() {
 
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
+  const [salaNotice, setSalaNotice] = useState("");
   const [remotePos, setRemotePos] = useState({});
   const lastPosSentRef = useRef(0);
+  const salaNoticeTimerRef = useRef(null);
+
+  const showSalaNotice = useCallback((message) => {
+    setSalaNotice(message);
+    if (salaNoticeTimerRef.current) window.clearTimeout(salaNoticeTimerRef.current);
+    salaNoticeTimerRef.current = window.setTimeout(() => setSalaNotice(""), 2600);
+  }, []);
+
+  useEffect(() => () => {
+    if (salaNoticeTimerRef.current) window.clearTimeout(salaNoticeTimerRef.current);
+  }, []);
 
   const handleMyMove = useCallback((x, z, yaw, moving) => {
     const room = netRoomRef.current;
@@ -690,11 +707,31 @@ export default function App() {
     }
   }, []);
 
+  const getSeatBlockReason = useCallback((seatId) => {
+    const seat = tableSeats.find((item) => item.seatId === seatId);
+    const owner = roster.find((peer) => peer.seatId === seatId);
+    if (owner && !owner.self) return `${owner.name} ya ocupa esa silla.`;
+    if (seat?.playerId) {
+      const characterOwner = roster.find((peer) => !peer.self && peer.characterId === seat.playerId);
+      if (characterOwner) return `${playerById[seat.playerId]?.name ?? "Ese personaje"} ya está en la sala.`;
+    }
+    return "";
+  }, [roster]);
+
   // reclamo de silla: viaja en el perfil; conflicto lo gana el reclamo más viejo
   // (empate: peerId menor). Todos aplican la misma regla → convergen solos.
   const claimSeat = useCallback((seatId) => {
     const room = netRoomRef.current;
     if (!room) return;
+    if (!seatId) {
+      room.updateProfile({ seatId: null, seatAt: null });
+      return;
+    }
+    const blockReason = getSeatBlockReason(seatId);
+    if (blockReason) {
+      showSalaNotice(blockReason);
+      return;
+    }
     room.updateProfile({ seatId, seatAt: Date.now() });
     const seat = tableSeats.find((item) => item.seatId === seatId);
     if (seat && match.canSwitchRole) {
@@ -703,7 +740,19 @@ export default function App() {
       // distintas dejan de verse como el mismo Pochex replicado
       if (seat.playerId) match.selectCharacter(seat.playerId);
     }
-  }, [match]);
+  }, [getSeatBlockReason, match, showSalaNotice]);
+
+  const claimSelectedSeat = useCallback(() => {
+    const selectedCharacterId = match.selectedCharacter?.id;
+    const exactSeat = tableSeats.find((seat) => seat.playerId === selectedCharacterId);
+    const fallbackSeat = tableSeats.find((seat) => seat.role === match.selectedRole && !getSeatBlockReason(seat.seatId));
+    const seat = exactSeat && !getSeatBlockReason(exactSeat.seatId) ? exactSeat : fallbackSeat;
+    if (!seat) {
+      showSalaNotice("No hay silla libre para ese rol/personaje.");
+      return;
+    }
+    claimSeat(seat.seatId);
+  }, [claimSeat, getSeatBlockReason, match.selectedCharacter, match.selectedRole, showSalaNotice]);
 
   // resolución de conflicto: si dos reclaman la misma silla, gana el más viejo
   useEffect(() => {
@@ -729,7 +778,8 @@ export default function App() {
     const me = roster.find((peer) => peer.self);
     if (!me || me.seatId || roster.length < 2 || autoSeatDoneRef.current) return;
     const taken = new Set(roster.filter((peer) => peer.seatId).map((peer) => peer.seatId));
-    const free = tableSeats.find((seat) => !taken.has(seat.seatId));
+    const takenCharacters = new Set(roster.filter((peer) => peer.characterId).map((peer) => peer.characterId));
+    const free = tableSeats.find((seat) => !taken.has(seat.seatId) && !takenCharacters.has(seat.playerId));
     if (free) {
       autoSeatDoneRef.current = true;
       claimSeat(free.seatId);
@@ -742,6 +792,15 @@ export default function App() {
   const backfillRef = useRef(null);
   const rosterRef = useRef([]);
   rosterRef.current = roster;
+  const urlSalaCode = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("sala")?.toUpperCase() ?? ""
+    : "";
+  const selfPeer = roster.find((peer) => peer.self) ?? null;
+  const mySeat = selfPeer?.seatId ? tableSeats.find((seat) => seat.seatId === selfPeer.seatId) ?? null : null;
+  const lockedCharacterIds = useMemo(
+    () => new Set(roster.filter((peer) => !peer.self && peer.characterId).map((peer) => peer.characterId)),
+    [roster]
+  );
 
   // buscar una sala ABIERTA existente (la otra cara del backfill)
   const buscarSalaAbierta = useCallback(() => {
@@ -786,14 +845,42 @@ export default function App() {
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
+  const startRoomHand = useCallback(() => {
+    const room = netRoomRef.current;
+    if (!room) {
+      match.startHand();
+      return;
+    }
+    if (!mySeat) {
+      showSalaNotice("Primero reclamá una silla en la sala.");
+      return;
+    }
+    if (!room.isHost) {
+      showSalaNotice("El anfitrión reparte la mano compartida.");
+      return;
+    }
+    match.startHand();
+    handleCameraViewChange("seat");
+  }, [handleCameraViewChange, match, mySeat, showSalaNotice]);
+
   // el perfil viaja solo cuando cambiás de rol o personaje
   useEffect(() => {
-    netRoomRef.current?.updateProfile({
+    const room = netRoomRef.current;
+    if (!room) return;
+    const characterId = match.selectedCharacter?.id ?? null;
+    const duplicateCharacter = characterId
+      ? rosterRef.current.find((peer) => !peer.self && peer.characterId === characterId)
+      : null;
+    if (duplicateCharacter) {
+      showSalaNotice(`${match.selectedCharacter.name} ya está en esta sala.`);
+      return;
+    }
+    room.updateProfile({
       name: match.selectedCharacter?.name ?? "Pibe",
       role: match.selectedRole,
-      characterId: match.selectedCharacter?.id ?? null
+      characterId
     });
-  }, [match.selectedRole, match.selectedCharacter]);
+  }, [match.selectedRole, match.selectedCharacter, showSalaNotice]);
 
   // link de invitación: ?sala=XXXX entra directo, sin prompts.
   // guard por ref: StrictMode corre los efectos dos veces en dev y un doble
@@ -1285,7 +1372,25 @@ export default function App() {
         </section>
 
         <aside className="stage-sidebar">
-          <Hud match={match} cameraView={cameraView} onReturnToTable={() => handleCameraViewChange("table")} />
+          <Hud
+            match={match}
+            cameraView={cameraView}
+            onReturnToTable={() => handleCameraViewChange("table")}
+            multiplayer={{
+              active: Boolean(netRoom || urlSalaCode),
+              connected: Boolean(netRoom),
+              isHost: Boolean(netRoom?.isHost),
+              roomCode: netRoom?.code ?? urlSalaCode,
+              count: roster.length,
+              mySeat,
+              myCharacterId: selfPeer?.characterId ?? null,
+              lockedCharacterIds,
+              claimSelectedSeat,
+              startRoomHand,
+              leaveSala,
+              notice: salaNotice
+            }}
+          />
         </aside>
       </div>
 
@@ -1314,21 +1419,33 @@ export default function App() {
                   {tableSeats.map((seat) => {
                     const owner = roster.find((peer) => peer.seatId === seat.seatId);
                     const mine = owner?.self;
+                    const characterOwner = !owner && seat.playerId
+                      ? roster.find((peer) => !peer.self && peer.characterId === seat.playerId)
+                      : null;
+                    const locked = Boolean((owner && !mine) || characterOwner);
+                    const seatClassName = [
+                      "seat-slot",
+                      mine ? "seat-slot-mine" : "",
+                      locked ? "seat-slot-taken seat-slot-locked" : ""
+                    ].filter(Boolean).join(" ");
                     return (
                       <button
                         key={seat.seatId}
-                        className={mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"}
+                        className={seatClassName}
+                        disabled={locked}
                         type="button"
-                        title={`${seat.label} · ${seat.role}`}
+                        title={characterOwner ? `${playerById[seat.playerId]?.name ?? "Personaje"} ya está en la sala` : `${seat.label} · ${seat.role}`}
                         onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
                       >
                         <small>{seat.team === "A" ? "CASA" : "VISITA"}</small>
                         <strong>{seat.role === "Jugador Estrella" ? "Estrella" : seat.role}</strong>
-                        <span>{owner ? owner.name : "libre"}</span>
+                        <span>{owner ? owner.name : characterOwner ? `${playerById[seat.playerId]?.name ?? "ocupado"} ocupado` : "libre"}</span>
                       </button>
                     );
                   })}
                 </div>
+
+                {salaNotice ? <p className="sala-warning">{salaNotice}</p> : null}
 
                 <button
                   className="sala-share"

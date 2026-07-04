@@ -1244,10 +1244,11 @@ select {
 
 .character-card-mark {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  width: 18px;
-  height: 18px;
+  top: 12px;
+  right: 12px;
+  left: auto;
+  width: 16px;
+  height: 16px;
   border: 1px solid color-mix(in srgb, var(--character-accent) 72%, #f3dfb6);
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.26);
@@ -4981,6 +4982,26 @@ select {
   cursor: default;
 }
 
+.seat-slot:disabled {
+  pointer-events: none;
+}
+
+.seat-slot-locked {
+  border-color: rgba(255, 130, 96, 0.35);
+  background: rgba(120, 38, 24, 0.13);
+}
+
+.sala-warning {
+  margin: -3px 0 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 130, 96, 0.28);
+  background: rgba(120, 38, 24, 0.22);
+  color: #ffc2a9;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
 /* espectador (espejo del host): mirás, todavía no jugás */
 .stage-espectador .canto-bar,
 .stage-espectador .bottom-dock,
@@ -5054,50 +5075,119 @@ select {
 .character-picker { gap: 6px; }
 .character-card {
   min-height: 0 !important;
-  padding: 8px 12px !important;
+  padding: 8px 34px 8px 12px !important;
 }
 .character-card strong { font-size: 0.95rem !important; }
 .character-card small { font-size: 0.68rem; }
 
-/* JUGAR: siempre visible, pegado abajo del panel, imposible de no ver */
+.character-card-locked {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: saturate(0.55);
+}
+
+.role-lock-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.role-change-button {
+  border: 1px solid rgba(240, 221, 180, 0.22);
+  background: rgba(240, 221, 180, 0.07);
+  color: #f0ddb4;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.role-change-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* Franja inferior: hint + boton de prueba (no es el CTA principal) */
 .role-ready-strip {
   position: sticky;
   bottom: 0;
   margin: 6px -14px 0;
-  padding: 12px 14px 14px;
+  padding: 10px 14px 14px;
   background: linear-gradient(180deg, transparent, rgba(8, 6, 4, 0.96) 40%);
   display: block !important;
 }
-.role-start-button {
+.role-ready-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: color-mix(in srgb, #f0ddb4 62%, transparent);
+  letter-spacing: 0.02em;
+}
+
+.role-ready-notice {
+  margin: -2px 0 8px;
+  color: #ffc2a9;
+  font-size: 11px;
+}
+.role-ready-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+/* Testear: opcion aislada y honesta, estilo outline discreto (no dorado hero) */
+.role-test-button {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 206, 110, 0.5);
-  background: linear-gradient(160deg, #d4941f, #7a4a0e);
-  color: #fff6e2;
+  gap: 1px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(240, 221, 180, 0.28);
+  background: rgba(240, 221, 180, 0.05);
+  color: #e8d6ad;
   cursor: pointer;
-  box-shadow: 0 0 24px rgba(255, 206, 110, 0.25);
-  transition: transform 0.08s, box-shadow 0.15s;
+  transition: transform 0.08s, border-color 0.15s, background 0.15s;
 }
-.role-start-button:hover:not(:disabled) {
-  box-shadow: 0 0 32px rgba(255, 206, 110, 0.45);
+.role-test-button:hover:not(:disabled) {
+  border-color: rgba(240, 221, 180, 0.5);
+  background: rgba(240, 221, 180, 0.09);
 }
-.role-start-button:active:not(:disabled) { transform: scale(0.98); }
-.role-start-button:disabled { opacity: 0.5; cursor: default; }
-.role-start-main {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+.role-test-button:active:not(:disabled) { transform: scale(0.99); }
+.role-test-button:disabled { opacity: 0.45; cursor: default; }
+.role-test-button-room:not(:disabled) {
+  border-style: solid;
+  border-color: rgba(145, 233, 246, 0.48);
+  background: linear-gradient(135deg, rgba(145, 233, 246, 0.16), rgba(213, 142, 42, 0.14));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 10px 26px rgba(0, 0, 0, 0.22);
 }
-.role-start-sub {
-  font-size: 0.75rem;
-  opacity: 0.85;
-  letter-spacing: 0.04em;
+.role-test-main {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.role-test-sub {
+  font-size: 0.66rem;
+  opacity: 0.62;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.role-secondary-button {
+  border: 1px solid rgba(240, 221, 180, 0.22);
+  border-radius: 12px;
+  background: rgba(14, 11, 8, 0.72);
+  color: rgba(240, 221, 180, 0.8);
+  font-weight: 800;
+  padding: 0 14px;
+  cursor: pointer;
+}
+.role-secondary-button:hover {
+  color: #fff0c8;
+  border-color: rgba(240, 221, 180, 0.45);
 }
 
 /* toggle de sala abierta: claro, no una caja de opción misteriosa */

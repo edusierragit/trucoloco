@@ -80,13 +80,49 @@ function Header({ match }) {
   );
 }
 
-function RoleSelector({ match }) {
+function RoleSelector({ match, multiplayer }) {
   const selectedRoleDef = roleDefinitions[match.selectedRole];
   const selectedCharacter = match.selectedCharacter ?? match.activeLane.human;
+  const inSala = Boolean(multiplayer?.active);
+  const salaConnected = Boolean(multiplayer?.connected ?? inSala);
+  const hasSalaSeat = Boolean(multiplayer?.mySeat);
+  const hostCanStartSala = inSala && salaConnected && multiplayer?.isHost && hasSalaSeat && match.canAdvance;
+  const selectedSeatLabel = multiplayer?.mySeat ? `${multiplayer.mySeat.label} · ${multiplayer.mySeat.role}` : "";
+  const primaryActionLabel = inSala && !salaConnected
+    ? "Conectando a sala..."
+    : !inSala
+    ? "Probar solo (vs bots)"
+    : hasSalaSeat
+      ? multiplayer?.isHost
+        ? "Repartir mano en sala"
+        : "Esperando al anfitrión"
+      : "Reclamar silla para jugar";
+  const primaryActionSub = inSala && !salaConnected
+    ? `Sala ${multiplayer?.roomCode ?? ""} · entrando por link`
+    : !inSala
+    ? `Modo de prueba · ${selectedCharacter.name} · ${match.selectedRole}`
+    : hasSalaSeat
+      ? multiplayer?.isHost
+        ? `Sala ${multiplayer.roomCode} · ${selectedSeatLabel}`
+        : `Sala ${multiplayer.roomCode} · ya tenés silla`
+      : `Sala ${multiplayer?.roomCode ?? ""} · elegí lugar y compartí link`;
   const startSelectedRole = () => {
     if (!match.canAdvance) return;
     match.startHand();
   };
+  const runPrimaryAction = () => {
+    if (inSala && !salaConnected) return;
+    if (!inSala) {
+      startSelectedRole();
+      return;
+    }
+    if (hasSalaSeat) {
+      multiplayer?.startRoomHand?.();
+      return;
+    }
+    multiplayer?.claimSelectedSeat?.();
+  };
+  const primaryDisabled = inSala && !salaConnected ? true : !inSala ? !match.canAdvance : hasSalaSeat ? !hostCanStartSala : false;
 
   if (match.handStarted) {
     return (
@@ -98,7 +134,19 @@ function RoleSelector({ match }) {
           </strong>
           <small>{match.selectedRole}</small>
         </div>
-        <span className="role-spotlight-tag">{selectedRoleDef.powerName}</span>
+        <div className="role-lock-actions">
+          <span className="role-spotlight-tag">{selectedRoleDef.powerName}</span>
+          {match.returnToRoleSelect ? (
+            <button
+              className="role-change-button"
+              disabled={inSala && !multiplayer?.isHost}
+              onClick={match.returnToRoleSelect}
+              type="button"
+            >
+              Cambiar rol
+            </button>
+          ) : null}
+        </div>
       </section>
     );
   }
@@ -141,19 +189,24 @@ function RoleSelector({ match }) {
         <div className="character-card-row">
           {match.selectedRoleCharacters.map((character) => {
             const active = character.id === selectedCharacter.id;
+            const lockedBySala = multiplayer?.lockedCharacterIds?.has(character.id) && character.id !== multiplayer?.myCharacterId;
 
             return (
               <button
                 key={character.id}
-                className={active ? "character-card character-card-active" : "character-card"}
-                disabled={!match.canSwitchRole && !active}
+                className={[
+                  "character-card",
+                  active ? "character-card-active" : "",
+                  lockedBySala ? "character-card-locked" : ""
+                ].filter(Boolean).join(" ")}
+                disabled={lockedBySala || (!match.canSwitchRole && !active)}
                 onClick={() => match.selectCharacter(character.id)}
                 style={{ "--character-accent": character.accent }}
                 type="button"
               >
                 <span className="character-card-mark" aria-hidden="true" />
                 <strong>{character.name}</strong>
-                <small>{character.role}</small>
+                <small>{lockedBySala ? "Ocupado en sala" : character.role}</small>
               </button>
             );
           })}
@@ -161,15 +214,32 @@ function RoleSelector({ match }) {
       </div>
 
       <article className="role-ready-strip">
-        <button
-          className="role-start-button"
-          disabled={!match.canAdvance}
-          onClick={startSelectedRole}
-          type="button"
-        >
-          <span className="role-start-main">▶ JUGAR</span>
-          <span className="role-start-sub">{selectedCharacter.name} · {match.selectedRole}</span>
-        </button>
+        <p className="role-ready-hint">
+          {inSala
+            ? hasSalaSeat
+              ? multiplayer?.isHost
+                ? "Ya tenés silla. Repartí cuando los pibes estén sentados."
+                : "Ya tenés silla. El anfitrión arranca la mano compartida."
+              : "Para jugar con amigos, reclamá tu silla y pasá el link de la sala."
+            : "Elegí tu rol y personaje. Podés probar solo o crear sala para amigos."}
+        </p>
+        {multiplayer?.notice ? <p className="role-ready-notice">{multiplayer.notice}</p> : null}
+        <div className="role-ready-actions">
+          <button
+            className={inSala ? "role-test-button role-test-button-room" : "role-test-button"}
+            disabled={primaryDisabled}
+            onClick={runPrimaryAction}
+            type="button"
+          >
+            <span className="role-test-main">{primaryActionLabel}</span>
+            <span className="role-test-sub">{primaryActionSub}</span>
+          </button>
+          {inSala && salaConnected ? (
+            <button className="role-secondary-button" onClick={multiplayer?.leaveSala} type="button">
+              Salir de sala
+            </button>
+          ) : null}
+        </div>
       </article>
     </section>
   );
@@ -1184,7 +1254,7 @@ function BottomDock({ match, handFocus, setHandFocus }) {
   );
 }
 
-export function Hud({ match, cameraView = "table", onReturnToTable }) {
+export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer }) {
   const [handFocus, setHandFocus] = useState(false);
   const tone = getRoleTone(match);
   const isAwayFromTable = match.handStarted && cameraView === "entry";
@@ -1202,7 +1272,7 @@ export function Hud({ match, cameraView = "table", onReturnToTable }) {
       <div className="hud-top-stack">
         <AmbientAudio />
       <Header match={match} />
-        <RoleSelector match={match} />
+        <RoleSelector match={match} multiplayer={multiplayer} />
       </div>
 
       <div className="hud-center">
