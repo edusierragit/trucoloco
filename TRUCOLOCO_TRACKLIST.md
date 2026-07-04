@@ -226,6 +226,17 @@
   dos humanos dejan de verse como el mismo Pochex. Verificado E2E.
 - Codex commiteado (extraccion del combate a src/game/conflict/).
 
+## 🗺️ DIVISIÓN DE TERRITORIOS (para no pisarse Claude/Codex)
+
+- **Codex ahora**: Sala del Conflicto — `src/game/conflict/`, ring de
+  `TrucolocoScene.jsx`, `WalkablePlayer.jsx`.
+- **Codex después (CODEX_TASK_4)**: refactor de perspectiva del hook —
+  `src/game/hooks/useTrucolocoMatch.js`, `rules/truco.js`. Lógica pura.
+- **Claude/Opus**: `App.jsx` (red/sala/UI), `scene/` (arte), `styles.css`,
+  `Hud.jsx`, `data/` (arte de cartas). Diseño y UX.
+- Punto de fricción único: `App.jsx` — Codex ya extrajo el combate a hooks,
+  no debería volver a tocarlo; Claude maneja la parte de sala/red.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
