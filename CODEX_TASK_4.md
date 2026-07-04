@@ -83,3 +83,22 @@ y agregá una nota de API al final de `../MULTIPLAYER_DESIGN.md`
 ("Paso 1 — implementado: firma de deriveView / applyIntent"). Si algo del
 contrato es imposible sin tocar archivos prohibidos, PARÁ y anotá el bloqueo
 en el tracklist en vez de forzarlo.
+
+
+## Agregado 2026-07-04 (Fable) — tests de gates de canto
+
+Al extraer `deriveView(state, mySeatId)` pura, sumá a `scripts/` tests que
+blinden los gates del truco común (hoy no son testeables porque viven dentro
+del hook de React):
+
+1. **Envido**: solo cantable en la primera vuelta, antes de que tu asiento
+   juegue su carta; respeta quién es mano; no cantable con truco pendiente.
+2. **Cadena del truco**: truco→retruco→vale cuatro, solo puede subir quien
+   tiene el derecho (el que aceptó la última suba); nunca dos subas seguidas
+   del mismo equipo.
+3. **Quiero/No quiero**: solo el equipo cantado puede responder.
+4. **Modo de juego**: con `gameMode: "comun"` el estado inicial no tiene
+   cartas bonus en ninguna mano ni armas (ya implementado en el hook — ver
+   `dealSeatHands(pool, gameMode)`); tu refactor debe conservar ese parámetro.
+
+Estos tests corren en `check:rules` o `check:flow` (Node puro).
