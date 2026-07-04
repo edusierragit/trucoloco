@@ -4649,8 +4649,8 @@ select {
 
 .sala-panel {
   position: fixed;
-  top: 14px;
-  right: 14px;
+  top: 84px;
+  left: 14px;
   z-index: 44;
   width: 244px;
   padding: 12px 14px;
@@ -4776,13 +4776,13 @@ select {
 /* unirse con código pegado a mano */
 .sala-join-box {
   position: fixed;
-  top: 14px;
-  right: 14px;
+  top: 84px;
+  left: 14px;
   z-index: 44;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .sala-join-row {

@@ -898,7 +898,7 @@ export default function App() {
     const currentMatch = matchRef.current;
 
     if (hotspot === "door") {
-      handleCameraViewChange("entry");
+      handleCameraViewChange("seat");
       return;
     }
 
@@ -1027,12 +1027,12 @@ export default function App() {
           {cameraView === "walk" && !isSeatingRitual ? (
             <>
               <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
-                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Puerta" : "Caminar"}</span>
+                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Mesa" : "Caminar"}</span>
                 <strong>
                   {walkHotspot === "table"
                     ? "F · Sentarse en mesa"
                     : walkHotspot === "door"
-                      ? "F · Volver a puerta"
+                      ? "F · Sentarse a la mesa"
                       : walkHotspot === "bar"
                         ? "F · Mirar barra"
                         : walkHotspot === "ring"
@@ -1042,11 +1042,6 @@ export default function App() {
                 <span className="walk-hint-character">
                   {match.selectedCharacter?.name ?? match.activeLane.human.name}
                 </span>
-                {walkAnimationDebug?.clip ? (
-                  <span className={walkAnimationDebug.override ? "walk-hint-clip walk-hint-clip-override" : "walk-hint-clip"}>
-                    {walkAnimationDebug.mode} · {walkAnimationDebug.clip}{walkAnimationDebug.override ? " · override" : ""}
-                  </span>
-                ) : null}
                 <small>
                   {walkNotice ||
                     (walkHotspot === "table"
@@ -1054,12 +1049,12 @@ export default function App() {
                         ? "Confirmás rol y se reparten cartas"
                         : "Entrás al duelo desde tu silla"
                       : walkHotspot === "door"
-                        ? "Salís a la vista de entrada"
+                        ? "Volvés a tu silla en la mesa"
                         : walkHotspot === "bar"
-                          ? "Lugar reservado para props y acciones"
+                          ? "Botellas, humo y promesas de truco"
                         : walkHotspot === "ring"
-                          ? "Entrás a una sala aparte: golpes, empujones y cero jurisprudencia"
-                          : "Q/E rotan cámara · Shift corre · Espacio salta · J box · [/] calibran clip · 0 resetea")}
+                          ? "Entrás a una sala aparte: golpes y cero jurisprudencia"
+                          : "WASD para moverte · Q/E giran la cámara · Shift corre")}
                 </small>
               </div>
 
