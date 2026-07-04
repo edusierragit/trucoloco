@@ -1495,6 +1495,22 @@ export function TrucolocoScene({
     };
   }, [cameraView, gl]);
 
+  // zoom con la rueda: dolly hacia/desde el punto de mira. Deja acercar cuando
+  // el encuadre se abre de mas y los pjs quedan fuera de caja (pedido usuario).
+  const zoomRef = useRef(0);
+  useEffect(() => {
+    zoomRef.current = 0;
+    if (cameraView === "walk") return undefined;
+    const el = gl.domElement;
+    const onWheel = (event) => {
+      event.preventDefault();
+      const dir = event.deltaY > 0 ? -1 : 1; // rueda arriba = acercar
+      zoomRef.current = Math.max(-0.5, Math.min(0.72, zoomRef.current + dir * 0.06));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [cameraView, gl]);
+
   useFrame((state, delta) => {
     if (isWalkMode) return;
 
@@ -1526,6 +1542,12 @@ export function TrucolocoScene({
         targetLookAt.set(ex + rx, ey + dy + look.pitch * flat, ez + rz);
       }
     }
+    // dolly de zoom: acerca/aleja la posicion sobre la linea ojo→mira
+    const zoom = zoomRef.current;
+    const zoomedX = targetLookAt.x + (targetX - targetLookAt.x) * (1 - zoom);
+    const zoomedY = targetLookAt.y + (targetY - targetLookAt.y) * (1 - zoom);
+    const zoomedZ = targetLookAt.z + (targetZ - targetLookAt.z) * (1 - zoom);
+
     const cameraSpeed = cameraView === "ring" ? 8.2 : cameraView === "seat" ? 4.7 : 3.45;
     const targetSpeed = cameraView === "ring" ? 8.8 : 5.2;
     const cameraAlpha = 1 - Math.exp(-Math.min(delta, 0.12) * cameraSpeed);
@@ -1539,13 +1561,13 @@ export function TrucolocoScene({
       Math.abs(camera.position.y) > 100 ||
       Math.abs(camera.position.z) > 100
     ) {
-      camera.position.set(targetX, targetY, targetZ);
+      camera.position.set(zoomedX, zoomedY, zoomedZ);
       cameraTargetRef.current.copy(targetLookAt);
     } else {
       // [VISUAL] Smooth both camera position and gaze target so view changes feel intentional, not floaty.
-      camera.position.x += (targetX - camera.position.x) * cameraAlpha;
-      camera.position.y += (targetY - camera.position.y) * cameraAlpha;
-      camera.position.z += (targetZ - camera.position.z) * cameraAlpha;
+      camera.position.x += (zoomedX - camera.position.x) * cameraAlpha;
+      camera.position.y += (zoomedY - camera.position.y) * cameraAlpha;
+      camera.position.z += (zoomedZ - camera.position.z) * cameraAlpha;
       cameraTargetRef.current.lerp(targetLookAt, targetAlpha);
     }
 

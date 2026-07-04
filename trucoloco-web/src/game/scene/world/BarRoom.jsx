@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, Text } from "@react-three/drei";
+import { CanvasTexture, RepeatWrapping } from "three";
 
 const BAR = {
   wood: "#2b160d",
@@ -81,6 +82,52 @@ function CurtainWall({ side }) {
   );
 }
 
+// pared de ladrillos procedural: textura canvas (1 draw call) con hiladas
+// trabadas, mortero oscuro y variacion por ladrillo — reemplaza el fondo negro
+// indefinido detras del cartel y las botellas
+function makeBrickTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 512;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#0b0605"; // mortero
+  ctx.fillRect(0, 0, 512, 512);
+  const bh = 44;
+  const bw = 96;
+  const gap = 5;
+  for (let row = 0, y = 0; y < 512 + bh; y += bh, row++) {
+    const off = row % 2 ? -bw / 2 : 0;
+    for (let x = off - bw; x < 512 + bw; x += bw) {
+      const shade = 0.72 + Math.random() * 0.42;
+      const r = Math.min(255, Math.floor(64 * shade));
+      const g = Math.min(255, Math.floor(31 * shade));
+      const b = Math.min(255, Math.floor(22 * shade));
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x + gap, y + gap, bw - gap * 2, bh - gap * 2);
+      // reflejo tenue arriba del ladrillo
+      ctx.fillStyle = `rgba(255,190,150,${0.04 + Math.random() * 0.04})`;
+      ctx.fillRect(x + gap, y + gap, bw - gap * 2, 4);
+    }
+  }
+  const tex = new CanvasTexture(c);
+  tex.wrapS = tex.wrapT = RepeatWrapping;
+  tex.repeat.set(3, 1.4);
+  return tex;
+}
+
+function BrickBackWall() {
+  const tex = useMemo(() => makeBrickTexture(), []);
+  return (
+    <group name="World_BrickWall">
+      {/* pared trasera de ladrillo: fondo definido detras del cartel y la barra */}
+      <mesh position={[0, 0.5, -4.08]} receiveShadow>
+        <planeGeometry args={[10.9, 6.2]} />
+        <meshStandardMaterial map={tex} roughness={0.98} metalness={0.02} />
+      </mesh>
+    </group>
+  );
+}
+
 function BackCounter() {
   const bottleColors = [BAR.bottleGreen, BAR.bottleAmber, BAR.bottleBlue, "#4f2118", "#302a15"];
 
@@ -112,14 +159,26 @@ function BackCounter() {
             const color = bottleColors[(row + index) % bottleColors.length];
 
             return (
-              <group key={index} position={[x, 0.18, 0.1]}>
+              <group key={index} position={[x, 0.14, 0.1]}>
+                {/* cuerpo esbelto de vidrio */}
                 <mesh castShadow>
-                  <cylinderGeometry args={[0.045, 0.06, height, 10]} />
-                  <meshStandardMaterial color={color} roughness={0.35} transparent opacity={0.78} />
+                  <cylinderGeometry args={[0.038, 0.042, height, 12]} />
+                  <meshStandardMaterial color={color} roughness={0.18} metalness={0.1} transparent opacity={0.66} />
                 </mesh>
-                <mesh position={[0, height * 0.5 + 0.055, 0]} castShadow>
-                  <cylinderGeometry args={[0.02, 0.026, 0.11, 8]} />
-                  <meshStandardMaterial color="#0d0806" roughness={0.5} />
+                {/* hombro conico */}
+                <mesh position={[0, height * 0.5 + 0.05, 0]} castShadow>
+                  <cylinderGeometry args={[0.017, 0.04, 0.1, 12]} />
+                  <meshStandardMaterial color={color} roughness={0.2} transparent opacity={0.66} />
+                </mesh>
+                {/* cuello largo fino */}
+                <mesh position={[0, height * 0.5 + 0.16, 0]} castShadow>
+                  <cylinderGeometry args={[0.015, 0.017, 0.14, 10]} />
+                  <meshStandardMaterial color={color} roughness={0.2} transparent opacity={0.7} />
+                </mesh>
+                {/* tapa/corcho */}
+                <mesh position={[0, height * 0.5 + 0.24, 0]} castShadow>
+                  <cylinderGeometry args={[0.017, 0.017, 0.035, 8]} />
+                  <meshStandardMaterial color="#160d07" roughness={0.7} />
                 </mesh>
               </group>
             );
@@ -525,6 +584,7 @@ export function BarRoom() {
   return (
     <group name="World_BarRoom">
       <FloorPlanks />
+      <BrickBackWall />
       <CurtainWall side="left" />
       <CurtainWall side="right" />
       <BackCounter />

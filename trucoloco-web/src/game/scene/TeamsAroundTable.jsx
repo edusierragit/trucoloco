@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Billboard, Text } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
@@ -18,19 +18,6 @@ function getVisibleRosterSeats(match) {
 }
 
 // Individual character — ring pulses based on role and active modifier
-// frases del antro: cada personaje tiene su veneno (CLAUDE.md: primero jugable,
-// despues gracioso — ya estamos en la etapa graciosa)
-const SEAT_QUOTES = {
-  gazpacho: ["Ya gane. Avisale al resto.", "Esto es MI mesa.", "¿Miedo? Yo reparto miedo.", "EXODIA me pertenece."],
-  irvyn: ["Matematica pura, tranqui.", "Esa carta la vi venir.", "Interesante... para vos."],
-  marvyn: ["A llorar al campito.", "Segui participando.", "Eso dolio, ¿no?"],
-  myke: ["...", "Yo no fui.", "Todo bajo control."],
-  pochex: ["Toma pa' vos.", "El fierro no perdona.", "¡Aguante la mugre fina!"],
-  cubano: ["Suave, suave.", "Esto se cocina solo."],
-  pol: ["Con permiso.", "Disculpen la molestia.", "Que gane el mejor (yo)."],
-  generic: ["¡TRUCOLOCO!", "Mira lo que traigo.", "El Utoneo manda.", "¡Cagon!"]
-};
-
 function CharacterSeat({
   seat,
   character,
@@ -56,23 +43,6 @@ function CharacterSeat({
   const upperRef = useRef(null);
   const groupRef = useRef(null);
   const spawnRef = useRef(0);
-  const [quote, setQuote] = useState(null);
-
-  useEffect(() => {
-    if (!isCurrentActor || isRoleSelect) return undefined;
-    if (Math.random() > 0.45) return undefined;
-    const key = (character.name ?? "").split(" ")[0].toLowerCase();
-    const pool = [...(SEAT_QUOTES[key] ?? []), ...SEAT_QUOTES.generic];
-    const timer = window.setTimeout(() => {
-      setQuote(pool[Math.floor(Math.random() * pool.length)]);
-    }, 350);
-    const clear = window.setTimeout(() => setQuote(null), 3100);
-    return () => {
-      window.clearTimeout(timer);
-      window.clearTimeout(clear);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCurrentActor]);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
@@ -306,17 +276,6 @@ function CharacterSeat({
             <boxGeometry args={[0.34, 0.08, 0.22]} />
             <meshStandardMaterial color={character.accent} roughness={0.72} metalness={0.12} />
           </mesh>
-          <Text
-            position={[0, 0.95, -0.5]}
-            rotation={[0, -seatYaw, 0]}
-            fontSize={0.075}
-            color="#91e9f6"
-            anchorX="center"
-            anchorY="middle"
-            letterSpacing={0.08}
-          >
-            EN EL ANTRO
-          </Text>
         </group>
       ) : (
         <CharacterFigure
@@ -328,18 +287,6 @@ function CharacterSeat({
           forceProcedural={useSimplifiedModel}
         />
       )}
-
-      {quote ? (
-        <Billboard position={[0, 2.55, 0]} follow>
-          <mesh position={[0, 0, -0.01]}>
-            <planeGeometry args={[Math.min(2.1, quote.length * 0.085 + 0.4), 0.34]} />
-            <meshBasicMaterial color="#0c0805" transparent opacity={0.82} />
-          </mesh>
-          <Text fontSize={0.11} color="#ffe9c9" anchorX="center" anchorY="middle" maxWidth={2} textAlign="center">
-            {quote}
-          </Text>
-        </Billboard>
-      ) : null}
 
       {netPeer ? (
         <Billboard position={[0, 2.35, 0]} follow>
