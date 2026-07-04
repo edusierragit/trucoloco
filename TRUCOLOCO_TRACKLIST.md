@@ -4,6 +4,21 @@
 > proyecto: qué se hizo, qué está en curso y qué falta. Cualquier agente (Claude,
 > Codex) debe actualizarlo al terminar su tarea.
 
+## ✅ HECHO por Opus (2026-07-04)
+
+- **SELECTOR DE MODO — Truco Común vs TRUCOLOCO (UI)** — dos cartas grandes al
+  tope de la pantalla inicial ("MODO DE JUEGO", antes del "PASO 2 · ELEGÍ ROL"):
+  Común sobrio (verde criollo) vs TRUCOLOCO neón, con los taglines de `GAME_MODES`
+  y el activo bien marcado. Llama `match.setGameMode(id)`. En sala solo el host
+  puede cambiarlo. **Chip de modo** discreto junto al marcador durante la partida
+  (`.mode-chip`, tinte por modo). Verificado que en común no queda rastro trucoloco
+  (armas/poder/acuerdo ya vienen apagados del motor). Checks: `check:rules`,
+  `check:flow`, `build`, `check:ui` y `check:ui` con `?modo=comun` → todos OK.
+- **UX mesa/antro (pase anterior)** — cartas en mano flotan sin la caja del panel;
+  tilde de personaje a la derecha (no pisa el nombre); cámara de role-select sin
+  barrotes de techo; fuera las frases flotantes sobre los pjs; pared de ladrillos
+  procedural detrás del cartel; botellas rediseñadas; zoom con la rueda del mouse.
+
 ## ✅ HECHO (commits recientes, checks verdes en todos)
 
 - **BUG HISTÓRICO: las cartas jugadas por fin muestran su cara** — los RoundedBox

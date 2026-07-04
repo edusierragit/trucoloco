@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { sfx } from "../audio/sfx";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { roleDefinitions } from "../data/characters";
+import { GAME_MODES } from "../config";
 
 const BOTTOM_OWNED_ADVANCE_PHASES = ["pre-rival-lead", "rival-leads", "trick-closed"];
 
@@ -63,7 +64,12 @@ function Header({ match }) {
     <header className={isRoleSelect ? "hud-top hud-top-select" : "hud-top hud-top-compact"}>
       <div className="title-block">
         <h1>TRUCOLOCO</h1>
-        {isRoleSelect ? null : <p>{subtitle}</p>}
+        {isRoleSelect ? null : (
+          <div className="title-sub">
+            <span className={`mode-chip mode-chip-${match.gameMode}`}>{match.gameModeInfo.label}</span>
+            <p>{subtitle}</p>
+          </div>
+        )}
       </div>
 
       {isRoleSelect ? null : (
@@ -151,10 +157,38 @@ function RoleSelector({ match, multiplayer }) {
     );
   }
 
+  const canChangeMode = !inSala || multiplayer?.isHost;
+
   return (
     <section className="role-selector role-selector-arcade">
+      <div className="mode-select">
+        <span className="panel-kicker">Modo de juego</span>
+        <div className="mode-card-row">
+          {Object.values(GAME_MODES).map((mode) => {
+            const active = match.gameMode === mode.id;
+
+            return (
+              <button
+                key={mode.id}
+                className={[
+                  "mode-card",
+                  `mode-card-${mode.id}`,
+                  active ? "mode-card-active" : ""
+                ].filter(Boolean).join(" ")}
+                disabled={!canChangeMode && !active}
+                onClick={() => match.setGameMode(mode.id)}
+                type="button"
+              >
+                <strong>{mode.label}</strong>
+                <small>{mode.tagline}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="role-select-hero">
-        <span className="panel-kicker">Paso 1 · Rol y personaje</span>
+        <span className="panel-kicker">Paso 2 · Rol y personaje</span>
         <h2>Elegí rol</h2>
       </div>
 
