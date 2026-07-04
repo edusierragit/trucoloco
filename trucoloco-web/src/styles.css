@@ -4982,3 +4982,14 @@ select {
 .stage-espectador .stage-sidebar {
   display: none;
 }
+
+/* header más fino en juego: el antro manda, no el texto */
+.hud-top-compact .title-block h1 {
+  font-size: 15px;
+  letter-spacing: 0.24em;
+  opacity: 0.75;
+}
+
+.hud-top-compact .scoreboard strong {
+  font-size: 26px;
+}

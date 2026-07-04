@@ -167,6 +167,21 @@
 - **CODEX_TASK_3 reescrita**: ahora es la Sala del Conflicto (extracción de
   App.jsx a src/game/conflict/ + cámara + hit timing + armas + feel).
 
+## ✅ HECHO (2026-07-04, madrugada — iteración de estética y presencia)
+
+- **TE VES CON TUS AMIGOS**: la caminata viaja por P2P — el personaje del otro
+  camina EN TU antro con nombre y anillo cian (verificado por Edu en vivo).
+- **Espectador total**: el guest ya no ve UI de juego local (chau menú roto,
+  chau partidas divergentes); el host manda la mesa apenas alguien entra.
+- **Taburetes de bar** detrás de cada personaje (chau pedestales).
+- **Lore en las paredes**: carteles SE BUSCA (Gazpacho, Myke Keta) + diana de
+  dardos con dardos clavados + bruma alta permanente.
+- **Cartas con vida**: caen con rebote y giro natural determinístico (igual en
+  todas las pantallas del espejo).
+- **Los personajes HABLAN**: globos de frases lore al actuar (ego de Gazpacho,
+  veneno de Marvyn, "¡TRUCOLOCO!", "El Utoneo manda").
+- **Murmullo de bar** (WebAudio: colchón + clinks) y header afinado.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
