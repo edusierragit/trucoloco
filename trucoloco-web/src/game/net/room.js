@@ -1,6 +1,13 @@
 // Salas online de Trucoloco — P2P sin servidor (trystero via relays nostr).
-// Etapa 1: presencia — crear sala, entrar por link, ver quién está y qué rol
-// eligió. La sincronización de la partida se monta encima de esta base.
+//
+// MODELO HOST-AUTORITATIVO (ver MULTIPLAYER_DESIGN.md):
+// - El host (creador de la sala) corre la única verdad del match.
+// - El host emite snapshots ("snap") tras cada mutación; los guests hidratan.
+//   Los guests solo aceptan snapshots del peer identificado como host.
+// - Los guests NO mutan su partida local: mandan intents ("intent") con su
+//   jugada {action, seatId, payload}; solo el host los procesa y los valida
+//   contra las reglas del match antes de aplicarlos. Nada del guest se confía.
+// - "pos" (caminata) y "hello" (perfil) son presencia pura, validados de shape.
 import { joinRoom, selfId } from "trystero";
 
 const APP_ID = "frikex-trucoloco-v1";
@@ -24,13 +31,38 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   const hello = room.makeAction("hello");
   const snap = room.makeAction("snap");
   const pos = room.makeAction("pos");
+  const intent = room.makeAction("intent");
   let onSnapshotCb = null;
   let onPosCb = null;
+  let onIntentCb = null;
+  // quién es el host: yo si creé la sala; si no, el primer peer cuyo hello
+  // llegue con isHost (primero gana — un guest no puede robar el rol después)
+  let hostPeerId = isHost ? selfId : null;
+  // un snap puede llegar antes que el hello que identifica al host: se guarda
+  // y se entrega recién cuando el remitente queda confirmado como host
+  let pendingHostSnap = null;
+
   pos.onMessage = (data, context) => {
-    if (data && typeof data === "object") onPosCb?.(context.peerId, data);
+    if (!data || typeof data !== "object") return;
+    // posiciones corruptas (NaN/Infinity/strings) no entran a la escena 3D
+    if (!Number.isFinite(data.x) || !Number.isFinite(data.z) || !Number.isFinite(data.yaw)) return;
+    onPosCb?.(context.peerId, data);
   };
-  snap.onMessage = (data) => {
-    if (data && typeof data === "object") onSnapshotCb?.(data);
+  snap.onMessage = (data, context) => {
+    if (isHost) return; // el host ES la autoridad: no hidrata de nadie
+    if (!data || typeof data !== "object") return;
+    if (!hostPeerId) {
+      pendingHostSnap = { peerId: context.peerId, data };
+      return;
+    }
+    if (context.peerId !== hostPeerId) return; // snapshot forjado por un guest
+    onSnapshotCb?.(data);
+  };
+  intent.onMessage = (data, context) => {
+    if (!isHost) return; // solo la autoridad procesa jugadas remotas
+    if (!data || typeof data !== "object") return;
+    if (typeof data.action !== "string" || typeof data.seatId !== "string") return;
+    onIntentCb?.(context.peerId, data);
   };
 
   // ── chat de voz P2P (full mesh, 6 peers es viable) ──
@@ -76,6 +108,15 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
       isHost: Boolean(data.isHost),
       overflow: peers.size + 1 >= ROOM_LIMIT
     });
+    // primer hello con isHost fija la identidad del host de la sala
+    if (!isHost && !hostPeerId && data.isHost) {
+      hostPeerId = context.peerId;
+      if (pendingHostSnap?.peerId === hostPeerId) {
+        const buffered = pendingHostSnap.data;
+        pendingHostSnap = null;
+        onSnapshotCb?.(buffered);
+      }
+    }
     emitRoster();
   };
 
@@ -124,6 +165,13 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     },
     onSnapshot(cb) {
       onSnapshotCb = cb;
+    },
+    // guest → host: jugada como intent; el host valida y aplica (o ignora)
+    sendIntent(payload) {
+      void intent.send(payload, hostPeerId && hostPeerId !== selfId ? { target: hostPeerId } : undefined);
+    },
+    onIntent(cb) {
+      onIntentCb = cb;
     },
     async enableMic() {
       if (micStream) return true;

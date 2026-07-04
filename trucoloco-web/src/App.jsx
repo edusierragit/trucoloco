@@ -11,6 +11,7 @@ import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
 import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
+import { buildGuestMatchView } from "./game/net/guestView";
 import {
   getCombatPos as getConflictCombatPos,
   getCombatVector as getConflictCombatVector,
@@ -624,8 +625,20 @@ export default function App() {
       setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw } }))
     );
     if (!isHost) {
-      // espejo v1: tu pantalla ES la partida del host
+      // guest: tu pantalla ES la partida del host (hydrate valida el shape)
       room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
+    } else {
+      // host-autoritativo: snapshot inicial apenas existe la sala, para que
+      // el primer guest no se quede con su estado local por defecto (el
+      // onPeerJoin de room.js se lo manda al que entra)
+      room.sendSnapshot(matchRef.current.getSnapshot());
+      // jugadas remotas: el intent vale solo si la silla que dice usar es la
+      // que ese peer reclamó en la sala; después el match revalida los gates
+      room.onIntent((peerId, intentData) => {
+        const sender = rosterRef.current.find((peer) => peer.peerId === peerId);
+        if (!sender || sender.seatId !== intentData.seatId) return;
+        matchRef.current.applyIntent?.(intentData);
+      });
     }
     netRoomRef.current = room;
     setNetRoom(room);
@@ -736,6 +749,26 @@ export default function App() {
     }
   }, [roster, netRoom, claimSeat]);
 
+  // ── vista de guest (host-autoritativo) ────────────────────────────────────
+  // el guest no muta su match local: sus acciones viajan como intents al host
+  // y la mesa se actualiza cuando vuelve el snapshot. buildGuestMatchView
+  // deriva humanHand/gates de SU silla con la misma interfaz del hook.
+  const mySeatId = useMemo(() => roster.find((peer) => peer.self)?.seatId ?? null, [roster]);
+  const isGuest = Boolean(netRoom && !netRoom.isHost);
+
+  const sendIntent = useCallback((action, payload = {}) => {
+    const room = netRoomRef.current;
+    if (!room || room.isHost) return;
+    const seatId = rosterRef.current.find((peer) => peer.self)?.seatId;
+    if (!seatId) return;
+    room.sendIntent({ action, seatId, playerId: getPlayerId(), payload });
+  }, []);
+
+  const viewMatch = useMemo(
+    () => (isGuest ? buildGuestMatchView(match, mySeatId, sendIntent) : match),
+    [isGuest, match, mySeatId, sendIntent]
+  );
+
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
   const [backfillOpen, setBackfillOpen] = useState(false);
@@ -823,6 +856,16 @@ export default function App() {
     if (!match.canAdvance || match.canPlayCard) return undefined;
     const autoPhases = ["table-auto-turn", "pre-rival-lead", "rival-leads", "trick-closed", "envido-resolution"];
     if (!autoPhases.includes(match.phase)) return undefined;
+    // silla de un humano remoto: el host espera su intent en vez de jugarla
+    // el bot (sin timeout de suplente todavía — ver MULTIPLAYER_DESIGN.md §2)
+    const turnPhases = ["table-auto-turn", "pre-rival-lead", "rival-leads"];
+    if (
+      turnPhases.includes(match.phase) &&
+      match.currentTurnSeatId &&
+      roster.some((peer) => !peer.self && peer.seatId === match.currentTurnSeatId)
+    ) {
+      return undefined;
+    }
     const delay = match.phase === "trick-closed" ? 2100 : match.phase === "envido-resolution" ? 2300 : 1000;
     const timer = window.setTimeout(() => {
       if (match.phase === "envido-resolution") match.settleEnvido();
@@ -831,7 +874,7 @@ export default function App() {
       else match.advance();
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [autoPlayEnabled, match]);
+  }, [autoPlayEnabled, match, netRoom, roster]);
 
   // audio: el contexto se despierta con el primer gesto (política de autoplay)
   useEffect(() => {
@@ -965,7 +1008,8 @@ export default function App() {
     cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : "",
     cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : "",
     cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : "",
-    netRoom && !netRoom.isHost ? "stage-espectador" : ""
+    // espectador puro = guest SIN silla; con silla reclamada, el guest juega
+    isGuest && !mySeatId ? "stage-espectador" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {
@@ -1009,7 +1053,7 @@ export default function App() {
               remoteWalkers={roster
                 .filter((peer) => !peer.self && remotePos[peer.peerId])
                 .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
-              match={match}
+              match={viewMatch}
               cameraView={cameraView}
               debateAction={debateState}
               selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
@@ -1285,7 +1329,7 @@ export default function App() {
         </section>
 
         <aside className="stage-sidebar">
-          <Hud match={match} cameraView={cameraView} onReturnToTable={() => handleCameraViewChange("table")} />
+          <Hud match={viewMatch} cameraView={cameraView} onReturnToTable={() => handleCameraViewChange("table")} />
         </aside>
       </div>
 

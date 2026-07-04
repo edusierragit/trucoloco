@@ -1312,6 +1312,11 @@ function RemoteWalkers({ walkers }) {
 const ROOM_OFFSET = { x: 0, y: -1.35, z: 0.25 };
 
 function getOwnSeat(match) {
+  // guest multiplayer: la vista trae su silla reclamada (puede ser equipo B)
+  if (match.ownSeatId) {
+    const own = tableSeats.find((seat) => seat.seatId === match.ownSeatId);
+    if (own) return own;
+  }
   return tableSeats.find((seat) => seat.team === "A" && seat.role === match.selectedRole) ?? tableSeats[0];
 }
 

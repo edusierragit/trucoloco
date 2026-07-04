@@ -415,6 +415,144 @@ const shouldRivalRaiseTruco = (rivalHand, currentBet, trickWins) => {
 
 const getTrucoSlug = (label) => label.toLowerCase().replace(" ", "-");
 
+// ── Multiplayer host-autoritativo ────────────────────────────────────────────
+// El host corre la única verdad del match. Los guests mandan intents
+// {action, seatId, payload} (ver src/game/net/room.js) y el host los valida
+// acá con los MISMOS gates que usa para sus propias jugadas; un intent
+// inválido se ignora en silencio. Tras cada mutación el host emite un
+// snapshot que los guests hidratan, cerrando el ciclo intent→estado→snapshot.
+
+const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
+
+// El snapshot viene de la red: no se confía en su shape. Solo se validan los
+// campos que rompen el juego si llegan corruptos (scores no numéricos, manos
+// que no son arrays, etc.); el resto del estado es presentacional.
+const isValidSnapshotState = (state) => {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return false;
+  if (typeof state.handStarted !== "boolean" || typeof state.handClosed !== "boolean") return false;
+  if (!isFiniteNumber(state.handNumber) || state.handNumber < 1) return false;
+  if (!state.scores || !isFiniteNumber(state.scores.A) || !isFiniteNumber(state.scores.B)) return false;
+  if (!state.trickWins || !isFiniteNumber(state.trickWins.A) || !isFiniteNumber(state.trickWins.B)) return false;
+  if (!isFiniteNumber(state.vueltaIndex) || !isFiniteNumber(state.activeBet)) return false;
+  if (!Array.isArray(state.tableCards) || !Array.isArray(state.trickHistory)) return false;
+  if (typeof state.handsBySeat !== "object" || state.handsBySeat === null || Array.isArray(state.handsBySeat)) return false;
+  if (!Object.values(state.handsBySeat).every((hand) => Array.isArray(hand))) return false;
+  return true;
+};
+
+// Envido genérico por silla: la comparación siempre es entre las dos sillas
+// del rol del cantor (lane A vs lane B) para que el mapeo de equipos de
+// resolveEnvido no dependa de quién canta. El que responde es el otro equipo.
+const applyEnvidoCallBySeat = (current, seat, activeLane) => {
+  const laneSeatA = getSeatByTeamRole("A", seat.role);
+  const laneSeatB = getSeatByTeamRole("B", seat.role);
+  const resolution = resolveEnvido(
+    current.handsBySeat?.[laneSeatA.seatId] ?? [],
+    current.handsBySeat?.[laneSeatB.seatId] ?? [],
+    current.manoTeam
+  );
+  const callerTeam = seat.team;
+  const callerValue = callerTeam === "A" ? resolution.humanValue : resolution.rivalValue;
+  const responderValue = callerTeam === "A" ? resolution.rivalValue : resolution.humanValue;
+  const responderWants = responderValue >= 24 || responderValue >= callerValue - 2;
+  const winner = responderWants ? resolution.winner : callerTeam;
+  const points = responderWants ? 2 : 1;
+  const winnerName = getPlayerName(winner, activeLane);
+
+  return {
+    ...current,
+    envidoPending: {
+      accepted: responderWants,
+      humanValue: resolution.humanValue,
+      rivalValue: resolution.rivalValue,
+      winner,
+      points
+    },
+    eventLog: responderWants ? `Envido querido. ${resolution.humanValue}-${resolution.rivalValue}.` : "Envido no querido.",
+    highlight: responderWants ? `${resolution.humanValue}-${resolution.rivalValue}. Gana ${winnerName}.` : "Envido no querido.",
+    outcomeTone: winner === "A" ? "win" : "lose"
+  };
+};
+
+// Truco genérico por equipo. Si canta la casa (A), la visita responde con la
+// heurística de bot existente. Si canta la visita (un guest sentado en B),
+// queda un trucoPending target=A y responde la casa por UI (QUIERO/NO QUIERO).
+const applyTrucoCallByTeam = (current, callerTeam, activeLane) => {
+  const nextCall = getNextTrucoCall(current.activeBet);
+  const callerCanRaise = !current.trucoRaiseOwner || current.trucoRaiseOwner === callerTeam;
+  if (current.envidoPending || current.trucoPending || !nextCall || !callerCanRaise) return current;
+
+  if (callerTeam === "B") {
+    return {
+      ...current,
+      trucoPending: {
+        caller: "B",
+        target: "A",
+        label: nextCall.label,
+        acceptedBet: nextCall.acceptedBet,
+        rejectedPoints: nextCall.rejectedPoints
+      },
+      trucoState: `${getTrucoSlug(nextCall.label)}-pending`,
+      eventLog: `${activeLane.rival.name} canta ${nextCall.label}.`,
+      highlight: `${activeLane.rival.name} canta ${nextCall.label}.`,
+      outcomeTone: "neutral"
+    };
+  }
+
+  const rivalWants = shouldRivalAcceptTruco(current.rivalHand, current.activeBet, current.trickWins);
+  const rivalRaises = rivalWants && shouldRivalRaiseTruco(current.rivalHand, current.activeBet, current.trickWins);
+  const counterCall = rivalRaises ? getNextTrucoCall(nextCall.acceptedBet) : null;
+
+  if (counterCall) {
+    return {
+      ...current,
+      trucoPending: {
+        caller: "B",
+        target: "A",
+        label: counterCall.label,
+        acceptedBet: counterCall.acceptedBet,
+        rejectedPoints: counterCall.rejectedPoints,
+        sourceLabel: nextCall.label
+      },
+      trucoState: `${getTrucoSlug(nextCall.label)}-countered`,
+      eventLog: `${nextCall.label}. Resube ${counterCall.label}.`,
+      highlight: `${activeLane.rival.name} canta ${counterCall.label}.`,
+      outcomeTone: "neutral"
+    };
+  }
+
+  if (rivalWants) {
+    return {
+      ...current,
+      activeBet: nextCall.acceptedBet,
+      trucoState: getTrucoSlug(nextCall.label),
+      trucoRaiseOwner: "B",
+      eventLog: `${nextCall.label} querido. Vale ${nextCall.acceptedBet}.`,
+      highlight: `${nextCall.label} querido.`,
+      outcomeTone: "neutral"
+    };
+  }
+
+  const scoring = applyHandPoints(current.scores, "A", nextCall.rejectedPoints, current.pointsInverted);
+  const matchWinner = getMatchWinner(scoring.scores);
+
+  return {
+    ...current,
+    scores: scoring.scores,
+    handClosed: true,
+    handWinner: "A",
+    scoringWinner: scoring.scoringWinner,
+    lastWinner: "A",
+    trucoState: `${getTrucoSlug(nextCall.label)}-rejected`,
+    trucoRaiseOwner: null,
+    trucoPending: null,
+    eventLog: `${nextCall.label} no querido. Cobra ${nextCall.rejectedPoints}.`,
+    highlight: `${nextCall.label} no querido.`,
+    outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
+    matchWinner
+  };
+};
+
 const buildRoleSelectState = (handNumber, scores, activeLane) => {
   const manoSeat = getManoSeatForHand(handNumber);
   const manoTeam = manoSeat.team;
@@ -897,25 +1035,7 @@ export function useTrucolocoMatch() {
 
       if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1 || current.trucoPending) return current;
 
-      const resolution = resolveEnvido(current.humanHand, current.rivalHand, current.manoTeam);
-      const rivalWants = resolution.rivalValue >= 24 || resolution.rivalValue >= resolution.humanValue - 2;
-      const winner = rivalWants ? resolution.winner : "A";
-      const points = rivalWants ? 2 : 1;
-      const winnerName = getPlayerName(winner, activeLane);
-
-      return {
-        ...current,
-        envidoPending: {
-          accepted: rivalWants,
-          humanValue: resolution.humanValue,
-          rivalValue: resolution.rivalValue,
-          winner,
-          points
-        },
-        eventLog: rivalWants ? `Envido querido. ${resolution.humanValue}-${resolution.rivalValue}.` : "Envido no querido.",
-        highlight: rivalWants ? `${resolution.humanValue}-${resolution.rivalValue}. Gana ${winnerName}.` : "Envido no querido.",
-        outcomeTone: winner === "A" ? "win" : "lose"
-      };
+      return applyEnvidoCallBySeat(current, getSeatById(getSelectedSeatId(activeLane.role)), activeLane);
     });
   };
 
@@ -951,62 +1071,9 @@ export function useTrucolocoMatch() {
         current.currentTurnSeatId === selectedSeatId &&
         current.tableCards.length < tableSeats.length;
 
-      const nextCall = getNextTrucoCall(current.activeBet);
-      const humanCanRaise = !current.trucoRaiseOwner || current.trucoRaiseOwner === "A";
-      if (current.envidoPending || current.trucoPending || !humanActionWindow || !nextCall || !humanCanRaise) return current;
+      if (!humanActionWindow) return current;
 
-      const rivalWants = shouldRivalAcceptTruco(current.rivalHand, current.activeBet, current.trickWins);
-      const rivalRaises = rivalWants && shouldRivalRaiseTruco(current.rivalHand, current.activeBet, current.trickWins);
-      const counterCall = rivalRaises ? getNextTrucoCall(nextCall.acceptedBet) : null;
-
-      if (counterCall) {
-        return {
-          ...current,
-          trucoPending: {
-            caller: "B",
-            target: "A",
-            label: counterCall.label,
-            acceptedBet: counterCall.acceptedBet,
-            rejectedPoints: counterCall.rejectedPoints,
-            sourceLabel: nextCall.label
-          },
-          trucoState: `${getTrucoSlug(nextCall.label)}-countered`,
-          eventLog: `${nextCall.label}. Resube ${counterCall.label}.`,
-          highlight: `${activeLane.rival.name} canta ${counterCall.label}.`,
-          outcomeTone: "neutral"
-        };
-      }
-
-      if (rivalWants) {
-        return {
-          ...current,
-          activeBet: nextCall.acceptedBet,
-          trucoState: getTrucoSlug(nextCall.label),
-          trucoRaiseOwner: "B",
-          eventLog: `${nextCall.label} querido. Vale ${nextCall.acceptedBet}.`,
-          highlight: `${nextCall.label} querido.`,
-          outcomeTone: "neutral"
-        };
-      }
-
-      const scoring = applyHandPoints(current.scores, "A", nextCall.rejectedPoints, current.pointsInverted);
-      const matchWinner = getMatchWinner(scoring.scores);
-
-      return {
-        ...current,
-        scores: scoring.scores,
-        handClosed: true,
-        handWinner: "A",
-        scoringWinner: scoring.scoringWinner,
-        lastWinner: "A",
-        trucoState: `${getTrucoSlug(nextCall.label)}-rejected`,
-        trucoRaiseOwner: null,
-        trucoPending: null,
-        eventLog: `${nextCall.label} no querido. Cobra ${nextCall.rejectedPoints}.`,
-        highlight: `${nextCall.label} no querido.`,
-        outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
-        matchWinner
-      };
+      return applyTrucoCallByTeam(current, "A", activeLane);
     });
   };
 
@@ -1301,13 +1368,95 @@ export function useTrucolocoMatch() {
     clearTrick,
     startNextHand,
     applyAgreement,
-    // espejo multiplayer v1: el host serializa, los guests hidratan
+    // multiplayer host-autoritativo: el host serializa (getSnapshot) y aplica
+    // intents remotos (applyIntent); los guests hidratan (hydrate) y nada más
     getSnapshot: () => JSON.parse(JSON.stringify({ state, selectedRole, selectedCharacterIdsByRole })),
     hydrate: (snap) => {
-      if (!snap || typeof snap !== "object" || !snap.state) return;
-      if (snap.selectedRole) setSelectedRole(snap.selectedRole);
-      if (snap.selectedCharacterIdsByRole) setSelectedCharacterIdsByRole(snap.selectedCharacterIdsByRole);
+      // el snapshot llega por la red: shape validado antes de pisar el estado
+      if (!snap || typeof snap !== "object") return;
+      if (!isValidSnapshotState(snap.state)) return;
+      if (availableRoles.includes(snap.selectedRole)) setSelectedRole(snap.selectedRole);
+      if (snap.selectedCharacterIdsByRole && typeof snap.selectedCharacterIdsByRole === "object" && !Array.isArray(snap.selectedCharacterIdsByRole)) {
+        setSelectedCharacterIdsByRole(snap.selectedCharacterIdsByRole);
+      }
       setState(snap.state);
+    },
+    // jugada remota de un guest, ya autenticada por silla en App.jsx; acá se
+    // valida contra los gates del match (turno, fase, carta en mano) y se
+    // aplica. Un intent que no pasa los gates deja el estado como estaba.
+    applyIntent: (intent) => {
+      if (!intent || typeof intent !== "object") return;
+      const seat = tableSeats.find((item) => item.seatId === intent.seatId);
+      if (!seat || typeof intent.action !== "string") return;
+
+      setState((current) => {
+        const seatTurnOpen =
+          current.handStarted &&
+          !current.handClosed &&
+          !current.envidoPending &&
+          !current.trucoPending &&
+          current.currentTurnSeatId === seat.seatId &&
+          current.tableCards.length < tableSeats.length;
+
+        switch (intent.action) {
+          case "playCard": {
+            if (!seatTurnOpen) return current;
+            const card = (current.handsBySeat?.[seat.seatId] ?? []).find(
+              (item) => item.handIndex === intent.payload?.handIndex
+            );
+            if (!card) return current;
+            return playSeatCard(current, seat.seatId, card, activeLane, selectedRole);
+          }
+          case "callEnvido": {
+            const firstCardWindow =
+              seatTurnOpen && current.vueltaIndex === 0 && current.tableCards.length === 0 && current.trickHistory.length === 0;
+            if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1) return current;
+            return applyEnvidoCallBySeat(current, seat, activeLane);
+          }
+          case "callTruco": {
+            if (!seatTurnOpen) return current;
+            return applyTrucoCallByTeam(current, seat.team, activeLane);
+          }
+          case "acceptTruco": {
+            const pending = current.trucoPending;
+            if (!pending || pending.target !== seat.team || current.handClosed) return current;
+            return {
+              ...current,
+              activeBet: pending.acceptedBet,
+              trucoState: getTrucoSlug(pending.label),
+              trucoRaiseOwner: seat.team,
+              trucoPending: null,
+              eventLog: `${pending.label} querido. Vale ${pending.acceptedBet}.`,
+              highlight: `${pending.label} querido.`,
+              outcomeTone: "neutral"
+            };
+          }
+          case "rejectTruco": {
+            const pending = current.trucoPending;
+            if (!pending || pending.target !== seat.team || current.handClosed) return current;
+            const scoring = applyHandPoints(current.scores, pending.caller, pending.rejectedPoints, current.pointsInverted);
+            const matchWinner = getMatchWinner(scoring.scores);
+            const callerName = getPlayerName(pending.caller, activeLane);
+            return {
+              ...current,
+              scores: scoring.scores,
+              handClosed: true,
+              handWinner: pending.caller,
+              scoringWinner: scoring.scoringWinner,
+              lastWinner: pending.caller,
+              trucoState: `${getTrucoSlug(pending.label)}-rejected`,
+              trucoRaiseOwner: null,
+              trucoPending: null,
+              eventLog: `${pending.label} no querido. Cobra ${callerName}.`,
+              highlight: `${pending.label} no querido.`,
+              outcomeTone: scoring.scoringWinner === "A" ? "win" : "lose",
+              matchWinner
+            };
+          }
+          default:
+            return current;
+        }
+      });
     },
     restartMatch,
     advance,
