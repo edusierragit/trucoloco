@@ -634,6 +634,8 @@ export default function App() {
   }, [match.selectedCharacter, match.selectedRole]);
 
   const [micOn, setMicOn] = useState(false);
+  const [salaCollapsed, setSalaCollapsed] = useState(false);
+  const [salaHelp, setSalaHelp] = useState(false);
   const [remotePos, setRemotePos] = useState({});
   const lastPosSentRef = useRef(0);
 
@@ -1271,75 +1273,85 @@ export default function App() {
 
       {createPortal(
         netRoom ? (
-          <div className="sala-panel">
+          <div className={salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}>
             <div className="sala-head">
-              <span className="sala-kicker">SALA</span>
-              <strong className="sala-code">{netRoom.code}</strong>
+              <div className="sala-head-id">
+                <span className="sala-kicker">SALA</span>
+                <strong className="sala-code">{netRoom.code}</strong>
+              </div>
               <span className="sala-count">{roster.length}/{ROOM_LIMIT}</span>
-            </div>
-            {!netRoom.isHost ? (
-              <p className="sala-wait">👁 Espejo en vivo de la mesa del host — jugar tu silla llega en la próxima etapa</p>
-            ) : null}
-            {roster.length === 1 ? (
-              <p className="sala-wait">Sos el único adentro — copiá el link y mandáselo a los pibes<span className="waitdots">…</span></p>
-            ) : null}
-            <div className="sala-roster">
-              {roster.map((peer) => (
-                <span key={peer.peerId} className={peer.self ? "sala-chip sala-chip-self" : "sala-chip"}>
-                  {peer.isHost ? "★ " : ""}{peer.name}
-                  {peer.role ? <small> · {peer.role}</small> : null}
-                </span>
-              ))}
+              <button
+                className="sala-collapse-btn"
+                type="button"
+                title={salaCollapsed ? "Mostrar sala" : "Minimizar"}
+                onClick={() => setSalaCollapsed((value) => !value)}
+              >
+                {salaCollapsed ? "▸" : "▾"}
+              </button>
             </div>
 
-            <div className="sala-seats">
-              {tableSeats.map((seat) => {
-                const owner = roster.find((peer) => peer.seatId === seat.seatId);
-                const mine = owner?.self;
-                return (
-                  <button
-                    key={seat.seatId}
-                    className={mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"}
-                    type="button"
-                    title={`${seat.label} · ${seat.role}`}
-                    onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
-                  >
-                    <small>{seat.team === "A" ? "CASA" : "VISITA"}</small>
-                    <strong>{seat.role === "Jugador Estrella" ? "Estrella" : seat.role}</strong>
-                    <span>{owner ? owner.name : "libre"}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="sala-actions">
-              <button className={micOn ? "canto-chip canto-chip-gold sala-btn" : "canto-chip sala-btn"} type="button" onClick={toggleMic}>
-                {micOn ? "🎙 Mic ON" : "🎙 Hablar"}
-              </button>
-              {netRoom.isHost ? (
-                <button className={backfillOpen ? "canto-chip canto-chip-gold sala-btn" : "canto-chip sala-btn"} type="button" onClick={toggleBackfill}>
-                  {backfillOpen ? `📢 Abierta (faltan ${Math.max(0, ROOM_LIMIT - roster.length)})` : "🎲 Abrir a randoms"}
+            {salaCollapsed ? null : (
+              <>
+                <div className="sala-seats">
+                  {tableSeats.map((seat) => {
+                    const owner = roster.find((peer) => peer.seatId === seat.seatId);
+                    const mine = owner?.self;
+                    return (
+                      <button
+                        key={seat.seatId}
+                        className={mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"}
+                        type="button"
+                        title={`${seat.label} · ${seat.role}`}
+                        onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
+                      >
+                        <small>{seat.team === "A" ? "CASA" : "VISITA"}</small>
+                        <strong>{seat.role === "Jugador Estrella" ? "Estrella" : seat.role}</strong>
+                        <span>{owner ? owner.name : "libre"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="sala-share"
+                  type="button"
+                  onClick={async () => {
+                    const link = `${window.location.origin}${window.location.pathname}?sala=${netRoom.code}`;
+                    try {
+                      await navigator.clipboard.writeText(link);
+                    } catch {
+                      window.prompt("Copiá el link:", link);
+                    }
+                  }}
+                >
+                  ⧉ {roster.length === 1 ? "Copiar link e invitar" : "Copiar link"}
                 </button>
-              ) : null}
-              <button
-                className="canto-chip canto-chip-advance sala-btn"
-                type="button"
-                onClick={async () => {
-                  const link = `${window.location.origin}${window.location.pathname}?sala=${netRoom.code}`;
-                  try {
-                    await navigator.clipboard.writeText(link);
-                  } catch {
-                    window.prompt("Copiá el link:", link);
-                  }
-                }}
-              >
-                ⧉ Copiar link
-              </button>
-              <button className="canto-chip sala-btn" type="button" onClick={leaveSala}>
-                Salir
-              </button>
-            </div>
-            <p className="sala-note">⚠ Los bots de la mesa son PRÁCTICA mientras se llena la sala. La partida compartida entre humanos está en construcción.</p>
-            <p className="sala-note">¿No aparece tu amigo? En Brave bajá los Shields (🦁) para este sitio: el enlace P2P usa WebSockets que Brave suele bloquear.</p>
+
+                <div className="sala-actions">
+                  <button className={micOn ? "sala-btn sala-btn-on" : "sala-btn"} type="button" onClick={toggleMic}>
+                    {micOn ? "🎙 Mic ON" : "🎙 Hablar"}
+                  </button>
+                  {netRoom.isHost ? (
+                    <button className={backfillOpen ? "sala-btn sala-btn-on" : "sala-btn"} type="button" onClick={toggleBackfill}>
+                      {backfillOpen ? "📢 Abierta" : "🎲 Abrir"}
+                    </button>
+                  ) : null}
+                  <button className="sala-btn" type="button" onClick={() => setSalaHelp((value) => !value)}>
+                    ?
+                  </button>
+                  <button className="sala-btn sala-btn-exit" type="button" onClick={leaveSala}>
+                    Salir
+                  </button>
+                </div>
+
+                {salaHelp ? (
+                  <p className="sala-note">
+                    Reclamá tu silla arriba. Los bots son práctica hasta que se llene la sala.
+                    ¿No aparece tu amigo? En Brave bajá los Shields 🦁 (el P2P usa WebSockets).
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
         ) : (
           <div className="sala-join-box">

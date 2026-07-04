@@ -4652,32 +4652,43 @@ select {
   top: 14px;
   right: 14px;
   z-index: 44;
-  width: 232px;
+  width: 244px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(8, 6, 4, 0.85);
+  background: rgba(8, 6, 4, 0.9);
   border: 1px solid rgba(214, 178, 110, 0.28);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
   color: #f0ddb4;
   font-family: inherit;
 }
 
+.sala-panel-collapsed {
+  width: auto;
+  padding: 8px 12px;
+}
+
 .sala-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
+}
+
+.sala-head-id {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
 }
 
 .sala-kicker {
   font-size: 10px;
   letter-spacing: 0.2em;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 .sala-code {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 24px;
-  letter-spacing: 0.28em;
+  font-size: 22px;
+  letter-spacing: 0.26em;
   color: #91e9f6;
   text-shadow: 0 0 12px rgba(145, 233, 246, 0.4);
 }
@@ -4688,44 +4699,78 @@ select {
   opacity: 0.7;
 }
 
-.sala-roster {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 10px 0;
+.sala-collapse-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 7px;
+  background: rgba(240, 221, 180, 0.08);
+  border: 1px solid rgba(240, 221, 180, 0.16);
+  color: #f0ddb4;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.sala-chip {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(240, 221, 180, 0.1);
-  border: 1px solid rgba(240, 221, 180, 0.2);
+.sala-collapse-btn:hover {
+  background: rgba(240, 221, 180, 0.16);
 }
 
-.sala-chip-self {
-  border-color: #91e9f6;
+.sala-share {
+  width: 100%;
+  margin: 10px 0 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #b9781f, #4a2c08);
+  border: 1px solid rgba(255, 206, 110, 0.4);
+  color: #fff3d9;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
 }
 
-.sala-chip small {
-  opacity: 0.6;
+.sala-share:hover {
+  box-shadow: 0 0 16px rgba(255, 206, 110, 0.3);
 }
 
 .sala-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sala-btn {
+  flex: 1;
   font-size: 12px;
-  padding: 8px 12px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  background: rgba(240, 221, 180, 0.07);
+  border: 1px solid rgba(240, 221, 180, 0.16);
+  color: #f0ddb4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sala-btn:hover {
+  background: rgba(240, 221, 180, 0.16);
+}
+
+.sala-btn-on {
+  border-color: #91e9f6;
+  color: #91e9f6;
+}
+
+.sala-btn-exit {
+  flex: 0 0 auto;
+  color: #d98a8a;
 }
 
 .sala-note {
   margin: 8px 0 0;
   font-size: 10px;
-  letter-spacing: 0.04em;
-  opacity: 0.5;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
 }
 
 /* unirse con código pegado a mano */
@@ -4884,32 +4929,6 @@ select {
   }
 }
 
-/* ─── panel de sala v2: compacto, sin botones que se rompen ─────────────── */
-.sala-panel {
-  width: 256px;
-  padding: 12px;
-}
-
-.sala-panel .sala-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.sala-panel .sala-btn,
-.sala-panel .canto-chip {
-  font-size: 11.5px;
-  padding: 7px 12px;
-  white-space: nowrap;
-  border-radius: 999px;
-}
-
-.sala-note {
-  font-size: 9.5px;
-  line-height: 1.5;
-  opacity: 0.45;
-}
-
 .sala-join-box .canto-chip {
   font-size: 12px;
   padding: 9px 16px;
@@ -4960,13 +4979,6 @@ select {
 .seat-slot-taken {
   opacity: 0.75;
   cursor: default;
-}
-
-.sala-wait {
-  margin: 6px 0;
-  font-size: 11px;
-  color: #91e9f6;
-  opacity: 0.85;
 }
 
 /* espectador (espejo del host): mirás, todavía no jugás */

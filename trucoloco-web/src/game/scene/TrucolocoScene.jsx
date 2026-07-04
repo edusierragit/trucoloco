@@ -1413,13 +1413,13 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
   return {
     position: isNarrow
       ? isRoleSelect
-        ? [0, 4.6, 8.35]
+        ? [-0.3, 2.9, 5.6]
         : [0, 4.75, 6.95]
       : isRoleSelect
-        ? [0, 4.05, 7.05]
+        ? [-0.5, 2.5, 4.9]
         : [0, 4.05, 5.55],
-    target: [0, isRoleSelect ? 0.42 : 0.16, isNarrow ? 0.2 : 0.02],
-    fov: isNarrow ? (isRoleSelect ? 42 : 36) : isRoleSelect ? 38 : 33
+    target: [isRoleSelect ? 0.15 : 0, isRoleSelect ? 1.0 : 0.16, isNarrow ? 0.2 : 0.02],
+    fov: isNarrow ? (isRoleSelect ? 46 : 36) : isRoleSelect ? 44 : 33
   };
 }
 
