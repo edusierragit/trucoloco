@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { MATCH_CONFIG } from "../config";
-import { deck, modifiers } from "../data/cards";
+import { bonusCards, deck, modifiers } from "../data/cards";
 import { characterOptionsByRole, roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
 import { weaponPool } from "../data/weapons";
 import {
@@ -150,13 +150,29 @@ const drawWeapons = () =>
 const dealSeatHands = (pool) => {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
 
-  return orderedSeats.reduce((hands, seat, seatIndex) => {
-    hands[seat.seatId] = pool.slice(seatIndex * 3, seatIndex * 3 + 3).map((card, cardIndex) => ({
+  const hands = orderedSeats.reduce((acc, seat, seatIndex) => {
+    acc[seat.seatId] = pool.slice(seatIndex * 3, seatIndex * 3 + 3).map((card, cardIndex) => ({
       ...card,
       handIndex: buildHandIndex(card.id, seat.seatId, cardIndex)
     }));
-    return hands;
+    return acc;
   }, {});
+
+  // Mazo Trucoloco: el Jugador Estrella de cada equipo recibe UNA carta
+  // absurda que le gana el lugar a su carta mas baja (canon: solo una por
+  // mano y reemplaza, no se suma)
+  for (const seat of orderedSeats) {
+    if (seat.role !== "Jugador Estrella") continue;
+    const bonus = bonusCards[Math.floor(Math.random() * bonusCards.length)];
+    const hand = hands[seat.seatId];
+    const lowestIndex = hand.reduce(
+      (lowest, cardItem, index) => (cardItem.power < hand[lowest].power ? index : lowest),
+      0
+    );
+    hand[lowestIndex] = { ...bonus, handIndex: buildHandIndex(bonus.id, seat.seatId, 9) };
+  }
+
+  return hands;
 };
 
 const pickAutoCard = (hand, currentTrickCards) => {

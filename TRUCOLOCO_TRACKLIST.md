@@ -182,6 +182,16 @@
   veneno de Marvyn, "¡TRUCOLOCO!", "El Utoneo manda").
 - **Murmullo de bar** (WebAudio: colchón + clinks) y header afinado.
 
+## ✅ HECHO (2026-07-04 — el mazo Trucoloco despierta)
+
+- **LAS CARTAS MEME DEL ESTRELLA, EN JUEGO**: Carta Messi (16, "La pulga no
+  negocia"), EXODIA (20, propiedad de Gazpacho), Fisura Dimensional (13) se
+  suman a Dragón Blanco (15) y Mago Oscuro (12). Regla canon: el Jugador
+  Estrella de CADA equipo recibe UNA carta absurda por mano que le gana el
+  lugar a su carta más baja. Simétrico, sin ensalada.
+  ⚠ Pendiente: nombres parodia si se publica (marcas Yu-Gi-Oh) + arte de
+  cara para las cartas especiales (hoy usan cara procedural con su color).
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

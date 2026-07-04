@@ -94,7 +94,10 @@ export const bonusCards = [
   card("kuriboh-quincho", "Kuriboh del Quincho",  "Yu-Gi-Oh",   3, "#7c5b43", "Cartachin",        "Insoportable, pero siempre aparece.",                       "bonus"),
   card("ancho-falso",     "Ancho Falso",          "Trucoloco",  8, "#dd5a28", "Cartachin",        "Asusta de lejos; de cerca da lastima.",                     "bonus"),
   card("el-relator",      "El Relator",           "Trucoloco", 11, "#c46d1a", "Negociante",       "Cuando habla, la mano cambia de dueno.",                    "bonus"),
-  card("carta-robada",    "Carta Robada",         "Trucoloco",  7, "#8b3a52", "Jugador Estrella", "Nadie sabe de donde salio, pero esta ahi.",                 "bonus")
+  card("carta-robada",    "Carta Robada",         "Trucoloco",  7, "#8b3a52", "Jugador Estrella", "Nadie sabe de donde salio, pero esta ahi.",                 "bonus"),
+  card("carta-messi",     "Carta Messi",          "Trucoloco", 16, "#75c9f0", "Jugador Estrella", "La pulga no negocia. Gambetea la vuelta entera.",           "bonus"),
+  card("exodia",          "EXODIA",               "Yu-Gi-Oh",  20, "#d4a020", "Jugador Estrella", "El brazo derecho ya esta en la mesa. Propiedad de Gazpacho.", "bonus"),
+  card("fisura-dimensional", "Fisura Dimensional", "Yu-Gi-Oh", 13, "#6a4fd0", "Jugador Estrella", "Se abre el piso y la carta rival duerme abajo.",            "bonus")
 ];
 
 // Para backward-compat: exportar deck unificado solo con grupos correctos
