@@ -209,6 +209,23 @@
   ⚠ Pendiente: nombres parodia si se publica (marcas Yu-Gi-Oh) + arte de
   cara para las cartas especiales (hoy usan cara procedural con su color).
 
+## ✅ HECHO (2026-07-04, pase de UX con Opus)
+
+- **Panel de sala rediseñado**: colapsable (minimizar deja solo el código),
+  sin muro de texto (las dos frases de estado y las dos notas largas se
+  colapsan en una ayuda plegable con boton ?), "Copiar link e invitar"
+  protagonico, botones en fila limpia. Movido a la IZQUIERDA para no pisar
+  el panel de eleccion de rol.
+- **Camara de eleccion de rol** mas baja/cercana: encuadra al personaje
+  frente al neon en vez del zoom-out con vigas/barrotes.
+- **Vista "puerta" muerta eliminada**: el hotspot del modo caminar ya no
+  lleva a la pantalla negra; ahora te sienta a la mesa. Textos de debug del
+  modo caminar limpiados.
+- **Fix replicacion de personaje**: reclamar silla cambia tambien tu avatar,
+  y al entrar a una sala tomas automaticamente una silla libre distinta ->
+  dos humanos dejan de verse como el mismo Pochex. Verificado E2E.
+- Codex commiteado (extraccion del combate a src/game/conflict/).
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
