@@ -635,7 +635,6 @@ export default function App() {
 
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
-  const [salaHelp, setSalaHelp] = useState(false);
   const [remotePos, setRemotePos] = useState({});
   const lastPosSentRef = useRef(0);
 
@@ -1348,27 +1347,23 @@ export default function App() {
 
                 <div className="sala-actions">
                   <button className={micOn ? "sala-btn sala-btn-on" : "sala-btn"} type="button" onClick={toggleMic}>
-                    {micOn ? "🎙 Mic ON" : "🎙 Hablar"}
-                  </button>
-                  {netRoom.isHost ? (
-                    <button className={backfillOpen ? "sala-btn sala-btn-on" : "sala-btn"} type="button" onClick={toggleBackfill}>
-                      {backfillOpen ? "📢 Abierta" : "🎲 Abrir"}
-                    </button>
-                  ) : null}
-                  <button className="sala-btn" type="button" onClick={() => setSalaHelp((value) => !value)}>
-                    ?
+                    {micOn ? "🎙 Micrófono ON" : "🎙 Hablar"}
                   </button>
                   <button className="sala-btn sala-btn-exit" type="button" onClick={leaveSala}>
                     Salir
                   </button>
                 </div>
 
-                {salaHelp ? (
-                  <p className="sala-note">
-                    Reclamá tu silla arriba. Los bots son práctica hasta que se llene la sala.
-                    ¿No aparece tu amigo? En Brave bajá los Shields 🦁 (el P2P usa WebSockets).
-                  </p>
+                {netRoom.isHost ? (
+                  <label className="sala-toggle">
+                    <input type="checkbox" checked={backfillOpen} onChange={toggleBackfill} />
+                    <span>Dejar entrar desconocidos para completar</span>
+                  </label>
                 ) : null}
+
+                <p className="sala-note">
+                  Reclamá tu silla arriba y pasale el link a los pibes.
+                </p>
               </>
             )}
           </div>

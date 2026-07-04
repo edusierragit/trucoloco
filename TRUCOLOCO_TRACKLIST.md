@@ -246,6 +246,16 @@
   ademas el check:ui intermitente (ya no usan render procedural sin imagen).
 - Panel de sala baja a top:150 en modo juego para no pisar el marcador.
 
+## ✅ HECHO (2026-07-04, UX pantalla inicial y sala)
+
+- **Pantalla inicial repensada**: titulo 'TRUCOLOCO' (sin '5.0 de que?'),
+  marcador 'Mano 1/0-0' oculto antes de empezar, roles/personajes compactos
+  que caben SIN scroll, y boton '▶ JUGAR' dorado gigante sticky (antes habia
+  que scrollear para hallar 'Sentarse y repartir').
+- **Menu de sala clarificado**: fuera el boton '?' y el '🎲 Abrir' misterioso.
+  Ahora: 'Copiar link e invitar' + '🎙 Hablar'/'Salir' + checkbox honesto
+  'Dejar entrar desconocidos para completar' + una linea de ayuda.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

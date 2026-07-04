@@ -5099,3 +5099,19 @@ select {
   opacity: 0.85;
   letter-spacing: 0.04em;
 }
+
+/* toggle de sala abierta: claro, no una caja de opción misteriosa */
+.sala-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+.sala-toggle input {
+  accent-color: #ffce6e;
+  cursor: pointer;
+}
+.sala-toggle:hover { opacity: 1; }
