@@ -11,7 +11,7 @@ const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", grou
   lane,
   flavor,
   group,
-  image: group === "truco" ? assetUrl(`assets/cards/fronts/${id}.svg?v=${CARD_ASSET_VERSION}`) : null,
+  image: group === "truco" || group === "bonus" ? assetUrl(`assets/cards/fronts/${id}.svg?v=${CARD_ASSET_VERSION}`) : null,
   backImage: CARD_BACK_IMAGE
 });
 
