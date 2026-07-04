@@ -1292,7 +1292,7 @@ export default function App() {
 
       {createPortal(
         netRoom ? (
-          <div className={salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}>
+          <div className={`${salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}${match.phase === "role-select" ? "" : " sala-lower"}`}>
             <div className="sala-head">
               <div className="sala-head-id">
                 <span className="sala-kicker">SALA</span>
@@ -1373,7 +1373,7 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div className="sala-join-box">
+          <div className={`sala-join-box${match.phase === "role-select" ? "" : " sala-lower"}`}>
             <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
               🌐 Crear sala
             </button>

@@ -237,6 +237,15 @@
 - Punto de fricción único: `App.jsx` — Codex ya extrajo el combate a hooks,
   no debería volver a tocarlo; Claude maneja la parte de sala/red.
 
+## ✅ HECHO (2026-07-04, arte de cartas meme)
+
+- **Las cartas del mazo Trucoloco tienen CARA propia**: 9 SVGs disenados
+  (EXODIA estrella dorada, Messi pelota, Dragon Blanco, Mago Oscuro, Fisura,
+  El Relator, Ancho Falso, Carta Robada, Kuriboh) con fondo oscuro mistico y
+  borde neon — se ven legendarias vs las cartas de truco crema. Arregla
+  ademas el check:ui intermitente (ya no usan render procedural sin imagen).
+- Panel de sala baja a top:150 en modo juego para no pisar el marcador.
+
 ## 🔧 EN CURSO
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.

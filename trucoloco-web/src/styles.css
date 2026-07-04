@@ -5005,3 +5005,8 @@ select {
 .hud-top-compact .scoreboard strong {
   font-size: 26px;
 }
+
+/* en modo juego el marcador es mas alto: el panel de sala baja para no pisarlo */
+.sala-lower {
+  top: 150px;
+}
