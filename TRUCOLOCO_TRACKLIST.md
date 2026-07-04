@@ -307,3 +307,14 @@
 - Fotos fuente de personajes (para gestos/caras): `C:\Users\eduar\GAMES\trucoloco-info\`
 - Reglas duras: NO romper truco clásico; los 4 checks (`check:rules/flow/ui`, `build`)
   deben pasar SIEMPRE; 6 asientos fijos; no mezclar con dead-ping/slingshot.
+
+
+## 2026-07-04 — Fable: modo de juego en el motor
+- gameMode 'comun'|'trucoloco' en el hook (comun = truco puro: sin cartas
+  absurdas, sin armas, sin poderes, acuerdo auto-sellado). Snapshot P2P
+  propaga el modo del host. `?modo=comun` fuerza el modo por URL.
+- UI del selector: OPUS_TASK.md (Opus). Refactor perspectiva: CODEX_TASK_4 (Codex).
+- Territorios: Fable=net/room.js+seccion red de App.jsx+protocolo intents;
+  Opus=Hud/styles/scene/pantalla inicial; Codex=hook+rules (TASK_4).
+- FIX: validador check:ui reconocia solo 'Sentarse|repartir'; el rename de
+  Opus ('Probar solo') lo habia dejado rojo en main. Ahora acepta ambos.
