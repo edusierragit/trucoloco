@@ -5205,3 +5205,25 @@ select {
   cursor: pointer;
 }
 .sala-toggle:hover { opacity: 1; }
+
+/* ============================================================
+   Cartas en mano: que floten limpias, sin la caja fea del panel.
+   Cuando tenés cartas (focus/play/preview) el panel deja de ser un
+   div con fondo/borde/blur y pasa a ser solo el abanico flotando.
+   La barra de cantos (canto-bar, portal abajo) ya lleva el texto y
+   las acciones, asi que el header del panel es redundante.
+   ============================================================ */
+.hand-panel-focus,
+.hand-panel-play,
+.hand-panel-preview {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding: 0 !important;
+}
+.hand-panel-focus .panel-header,
+.hand-panel-play .panel-header,
+.hand-panel-preview .panel-header {
+  display: none !important;
+}

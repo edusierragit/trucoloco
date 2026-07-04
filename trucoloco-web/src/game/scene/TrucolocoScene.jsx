@@ -1413,13 +1413,15 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
   return {
     position: isNarrow
       ? isRoleSelect
-        ? [-0.3, 2.9, 5.6]
+        ? [-0.3, 2.7, 5.6]
         : [0, 4.75, 6.95]
       : isRoleSelect
-        ? [-0.5, 2.5, 4.9]
+        ? [-0.5, 2.35, 5.05]
         : [0, 4.05, 5.55],
-    target: [isRoleSelect ? 0.15 : 0, isRoleSelect ? 1.0 : 0.16, isNarrow ? 0.2 : 0.02],
-    fov: isNarrow ? (isRoleSelect ? 46 : 36) : isRoleSelect ? 44 : 33
+    // role-select: la mirada baja hacia la mesa para que el techo (barrotes)
+    // quede fuera de cuadro; fov mas cerrado ademas recorta el borde superior
+    target: [isRoleSelect ? 0.1 : 0, isRoleSelect ? 0.32 : 0.16, isNarrow ? 0.2 : 0.02],
+    fov: isNarrow ? (isRoleSelect ? 42 : 36) : isRoleSelect ? 40 : 33
   };
 }
 
