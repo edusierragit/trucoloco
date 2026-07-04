@@ -11,6 +11,15 @@ import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
 import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
+import {
+  getCombatPos as getConflictCombatPos,
+  getCombatVector as getConflictCombatVector,
+  getDebateGoal as getConflictDebateGoal,
+  getDebateTitle as getConflictDebateTitle,
+  getRingRead as getConflictRingRead,
+  getRivalAttackName as getConflictRivalAttackName
+} from "./game/conflict/combatState";
+import { useConflictCombat } from "./game/conflict/useConflictCombat";
 
 // las caras de las cartas se precargan apenas hay un respiro: nunca más
 // naipes blancos "cargando" en la mano
@@ -527,13 +536,9 @@ export default function App() {
   const [walkNotice, setWalkNotice] = useState("");
   const [walkAnimationDebug, setWalkAnimationDebug] = useState(null);
   const [walkTouchInput, setWalkTouchInput] = useState(() => createEmptyWalkTouchInput());
-  const [debateState, setDebateState] = useState(() => createDebateState());
   const previousHandStartedRef = useRef(match.handStarted);
   const returnToTableTimerRef = useRef(null);
   const walkNoticeTimerRef = useRef(null);
-  const ringFrameRef = useRef(null);
-  const ringKeysRef = useRef(new Set());
-  const debateSoundTokenRef = useRef(debateState.token);
   const matchRef = useRef(match);
 
   useEffect(() => {
@@ -562,7 +567,6 @@ export default function App() {
     return () => {
       window.clearTimeout(returnToTableTimerRef.current);
       window.clearTimeout(walkNoticeTimerRef.current);
-      window.cancelAnimationFrame(ringFrameRef.current);
     };
   }, []);
 
@@ -579,6 +583,26 @@ export default function App() {
     }));
     setCameraView(viewId);
   }, []);
+
+  const handleRingExit = useCallback(() => {
+    handleCameraViewChange("walk");
+  }, [handleCameraViewChange]);
+
+  const conflictWeaponContext = useMemo(() => ({
+    role: match.selectedRole,
+    activeWeapon: match.activeWeapon
+  }), [match.activeWeapon, match.selectedRole]);
+
+  const {
+    debateState,
+    resetDebateState,
+    triggerDebateAction,
+    switchDebateMode
+  } = useConflictCombat({
+    enabled: cameraView === "ring",
+    onExit: handleRingExit,
+    weaponContext: conflictWeaponContext
+  });
 
   // ─── SALA ONLINE (etapa presencia): crear, entrar por link, ver quién está ──
   const [netRoom, setNetRoom] = useState(null);
@@ -884,7 +908,7 @@ export default function App() {
     }
 
     if (hotspot === "ring") {
-      setDebateState(() => createDebateState());
+      resetDebateState();
       handleCameraViewChange("ring");
       return;
     }
@@ -907,98 +931,7 @@ export default function App() {
       setCameraView("table");
       setIsSeatingRitual(false);
     }, 950);
-  }, [handleCameraViewChange]);
-
-  const triggerDebateAction = useCallback((kind) => {
-    setDebateState((current) => {
-      if (current.mode === "ruleta") {
-        if (kind !== "gatillo") {
-          return {
-            ...current,
-            kind: "wait",
-            token: current.token + 1,
-            lastMove: "En la ruleta no hay empujones. Solo apretar, mirar y bancarse el silencio."
-          };
-        }
-
-        if (current.turn !== "player" && !current.resolved) {
-          return {
-            ...current,
-            kind: "wait",
-            token: current.token + 1,
-            lastMove: "Ahora aprieta P2. No le robes el momento dramatico."
-          };
-        }
-
-        return resolveCorkRoulettePull(current);
-      }
-
-      if (current.resolved) {
-        return createDebateState({
-          mode: "ring",
-          token: current.token + 1,
-          lastMove: "Round nuevo. Dos pasos, una excusa y vuelve el quilombo."
-        });
-      }
-
-      return applyCombatAction(current, "player", kind);
-    });
-  }, []);
-
-  const triggerRivalDebateAction = useCallback((kind) => {
-    setDebateState((current) => {
-      if (current.resolved || current.mode === "ruleta") return current;
-
-      return applyCombatAction(current, "rival", kind);
-    });
-  }, []);
-
-  const switchDebateMode = useCallback((mode) => {
-    setDebateState((current) => createDebateState({
-      mode,
-      token: current.token + 1,
-      lastMove: mode === "ruleta"
-        ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
-        : "Modo ring real-time. Movete libre, pegá cuando estés cerca y defendete si P2 te encima."
-    }));
-  }, []);
-
-  useEffect(() => {
-    if (cameraView !== "ring") {
-      window.cancelAnimationFrame(ringFrameRef.current);
-      ringKeysRef.current.clear();
-      return undefined;
-    }
-
-    let lastFrame = performance.now();
-    const tick = (now) => {
-      const dt = (now - lastFrame) / 1000;
-      lastFrame = now;
-      setDebateState((current) => stepArenaCombat(current, ringKeysRef.current, dt));
-      ringFrameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    ringFrameRef.current = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(ringFrameRef.current);
-  }, [cameraView]);
-
-  useEffect(() => {
-    if (cameraView !== "ring") return;
-    if (debateSoundTokenRef.current === debateState.token) return;
-    debateSoundTokenRef.current = debateState.token;
-
-    const damage = Math.max(debateState.lastDamageToPlayer ?? 0, debateState.lastDamageToRival ?? 0);
-    if (damage > 0 || debateState.resolved) {
-      playConflictHitSound(debateState.hitStrength ?? damage / 34, debateState.resolved);
-    }
-  }, [
-    cameraView,
-    debateState.hitStrength,
-    debateState.lastDamageToPlayer,
-    debateState.lastDamageToRival,
-    debateState.resolved,
-    debateState.token
-  ]);
+  }, [handleCameraViewChange, resetDebateState]);
 
   const stageClassName = [
     "stage-shell",
@@ -1019,128 +952,13 @@ export default function App() {
 
       if (event.key === "1") handleCameraViewChange("seat");
       if (event.key === "2") handleCameraViewChange("walk");
-
-      if (cameraView === "ring") {
-        const key = event.key.toLowerCase();
-        if (event.key === "Escape") {
-          handleCameraViewChange("walk");
-          return;
-        }
-
-        // ── Held keys consumed each frame by stepArenaCombat ──────────────
-        //   P1 move : W A S D  (+ Shift sprint)   |  arrows mirror P1 move
-        //   P2 move : I J K L
-        //   Guard hold: P1 = F (also right-click) | P2 = P
-        if (["w", "a", "s", "d", "shift", "i", "j", "k", "l", "p"].includes(key)) {
-          event.preventDefault();
-          ringKeysRef.current.add(key);
-          return;
-        }
-        if (["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) {
-          event.preventDefault();
-          ringKeysRef.current.add(key);
-          return;
-        }
-
-        // ── Discrete actions (fire once per press) ────────────────────────
-        //   G          : toggle ring / ruleta mode
-        //   P1 attacks : Q golpe · E empujón · R remate · Space esquiva · F guardia
-        //   P2 attacks : H golpe · U empujón · O remate (P2 guard is the held P above)
-        if (key === "g") {
-          event.preventDefault();
-          switchDebateMode("ring");
-          return;
-        }
-        if (event.code === "Space") {
-          event.preventDefault();
-          triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "esquive");
-          return;
-        }
-        if (key === "q") {
-          event.preventDefault();
-          triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
-          return;
-        }
-        if (key === "e") {
-          event.preventDefault();
-          triggerDebateAction("empujon");
-          return;
-        }
-        if (key === "r") {
-          event.preventDefault();
-          triggerDebateAction("remate");
-          return;
-        }
-        if (key === "f") {
-          event.preventDefault();
-          ringKeysRef.current.add("f");
-          triggerDebateAction("guardia");
-          return;
-        }
-        if (key === "h") {
-          event.preventDefault();
-          triggerRivalDebateAction("golpe");
-          return;
-        }
-        if (key === "u") {
-          event.preventDefault();
-          triggerRivalDebateAction("empujon");
-          return;
-        }
-        if (key === "o") {
-          event.preventDefault();
-          triggerRivalDebateAction("remate");
-          return;
-        }
-      }
-    };
-
-    const handleKeyUp = (event) => {
-      const key = event.key.toLowerCase();
-      ringKeysRef.current.delete(key);
-      ringKeysRef.current.delete(event.key.toLowerCase());
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [cameraView, debateState.mode, handleCameraViewChange, switchDebateMode, triggerDebateAction, triggerRivalDebateAction]);
-
-  useEffect(() => {
-    if (cameraView !== "ring") return undefined;
-
-    const handlePointerDown = (event) => {
-      if (event.target?.closest?.(".debate-hint")) return;
-      if (event.button === 0) {
-        triggerDebateAction(debateState.mode === "ruleta" ? "gatillo" : "golpe");
-      }
-      if (event.button === 2) {
-        event.preventDefault();
-        ringKeysRef.current.add("rightclick");
-        triggerDebateAction("guardia");
-      }
-    };
-
-    const handlePointerUp = (event) => {
-      if (event.button === 2) ringKeysRef.current.delete("rightclick");
-    };
-
-    const handleContextMenu = (event) => {
-      if (cameraView === "ring") event.preventDefault();
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("contextmenu", handleContextMenu);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("contextmenu", handleContextMenu);
-    };
-  }, [cameraView, debateState.mode, triggerDebateAction]);
+  }, [handleCameraViewChange]);
 
   return (
     <div className="app-shell">
@@ -1353,8 +1171,8 @@ export default function App() {
                     : `${Math.round(debateState.playerHealth ?? 100)} HP · ${Math.round(debateState.rivalHealth ?? 100)} HP`}
                 </strong>
               </div>
-              <strong>{getDebateTitle(debateState)}</strong>
-              <em>{getDebateGoal(debateState)}</em>
+              <strong>{getConflictDebateTitle(debateState)}</strong>
+              <em>{getConflictDebateGoal(debateState)}</em>
               <p>{debateState.lastMove}</p>
               <div className="debate-meter-stack" aria-hidden="true">
                 <div className="debate-meter-row">
@@ -1390,11 +1208,11 @@ export default function App() {
                     {(debateState.playerHitStun ?? 0) > 0 ? <span>aturdido</span> : null}
                     {(debateState.rivalHitStun ?? 0) > 0 ? <span>rival aturdido</span> : null}
                     {debateState.rivalIntent === "windup" ? (
-                      <span>{getRivalAttackName(debateState.rivalAttack)} viene</span>
+                      <span>{getConflictRivalAttackName(debateState.rivalAttack)} viene</span>
                     ) : null}
                     {debateState.vulnerable ? <span>rival vulnerable</span> : null}
                     {(debateState.streak ?? 0) > 0 ? <span>racha {debateState.streak}</span> : null}
-                    <span>{getRingRead(getCombatVector(getCombatPos(debateState, "player"), getCombatPos(debateState, "rival")).distance, debateState.playerStamina)}</span>
+                    <span>{getConflictRingRead(getConflictCombatVector(getConflictCombatPos(debateState, "player"), getConflictCombatPos(debateState, "rival")).distance, debateState.playerStamina)}</span>
                   </>
                 )}
               </div>

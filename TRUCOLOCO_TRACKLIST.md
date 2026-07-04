@@ -64,6 +64,23 @@
 - **Bar con apoyos visibles** — soportes bajo estantes y remates de pared para que
   botellas/estantes no parezcan props cortados.
 
+## ✅ HECHO por Codex (2026-07-04)
+
+- **Sala del Conflicto extraída a módulos propios** — el motor activo de combate
+  salió de `App.jsx` y quedó en `src/game/conflict/`: constantes, estado puro,
+  hook de loop real-time e input separado. `App.jsx` ahora sólo lo consume.
+- **PvP local más aislado** — rAF, listeners de teclado/mouse, sonido de impacto,
+  reset del ring y lectura del HUD salen del hook de conflicto; no se tocó el
+  núcleo de truco (`useTrucolocoMatch.js`) ni networking.
+- **Armas de Cartachin conectadas al combate** — el motor lee `data/weapons.js`
+  sin editarlo: Sustancia X en el Naipe pega más fuerte; Pucho en el Ojo cambia
+  rango/knockback/cadencia.
+- **Cámara del ring estabilizada** — deja de perseguir cada golpe desde ángulos
+  rotos y usa un plano semi-fijo centrado en los dos luchadores.
+- **Validación verde** — `check:rules`, `check:flow`, `build` y `check:ui` OK.
+  Queda deuda: borrar del inicio de `App.jsx` el bloque legacy muerto de combate
+  cuando no haya otro agente tocando el archivo.
+
 ## ✅ HECHO (2026-07-03, noche)
 
 - **SALAS ONLINE — etapa 1 (presencia) FUNCIONANDO** — botón "🌐 Crear sala" arriba

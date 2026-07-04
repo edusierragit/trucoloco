@@ -1337,35 +1337,23 @@ const RING_WORLD_ORIGIN = { x: -7.45, y: -1.14, z: -0.9 };
 function getRingCameraPose(debateAction, isNarrow) {
   const player = debateAction?.playerPos ?? { x: -0.72, z: 0.18 };
   const rival = debateAction?.rivalPos ?? { x: 0.72, z: -0.18 };
-  const playerX = RING_WORLD_ORIGIN.x + (player.x ?? -0.72);
-  const playerZ = RING_WORLD_ORIGIN.z + (player.z ?? 0.18);
-  const rivalX = RING_WORLD_ORIGIN.x + (rival.x ?? 0.72);
-  const rivalZ = RING_WORLD_ORIGIN.z + (rival.z ?? -0.18);
-  const midpointX = (playerX + rivalX) / 2;
-  const midpointZ = (playerZ + rivalZ) / 2;
-  const deltaX = rivalX - playerX;
-  const deltaZ = rivalZ - playerZ;
-  const distanceBetweenFighters = Math.hypot(deltaX, deltaZ) || 1;
-  const toRivalX = deltaX / distanceBetweenFighters;
-  const toRivalZ = deltaZ / distanceBetweenFighters;
-  const sideX = toRivalZ;
-  const sideZ = -toRivalX;
-  const chaseDistance = isNarrow ? 1.92 : 2.18;
-  const sideOffset = isNarrow ? 0.12 : 0.34;
-  const tension = clamp(1 - distanceBetweenFighters / 2.4, 0, 1);
+  const midpointX = clamp(((player.x ?? -0.72) + (rival.x ?? 0.72)) * 0.5, -0.72, 0.72);
+  const midpointZ = clamp(((player.z ?? 0.18) + (rival.z ?? -0.18)) * 0.5, -0.5, 0.5);
+  const followX = midpointX * 0.22;
+  const followZ = midpointZ * 0.16;
 
   return {
     position: [
-      clamp(playerX - toRivalX * chaseDistance + sideX * sideOffset, -9.35, -5.7),
-      RING_WORLD_ORIGIN.y + (isNarrow ? 1.55 : 1.42) - tension * 0.1,
-      clamp(playerZ - toRivalZ * chaseDistance + sideZ * sideOffset, -2.35, 0.82)
+      RING_WORLD_ORIGIN.x + followX,
+      RING_WORLD_ORIGIN.y + (isNarrow ? 2.35 : 2.18),
+      RING_WORLD_ORIGIN.z + (isNarrow ? 2.35 : 2.75) + followZ
     ],
     target: [
-      clamp(midpointX + toRivalX * 0.12, -9.05, -5.88),
-      RING_WORLD_ORIGIN.y + 0.36,
-      clamp(midpointZ + toRivalZ * 0.08, -2.16, 0.66)
+      RING_WORLD_ORIGIN.x + followX * 0.55,
+      RING_WORLD_ORIGIN.y + 0.16,
+      RING_WORLD_ORIGIN.z + midpointZ * 0.18
     ],
-    fov: isNarrow ? 53 : 48
+    fov: isNarrow ? 48 : 43
   };
 }
 
