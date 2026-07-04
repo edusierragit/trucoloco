@@ -7,7 +7,7 @@ import { HeldHand, Table } from "./Table";
 import { sfx } from "../audio/sfx";
 import { TeamsAroundTable } from "./TeamsAroundTable";
 import { CharacterFigure } from "./CharacterFigure";
-import { characterSkins, tableSeats } from "../data/characters";
+import { characterSkins, tableSeats, teams } from "../data/characters";
 import { BarRoom } from "./world/BarRoom";
 import { WalkablePlayer } from "./world/WalkablePlayer";
 
@@ -1259,6 +1259,56 @@ function CantoVoice({ match }) {
   );
 }
 
+// ── caminantes remotos: los otros jugadores de la sala, en carne y hueso ────
+function RemoteWalker({ peer }) {
+  const groupRef = useRef(null);
+  const target = peer.pos;
+  const allPlayers = [...teams.A, ...teams.B];
+  const characterDef = allPlayers.find((player) => player.id === peer.characterId) ?? allPlayers[0];
+  const skin = characterDef?.skinId ? characterSkins[characterDef.skinId] : null;
+
+  useFrame((_, delta) => {
+    const g = groupRef.current;
+    if (!g || !target) return;
+    const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 9);
+    g.position.x += (target.x - g.position.x) * alpha;
+    g.position.z += (target.z - g.position.z) * alpha;
+    let deltaYaw = (target.yaw ?? 0) - g.rotation.y;
+    while (deltaYaw > Math.PI) deltaYaw -= Math.PI * 2;
+    while (deltaYaw < -Math.PI) deltaYaw += Math.PI * 2;
+    g.rotation.y += deltaYaw * alpha;
+  });
+
+  if (!target) return null;
+
+  return (
+    <group ref={groupRef} position={[target.x, 0.02, target.z]}>
+      <Suspense fallback={null}>
+        <CharacterFigure skin={skin} accent={characterDef?.accent ?? "#91e9f6"} isActiveLane={false} />
+      </Suspense>
+      <Billboard position={[0, 2.1, 0]} follow>
+        <Text fontSize={0.12} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.08} outlineWidth={0.008} outlineColor="#04222a">
+          {peer.name}
+        </Text>
+      </Billboard>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[0.3, 0.38, 24]} />
+        <meshBasicMaterial color="#91e9f6" transparent opacity={0.3} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function RemoteWalkers({ walkers }) {
+  return (
+    <group name="Remote_Walkers">
+      {walkers.map((peer) => (
+        <RemoteWalker key={peer.peerId} peer={peer} />
+      ))}
+    </group>
+  );
+}
+
 const ROOM_OFFSET = { x: 0, y: -1.35, z: 0.25 };
 
 function getOwnSeat(match) {
@@ -1388,6 +1438,8 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
 export function TrucolocoScene({
   match,
   netRoster = [],
+  remoteWalkers = [],
+  onWalkerMove,
   cameraView = "table",
   debateAction,
   selectedWalkCharacter,
@@ -1606,8 +1658,10 @@ export function TrucolocoScene({
             <TeamsAroundTable match={match} cameraView={cameraView} performanceMode={performanceMode} netRoster={netRoster} />
             {cameraView === "seat" ? <SeatViewFocus match={match} /> : null}
             {isWalkMode ? <WalkHotspots activeHotspot={walkHotspot} lowPower={lowPower} /> : null}
+            {remoteWalkers.length ? <RemoteWalkers walkers={remoteWalkers} /> : null}
             <WalkablePlayer
               enabled={isWalkMode}
+              onMove={onWalkerMove}
               character={selectedWalkCharacter}
               virtualInput={walkTouchInput}
               onHotspotChange={onWalkHotspotChange}

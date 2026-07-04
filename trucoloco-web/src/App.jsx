@@ -595,6 +595,10 @@ export default function App() {
     };
     const room = createTrucolocoRoom(code, { isHost, profile });
     room.onRoster(setRoster);
+    setRemotePos({});
+    room.onPos((peerId, data) =>
+      setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw } }))
+    );
     if (!isHost) {
       // espejo v1: tu pantalla ES la partida del host
       room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
@@ -606,6 +610,17 @@ export default function App() {
   }, [match.selectedCharacter, match.selectedRole]);
 
   const [micOn, setMicOn] = useState(false);
+  const [remotePos, setRemotePos] = useState({});
+  const lastPosSentRef = useRef(0);
+
+  const handleMyMove = useCallback((x, z, yaw, moving) => {
+    const room = netRoomRef.current;
+    if (!room) return;
+    const now = performance.now();
+    if (now - lastPosSentRef.current < (moving ? 120 : 600)) return;
+    lastPosSentRef.current = now;
+    room.sendPos({ x, z, yaw });
+  }, []);
 
   // host: cada cambio de la mesa viaja como snapshot a los guests
   useEffect(() => {
@@ -624,7 +639,8 @@ export default function App() {
     match.trucoPending,
     match.envidoPending,
     match.agreementApplied,
-    match.highlight
+    match.highlight,
+    roster.length
   ]);
 
   // cuando entra alguien a la sala, suena y se siente
@@ -717,6 +733,7 @@ export default function App() {
     netRoomRef.current = null;
     setNetRoom(null);
     setRoster([]);
+    setRemotePos({});
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
@@ -1145,6 +1162,10 @@ export default function App() {
             <fog attach="fog" args={["#060403", 7.2, 18.5]} />
             <TrucolocoScene
               netRoster={roster}
+              onWalkerMove={handleMyMove}
+              remoteWalkers={roster
+                .filter((peer) => !peer.self && remotePos[peer.peerId])
+                .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
               match={match}
               cameraView={cameraView}
               debateAction={debateState}

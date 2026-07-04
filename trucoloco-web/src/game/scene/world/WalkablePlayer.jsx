@@ -169,7 +169,7 @@ function AvatarBody({ refs, character, motionMode }) {
   );
 }
 
-export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChange, onInteract, onAnimationDebugChange }) {
+export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChange, onInteract, onAnimationDebugChange, onMove }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const leftLegRef = useRef(null);
@@ -404,6 +404,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     }
 
     groupRef.current.position.copy(positionRef.current);
+    onMove?.(positionRef.current.x, positionRef.current.z, groupRef.current.rotation.y, moving);
 
     const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
     const jumpProgress = actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current

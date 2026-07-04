@@ -23,7 +23,12 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   const room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, `sala-${code}`);
   const hello = room.makeAction("hello");
   const snap = room.makeAction("snap");
+  const pos = room.makeAction("pos");
   let onSnapshotCb = null;
+  let onPosCb = null;
+  pos.onMessage = (data, context) => {
+    if (data && typeof data === "object") onPosCb?.(context.peerId, data);
+  };
   snap.onMessage = (data) => {
     if (data && typeof data === "object") onSnapshotCb?.(data);
   };
@@ -106,6 +111,12 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     onRoster(cb) {
       onRosterChange = cb;
       emitRoster();
+    },
+    sendPos(payload) {
+      void pos.send(payload);
+    },
+    onPos(cb) {
+      onPosCb = cb;
     },
     sendSnapshot(payload) {
       latestSnapshot = payload;

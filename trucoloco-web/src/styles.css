@@ -4977,3 +4977,8 @@ select {
   opacity: 0.45;
   filter: saturate(0.6);
 }
+
+/* espectador total: la UI de juego local desaparece (mira el mundo, la sala y habla) */
+.stage-espectador .stage-sidebar {
+  display: none;
+}
