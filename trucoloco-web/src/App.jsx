@@ -698,9 +698,15 @@ export default function App() {
     if (!room) return;
     room.updateProfile({ seatId, seatAt: Date.now() });
     const seat = tableSeats.find((item) => item.seatId === seatId);
-    if (seat && match.canSwitchRole) match.selectRole(seat.role);
+    if (seat && match.canSwitchRole) {
+      match.selectRole(seat.role);
+      // tu avatar pasa a ser el personaje de esa silla: dos humanos en sillas
+      // distintas dejan de verse como el mismo Pochex replicado
+      if (seat.playerId) match.selectCharacter(seat.playerId);
+    }
   }, [match]);
 
+  // resolución de conflicto: si dos reclaman la misma silla, gana el más viejo
   useEffect(() => {
     const me = roster.find((peer) => peer.self);
     if (!me?.seatId) return;
@@ -712,6 +718,24 @@ export default function App() {
     );
     if (rival) netRoomRef.current?.updateProfile({ seatId: null, seatAt: null });
   }, [roster]);
+
+  // al entrar a una sala con más gente, tomás automáticamente una silla LIBRE
+  // (distinta) para no aparecer como el mismo personaje que otro
+  const autoSeatDoneRef = useRef(false);
+  useEffect(() => {
+    if (!netRoom) {
+      autoSeatDoneRef.current = false;
+      return;
+    }
+    const me = roster.find((peer) => peer.self);
+    if (!me || me.seatId || roster.length < 2 || autoSeatDoneRef.current) return;
+    const taken = new Set(roster.filter((peer) => peer.seatId).map((peer) => peer.seatId));
+    const free = tableSeats.find((seat) => !taken.has(seat.seatId));
+    if (free) {
+      autoSeatDoneRef.current = true;
+      claimSeat(free.seatId);
+    }
+  }, [roster, netRoom, claimSeat]);
 
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
