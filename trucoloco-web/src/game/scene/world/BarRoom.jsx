@@ -417,6 +417,110 @@ function SmokeMachine() {
   );
 }
 
+
+// ── pase de arte 2: lore en las paredes ─────────────────────────────────────
+
+function WantedPoster({ position, rotation, name, crime, tone }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <RoundedBox args={[0.98, 1.3, 0.05]} radius={0.02} castShadow receiveShadow>
+        <meshStandardMaterial color="#241408" roughness={0.8} />
+      </RoundedBox>
+      <mesh position={[0, 0, 0.032]}>
+        <planeGeometry args={[0.82, 1.14]} />
+        <meshStandardMaterial color="#d8c49a" roughness={0.92} />
+      </mesh>
+      <Text position={[0, 0.42, 0.04]} fontSize={0.13} color="#3a2210" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        SE BUSCA
+      </Text>
+      {/* la "foto": silueta sombría */}
+      <mesh position={[0, 0.05, 0.038]}>
+        <circleGeometry args={[0.2, 24]} />
+        <meshStandardMaterial color={tone} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, -0.13, 0.038]}>
+        <planeGeometry args={[0.34, 0.18]} />
+        <meshStandardMaterial color={tone} roughness={0.9} />
+      </mesh>
+      <Text position={[0, -0.32, 0.04]} fontSize={0.095} color="#3a2210" anchorX="center" anchorY="middle" letterSpacing={0.06}>
+        {name}
+      </Text>
+      <Text position={[0, -0.46, 0.04]} fontSize={0.052} color="#6b4a26" anchorX="center" anchorY="middle" maxWidth={0.76} textAlign="center">
+        {crime}
+      </Text>
+    </group>
+  );
+}
+
+function WantedWall() {
+  return (
+    <group name="World_WantedWall">
+      <WantedPoster
+        position={[-5.2, 0.72, 1.9]}
+        rotation={[0, Math.PI / 2, 0.02]}
+        name="EL GAZPACHO"
+        crime={'"Dice que ya ganó. Siempre."'}
+        tone="#5a3a20"
+      />
+      <WantedPoster
+        position={[5.2, 0.62, 2.1]}
+        rotation={[0, -Math.PI / 2, -0.03]}
+        name="MYKE KETA"
+        crime={'"Sospechoso de todo."'}
+        tone="#2e3a44"
+      />
+    </group>
+  );
+}
+
+function Dartboard() {
+  const rings = [
+    { r: 0.3, color: "#1c1108" },
+    { r: 0.24, color: "#b03424" },
+    { r: 0.18, color: "#d8c49a" },
+    { r: 0.12, color: "#b03424" },
+    { r: 0.06, color: "#d8c49a" },
+    { r: 0.025, color: "#b03424" }
+  ];
+  return (
+    <group name="World_Dartboard" position={[5.24, 0.85, -1.6]} rotation={[0, -Math.PI / 2, 0]}>
+      {rings.map((ring, index) => (
+        <mesh key={index} position={[0, 0, 0.01 + index * 0.004]}>
+          <circleGeometry args={[ring.r, 28]} />
+          <meshStandardMaterial color={ring.color} roughness={0.85} />
+        </mesh>
+      ))}
+      {/* tres dardos clavados torcidos */}
+      {[[0.06, 0.09, 0.5], [-0.1, -0.02, -0.4], [0.02, -0.13, 0.2]].map(([x, y, tilt], index) => (
+        <group key={index} position={[x, y, 0.05]} rotation={[tilt * 0.4, 0, tilt]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.006, 0.006, 0.14, 6]} />
+            <meshStandardMaterial color="#c9a46a" roughness={0.4} metalness={0.5} />
+          </mesh>
+          <mesh position={[0, 0, 0.09]} rotation={[Math.PI / 2, 0, 0]}>
+            <coneGeometry args={[0.02, 0.05, 6]} />
+            <meshStandardMaterial color={index === 0 ? "#b03424" : "#2e5a44"} roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// bruma alta permanente: el antro respira humo viejo cerca del techo
+function CeilingHaze() {
+  return (
+    <group name="World_CeilingHaze">
+      {[[-2.4, 3.4, -1.8, 3.4], [1.8, 3.55, 0.6, 4.2], [-0.4, 3.25, 2.2, 3.0]].map(([x, y, z, size], index) => (
+        <mesh key={index} position={[x, y, z]} rotation={[-Math.PI / 2, 0, index * 1.3]}>
+          <planeGeometry args={[size, size * 0.7]} />
+          <meshBasicMaterial color="#8a7a62" transparent opacity={0.045} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 export function BarRoom() {
   return (
     <group name="World_BarRoom">
@@ -434,6 +538,9 @@ export function BarRoom() {
       <TableRug />
       <BarLamps />
       <SmokeMachine />
+      <WantedWall />
+      <Dartboard />
+      <CeilingHaze />
     </group>
   );
 }

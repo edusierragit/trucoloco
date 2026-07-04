@@ -1270,7 +1270,7 @@ function RemoteWalker({ peer }) {
   useFrame((_, delta) => {
     const g = groupRef.current;
     if (!g || !target) return;
-    const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 9);
+    const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 15);
     g.position.x += (target.x - g.position.x) * alpha;
     g.position.z += (target.z - g.position.z) * alpha;
     let deltaYaw = (target.yaw ?? 0) - g.rotation.y;

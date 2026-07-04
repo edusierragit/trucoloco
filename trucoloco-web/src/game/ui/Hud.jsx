@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useEffect } from "react";
+import { sfx } from "../audio/sfx";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { roleDefinitions } from "../data/characters";
 
@@ -31,6 +33,18 @@ const roleSelectCopy = {
 
 function getRoleTone(match) {
   return roleTone[match.selectedRole] ?? roleTone.Cartachin;
+}
+
+function AmbientAudio() {
+  useEffect(() => {
+    const start = () => {
+      sfx.ensure();
+      sfx.ambient();
+    };
+    window.addEventListener("pointerdown", start, { once: true });
+    return () => window.removeEventListener("pointerdown", start);
+  }, []);
+  return null;
 }
 
 function Header({ match }) {
@@ -1186,7 +1200,8 @@ export function Hud({ match, cameraView = "table", onReturnToTable }) {
   return (
     <div className={hudClassName}>
       <div className="hud-top-stack">
-        <Header match={match} />
+        <AmbientAudio />
+      <Header match={match} />
         <RoleSelector match={match} />
       </div>
 

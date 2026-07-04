@@ -54,6 +54,26 @@ class Sfx {
     src.start(t);
   }
 
+  // murmullo de bar: colchón grave + clinks de vasos cada tanto
+  ambient() {
+    if (!this.ac || !this.master || this._ambientOn) return;
+    this._ambientOn = true;
+    const ac = this.ac;
+    const noiseLoop = () => {
+      if (!this._ambientOn) return;
+      this.noise(2.4, 0.028, 320);
+      this._ambientTimer = setTimeout(noiseLoop, 1900);
+    };
+    noiseLoop();
+    const clinkLoop = () => {
+      if (!this._ambientOn) return;
+      if (Math.random() < 0.4) this.blip(1900 + Math.random() * 900, 0.12, "sine", 0.018, -300);
+      this._clinkTimer = setTimeout(clinkLoop, 4200 + Math.random() * 5200);
+    };
+    clinkLoop();
+    void ac;
+  }
+
   // reparto: tres cartas rapiditas
   deal() {
     this.noise(0.06, 0.2, 2200, 0);

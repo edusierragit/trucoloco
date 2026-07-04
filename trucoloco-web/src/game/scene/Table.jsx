@@ -68,6 +68,9 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
 
   // played cards read as real naipes, not furniture — keep them modest on the felt
   const TABLE_CARD_SCALE = 0.7;
+  // giro natural determinístico (hash del id): igual en todas las pantallas del espejo
+  const idHash = String(card.id ?? "x").split("").reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 997, 7);
+  const settleYaw = ((idHash / 997) - 0.5) * 0.22;
 
   useEffect(() => {
     progressRef.current = 0;
@@ -85,15 +88,18 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
     }
 
     progressRef.current = Math.min(1, progressRef.current + delta * 2.8);
-    const t = 1 - Math.pow(1 - progressRef.current, 3);
+    const raw = progressRef.current;
+    const t = 1 - Math.pow(1 - raw, 3);
+    // rebote al asentarse: la carta toca el fieltro y respira una vez
+    const settle = raw > 0.82 ? Math.sin((raw - 0.82) / 0.18 * Math.PI) * (1 - raw) * 0.5 : 0;
 
     groupRef.current.position.x = fromX + (position[0] - fromX) * t;
-    groupRef.current.position.y = fromY + (position[1] - fromY) * t;
+    groupRef.current.position.y = fromY + (position[1] - fromY) * t + settle * 0.18;
     groupRef.current.position.z = fromZ + (position[2] - fromZ) * t;
     groupRef.current.rotation.x = initialRotX + (rotation[0] - initialRotX) * t;
-    groupRef.current.rotation.y = initialRotY + ((rotation[1] ?? 0) - initialRotY) * t;
+    groupRef.current.rotation.y = initialRotY + ((rotation[1] ?? 0) + settleYaw - initialRotY) * t;
     groupRef.current.rotation.z = initialRotZ + (rotation[2] - initialRotZ) * t;
-    const scale = (0.82 + (1 - 0.82) * t) * TABLE_CARD_SCALE;
+    const scale = (0.82 + (1 - 0.82) * t + settle * 0.06) * TABLE_CARD_SCALE;
     groupRef.current.scale.setScalar(scale);
 
     if (shadowRef.current) {

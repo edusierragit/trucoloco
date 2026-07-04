@@ -226,15 +226,29 @@ function CharacterSeat({
       rotation={[0, seatYaw, 0]}
       scale={roleScale}
     >
-      {/* Chair */}
-      <mesh position={[0, 0.14, -0.12 + chairPull]} scale={[chairScale, 1, chairScale]} castShadow receiveShadow>
-        <boxGeometry args={[0.72, 0.18, 0.64]} />
-        <meshStandardMaterial color={chairSeatColor} roughness={0.92} />
-      </mesh>
-      <mesh position={[0, 0.46, chairPull]} scale={[chairScale, 1, chairScale]} castShadow>
-        <boxGeometry args={[0.56, 0.58, 0.22]} />
-        <meshStandardMaterial color={chairBackColor} roughness={0.94} />
-      </mesh>
+      {/* Taburete de bar: asiento acolchado, pata central y aro de bronce */}
+      <group position={[0, 0, -0.52 + chairPull]} scale={chairScale}>
+        <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.3, 0.32, 0.09, 20]} />
+          <meshStandardMaterial color={chairSeatColor} roughness={0.85} />
+        </mesh>
+        <mesh position={[0, 0.465, 0]} castShadow>
+          <torusGeometry args={[0.29, 0.035, 10, 22]} />
+          <meshStandardMaterial color={chairBackColor} roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]} castShadow>
+          <cylinderGeometry args={[0.045, 0.06, 0.4, 10]} />
+          <meshStandardMaterial color="#17100b" roughness={0.6} metalness={0.35} />
+        </mesh>
+        <mesh position={[0, 0.02, 0]} receiveShadow>
+          <cylinderGeometry args={[0.24, 0.28, 0.045, 18]} />
+          <meshStandardMaterial color="#100a07" roughness={0.7} metalness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.14, 0]}>
+          <torusGeometry args={[0.2, 0.014, 8, 20]} />
+          <meshStandardMaterial color="#b47a34" roughness={0.4} metalness={0.6} />
+        </mesh>
+      </group>
 
       {isPlayerSeat ? (
         <group name={`SeatState_${character.name}`}>
