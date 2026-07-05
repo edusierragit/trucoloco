@@ -1,26 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="2 de ESPADA">
-  <rect width="420" height="620" rx="28" fill="#f4e4bf"/>
-  <rect x="14" y="14" width="392" height="592" rx="22" fill="#f7ebce" stroke="#6e4a2b" stroke-width="5"/>
-  <rect x="31" y="31" width="358" height="558" rx="15" fill="none" stroke="#33596b" stroke-width="3"/>
-  <rect x="44" y="44" width="332" height="532" rx="10" fill="none" stroke="#9f7040" stroke-width="1.6" opacity="0.48"/>
-  <g transform="translate(58 76) rotate(0)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#101f2a">2</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#33596b">E</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="620" viewBox="0 0 420 620" role="img" aria-label="2 de ESPADAS">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#f9efd3"/>
+      <stop offset="78%" stop-color="#f2e3bd"/>
+      <stop offset="100%" stop-color="#e4d0a4"/>
+    </radialGradient>
+  </defs>
+  <rect width="420" height="620" rx="28" fill="#efdcb2"/>
+  <rect x="10" y="10" width="400" height="600" rx="24" fill="url(#paper)" stroke="#6e4a2b" stroke-width="5"/>
+  <rect x="24" y="24" width="372" height="572" rx="16" fill="none" stroke="#3d6478" stroke-width="2.4" opacity="0.55"/>
+  <path d="M60,31 H360 M60,589 H360" stroke="#3d6478" stroke-width="7" stroke-linecap="round"/><rect x="151.0" y="25" width="18" height="12" fill="#f9efd3"/><path d="M160.0,24 L160.0,38" stroke="#243d4a" stroke-width="2.4"/><rect x="151.0" y="583" width="18" height="12" fill="#f9efd3"/><path d="M160.0,582 L160.0,596" stroke="#243d4a" stroke-width="2.4"/><rect x="251.0" y="25" width="18" height="12" fill="#f9efd3"/><path d="M260.0,24 L260.0,38" stroke="#243d4a" stroke-width="2.4"/><rect x="251.0" y="583" width="18" height="12" fill="#f9efd3"/><path d="M260.0,582 L260.0,596" stroke="#243d4a" stroke-width="2.4"/>
+  
+  <g transform="translate(62 88) rotate(0)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="#241409">2</text>
+    <g transform="translate(0 26) rotate(0) scale(0.2)">
+  <path d="M0,-74 C11,-56 14,-24 11,20 L-11,20 C-14,-24 -11,-56 0,-74 Z" fill="#b9cdd6" stroke="#241409" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M0,-60 L0,14" stroke="#faf4e2" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <path d="M-34,24 Q0,34 34,24 L34,36 Q0,46 -34,36 Z" fill="#c9971d" stroke="#241409" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="-8" y="38" width="16" height="30" rx="5" fill="#3d6478" stroke="#241409" stroke-width="5"/>
+  <path d="M-8,46 H8 M-8,54 H8" stroke="#243d4a" stroke-width="3"/>
+  <circle cx="0" cy="76" r="11" fill="#c9971d" stroke="#241409" stroke-width="5"/>
+</g>
   </g>
-  <g transform="translate(362 544) rotate(180)">
-    <text x="0" y="0" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-weight="800" fill="#101f2a">2</text>
-    <text x="0" y="31" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#33596b">E</text>
+  
+  <g transform="translate(358 532) rotate(180)">
+    <text x="0" y="0" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="#241409">2</text>
+    <g transform="translate(0 26) rotate(0) scale(0.2)">
+  <path d="M0,-74 C11,-56 14,-24 11,20 L-11,20 C-14,-24 -11,-56 0,-74 Z" fill="#b9cdd6" stroke="#241409" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M0,-60 L0,14" stroke="#faf4e2" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <path d="M-34,24 Q0,34 34,24 L34,36 Q0,46 -34,36 Z" fill="#c9971d" stroke="#241409" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="-8" y="38" width="16" height="30" rx="5" fill="#3d6478" stroke="#241409" stroke-width="5"/>
+  <path d="M-8,46 H8 M-8,54 H8" stroke="#243d4a" stroke-width="3"/>
+  <circle cx="0" cy="76" r="11" fill="#c9971d" stroke="#241409" stroke-width="5"/>
+</g>
   </g>
-  <text x="210" y="102" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" letter-spacing="4" fill="#101f2a">ESPADA</text>
-  <g><g transform="translate(210 210) rotate(0) scale(1)"><path d="M0-78C22-42 30-9 9 25L0 39L-9 25C-30-9-22-42 0-78Z" fill="#8fb0bd" stroke="#101f2a" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M0-60C12-31 14-8 3 17" fill="none" stroke="#f4eedb" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
-  <path d="M-38 35H38M0 39V84" stroke="#101f2a" stroke-width="10" stroke-linecap="round"/>
-  <path d="M-25 34H25M0 43V77" stroke="#33596b" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="0" cy="35" r="12" fill="#d7c594" stroke="#101f2a" stroke-width="4"/></g><g transform="translate(210 418) rotate(180) scale(1)"><path d="M0-78C22-42 30-9 9 25L0 39L-9 25C-30-9-22-42 0-78Z" fill="#8fb0bd" stroke="#101f2a" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M0-60C12-31 14-8 3 17" fill="none" stroke="#f4eedb" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
-  <path d="M-38 35H38M0 39V84" stroke="#101f2a" stroke-width="10" stroke-linecap="round"/>
-  <path d="M-25 34H25M0 43V77" stroke="#33596b" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="0" cy="35" r="12" fill="#d7c594" stroke="#101f2a" stroke-width="4"/></g></g>
-
+  <text x="210" y="576" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="19" font-weight="700" letter-spacing="5" fill="#243d4a" opacity="0.85">ESPADAS</text>
+  <g transform="translate(210 205) rotate(0) scale(1.0)">
+  <path d="M0,-74 C11,-56 14,-24 11,20 L-11,20 C-14,-24 -11,-56 0,-74 Z" fill="#b9cdd6" stroke="#241409" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M0,-60 L0,14" stroke="#faf4e2" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <path d="M-34,24 Q0,34 34,24 L34,36 Q0,46 -34,36 Z" fill="#c9971d" stroke="#241409" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="-8" y="38" width="16" height="30" rx="5" fill="#3d6478" stroke="#241409" stroke-width="5"/>
+  <path d="M-8,46 H8 M-8,54 H8" stroke="#243d4a" stroke-width="3"/>
+  <circle cx="0" cy="76" r="11" fill="#c9971d" stroke="#241409" stroke-width="5"/>
+</g><g transform="translate(210 445) rotate(180) scale(1.0)">
+  <path d="M0,-74 C11,-56 14,-24 11,20 L-11,20 C-14,-24 -11,-56 0,-74 Z" fill="#b9cdd6" stroke="#241409" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M0,-60 L0,14" stroke="#faf4e2" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <path d="M-34,24 Q0,34 34,24 L34,36 Q0,46 -34,36 Z" fill="#c9971d" stroke="#241409" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="-8" y="38" width="16" height="30" rx="5" fill="#3d6478" stroke="#241409" stroke-width="5"/>
+  <path d="M-8,46 H8 M-8,54 H8" stroke="#243d4a" stroke-width="3"/>
+  <circle cx="0" cy="76" r="11" fill="#c9971d" stroke="#241409" stroke-width="5"/>
+</g>
 </svg>

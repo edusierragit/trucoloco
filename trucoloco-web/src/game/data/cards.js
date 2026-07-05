@@ -1,6 +1,6 @@
 import { assetUrl } from "../assetUrl.js";
-const CARD_ASSET_VERSION = "light-deck-2";
-const CARD_BACK_IMAGE = assetUrl("assets/cards/backs/truco-back.svg");
+const CARD_ASSET_VERSION = "criollo-1";
+const CARD_BACK_IMAGE = assetUrl(`assets/cards/backs/truco-back.svg?v=${CARD_ASSET_VERSION}`);
 
 const card = (id, name, suit, power, tone, lane = "Cartachin", flavor = "", group = "truco") => ({
   id,
