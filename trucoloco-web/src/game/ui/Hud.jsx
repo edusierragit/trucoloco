@@ -97,7 +97,7 @@ function RoleSelector({ match, multiplayer }) {
   const primaryActionLabel = inSala && !salaConnected
     ? "Conectando a sala..."
     : !inSala
-    ? "Probar solo (vs bots)"
+    ? "Practicar contra la IA"
     : hasSalaSeat
       ? multiplayer?.isHost
         ? "Repartir mano en sala"
@@ -106,7 +106,7 @@ function RoleSelector({ match, multiplayer }) {
   const primaryActionSub = inSala && !salaConnected
     ? `Sala ${multiplayer?.roomCode ?? ""} · entrando por link`
     : !inSala
-    ? `Modo de prueba · ${selectedCharacter.name} · ${match.selectedRole}`
+    ? `Práctica aislada · sin sala · ${selectedCharacter.name}`
     : hasSalaSeat
       ? multiplayer?.isHost
         ? `Sala ${multiplayer.roomCode} · ${selectedSeatLabel}`
@@ -255,7 +255,7 @@ function RoleSelector({ match, multiplayer }) {
                 ? "Ya tenés silla. Repartí cuando los pibes estén sentados."
                 : "Ya tenés silla. El anfitrión arranca la mano compartida."
               : "Para jugar con amigos, reclamá tu silla y pasá el link de la sala."
-            : "Elegí tu rol y personaje. Podés probar solo o crear sala para amigos."}
+            : "Para jugar con amigos: creá una sala e invitá (rellenás con bots mientras llegan). Acá abajo solo practicás vs IA."}
         </p>
         {multiplayer?.notice ? <p className="role-ready-notice">{multiplayer.notice}</p> : null}
         <div className="role-ready-actions">
