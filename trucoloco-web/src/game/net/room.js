@@ -24,8 +24,18 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   const hello = room.makeAction("hello");
   const snap = room.makeAction("snap");
   const pos = room.makeAction("pos");
+  // partida compartida: el guest PROPONE una jugada (intent), el host la
+  // valida contra el motor y la verdad vuelve como snapshot. Nadie más que
+  // el host toca el estado.
+  const intent = room.makeAction("intent");
   let onSnapshotCb = null;
   let onPosCb = null;
+  let onIntentCb = null;
+  intent.onMessage = (data, context) => {
+    if (data && typeof data === "object" && typeof data.action === "string") {
+      onIntentCb?.(context.peerId, data);
+    }
+  };
   pos.onMessage = (data, context) => {
     if (data && typeof data === "object") onPosCb?.(context.peerId, data);
   };
@@ -107,6 +117,14 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
       myProfile = { ...myProfile, ...next };
       void hello.send(myProfile);
       emitRoster();
+    },
+    // guest -> host: "quiero jugar esta carta / cantar truco / querer"
+    sendIntent(action, payload = null) {
+      void intent.send({ action, payload, at: Date.now() });
+    },
+    // host: escucha intents y los aplica al motor (validando turno y asiento)
+    onIntent(cb) {
+      onIntentCb = cb;
     },
     onRoster(cb) {
       onRosterChange = cb;

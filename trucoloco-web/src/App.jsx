@@ -789,6 +789,8 @@ export default function App() {
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
   const [backfillOpen, setBackfillOpen] = useState(false);
+  // lobby online: sin bots salvo que el host lo pida — se espera a los humanos
+  const [fillWithBots, setFillWithBots] = useState(false);
   const backfillRef = useRef(null);
   const rosterRef = useRef([]);
   rosterRef.current = roster;
@@ -1446,6 +1448,40 @@ export default function App() {
                 </div>
 
                 {salaNotice ? <p className="sala-warning">{salaNotice}</p> : null}
+
+                {!match.handStarted ? (
+                  <div className="sala-lobby">
+                    <p className={roster.length >= ROOM_LIMIT ? "sala-lobby-status sala-lobby-full" : "sala-lobby-status"}>
+                      {roster.length >= ROOM_LIMIT
+                        ? "¡Mesa completa! A jugar."
+                        : `⏳ Esperando jugadores… ${roster.length}/${ROOM_LIMIT}`}
+                    </p>
+                    {netRoom.isHost ? (
+                      <>
+                        <label className="sala-toggle">
+                          <input
+                            type="checkbox"
+                            checked={fillWithBots}
+                            onChange={() => setFillWithBots((value) => !value)}
+                          />
+                          <span>Rellenar sillas vacías con bots</span>
+                        </label>
+                        <button
+                          className="sala-share sala-start"
+                          type="button"
+                          disabled={roster.length < ROOM_LIMIT && !fillWithBots}
+                          onClick={() => match.startHand()}
+                        >
+                          {roster.length >= ROOM_LIMIT || fillWithBots
+                            ? "▶ Iniciar partida"
+                            : `▶ Iniciar (faltan ${ROOM_LIMIT - roster.length})`}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="sala-note">El host arranca cuando estén todos (o rellene con bots).</p>
+                    )}
+                  </div>
+                ) : null}
 
                 <button
                   className="sala-share"
