@@ -96,7 +96,9 @@ function CharacterModelAsset({
       Number.isFinite(bounds.min.y);
 
     const scaleFactor = hasFiniteBounds && size.y > 0 ? targetHeight / size.y : 1;
-    const centeredOffset = hasFiniteBounds ? [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor] : [0, 0, 0];
+    const centeredOffset = hasFiniteBounds
+      ? [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor]
+      : [0, 0, 0];
 
     return {
       clonedScene: clone,
@@ -119,23 +121,31 @@ function CharacterModelAsset({
     if (animationClipOverride && actions[animationClipOverride]) return animationClipOverride;
 
     const hasMappedMode = Object.prototype.hasOwnProperty.call(animationClipMap, animationMode);
-    const mappedName = hasMappedMode ? animationClipMap[animationMode] : animationMode === "run" ? animationClipMap.walk : null;
+    const mappedName = hasMappedMode
+      ? animationClipMap[animationMode]
+      : animationMode === "run"
+        ? animationClipMap.walk
+        : null;
     if (hasMappedMode) return typeof mappedName === "string" && actions[mappedName] ? mappedName : null;
 
     if (animationMode === "idle") return null;
 
-    const modeWords = animationMode === "run"
-      ? ["run", "jog", "sprint"]
-      : animationMode === "walk"
-        ? ["walk", "walking"]
-        : animationMode === "box"
-          ? ["box", "fight", "punch"]
-          : animationMode === "jump"
-            ? ["jump", "leap", "hop"]
-            : ["idle", "stand", "breath"];
+    const modeWords =
+      animationMode === "run"
+        ? ["run", "jog", "sprint"]
+        : animationMode === "walk"
+          ? ["walk", "walking"]
+          : animationMode === "box"
+            ? ["box", "fight", "punch"]
+            : animationMode === "jump"
+              ? ["jump", "leap", "hop"]
+              : ["idle", "stand", "breath"];
     const matched = names.find((name) => modeWords.some((word) => name.toLowerCase().includes(word)));
 
-    return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);
+    return (
+      matched ??
+      (animationMode === "idle" ? names[0] : (names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]))
+    );
   }, [actions, animationClipMap, animationClipOverride, animationMode]);
 
   useEffect(() => {
@@ -408,18 +418,46 @@ function FallbackFigure({ accent, outfitMaterialRef, upperRef, isActiveLane }) {
 
 function ProceduralCharacterFigure({ skin, accent, outfitMaterialRef, upperRef, isActiveLane }) {
   if (skin?.modelKind === "negociante") {
-    return <NegocianteFigure skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+    return (
+      <NegocianteFigure
+        skin={skin}
+        outfitMaterialRef={outfitMaterialRef}
+        upperRef={upperRef}
+        isActiveLane={isActiveLane}
+      />
+    );
   }
 
   if (skin?.modelKind === "gazpacho") {
-    return <GazpachoFigure skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+    return (
+      <GazpachoFigure
+        skin={skin}
+        outfitMaterialRef={outfitMaterialRef}
+        upperRef={upperRef}
+        isActiveLane={isActiveLane}
+      />
+    );
   }
 
   if (skin?.modelKind === "cartachin") {
-    return <CartachinFigure skin={skin} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+    return (
+      <CartachinFigure
+        skin={skin}
+        outfitMaterialRef={outfitMaterialRef}
+        upperRef={upperRef}
+        isActiveLane={isActiveLane}
+      />
+    );
   }
 
-  return <FallbackFigure accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+  return (
+    <FallbackFigure
+      accent={accent}
+      outfitMaterialRef={outfitMaterialRef}
+      upperRef={upperRef}
+      isActiveLane={isActiveLane}
+    />
+  );
 }
 
 export function CharacterFigure({
@@ -434,12 +472,30 @@ export function CharacterFigure({
   forceProcedural = false
 }) {
   if (forceProcedural) {
-    return <ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+    return (
+      <ProceduralCharacterFigure
+        skin={skin}
+        accent={accent}
+        outfitMaterialRef={outfitMaterialRef}
+        upperRef={upperRef}
+        isActiveLane={isActiveLane}
+      />
+    );
   }
 
   if (skin?.modelSrc) {
     return (
-      <Suspense fallback={<ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />}>
+      <Suspense
+        fallback={
+          <ProceduralCharacterFigure
+            skin={skin}
+            accent={accent}
+            outfitMaterialRef={outfitMaterialRef}
+            upperRef={upperRef}
+            isActiveLane={isActiveLane}
+          />
+        }
+      >
         <CharacterModelAsset
           src={skin.modelSrc}
           scale={skin.modelScale ?? 1}
@@ -456,5 +512,13 @@ export function CharacterFigure({
     );
   }
 
-  return <ProceduralCharacterFigure skin={skin} accent={accent} outfitMaterialRef={outfitMaterialRef} upperRef={upperRef} isActiveLane={isActiveLane} />;
+  return (
+    <ProceduralCharacterFigure
+      skin={skin}
+      accent={accent}
+      outfitMaterialRef={outfitMaterialRef}
+      upperRef={upperRef}
+      isActiveLane={isActiveLane}
+    />
+  );
 }

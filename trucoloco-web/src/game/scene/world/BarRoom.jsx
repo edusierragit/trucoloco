@@ -62,21 +62,19 @@ function CurtainWall({ side }) {
         if (isLeft && foldX > -1.12 && foldX < 1.04) return null;
 
         return (
-        <RoundedBox
-          key={index}
-          args={[0.06, 3.28, 0.07]}
-          radius={0.022}
-          position={[foldX, 0, -0.045]}
-          receiveShadow
-        >
-          <meshStandardMaterial color={index % 2 === 0 ? BAR.curtain : "#27110d"} roughness={0.96} />
-        </RoundedBox>
+          <RoundedBox key={index} args={[0.06, 3.28, 0.07]} radius={0.022} position={[foldX, 0, -0.045]} receiveShadow>
+            <meshStandardMaterial color={index % 2 === 0 ? BAR.curtain : "#27110d"} roughness={0.96} />
+          </RoundedBox>
         );
       })}
       <RoundedBox args={[7.05, 0.08, 0.12]} radius={0.025} position={[0, 1.76, -0.07]}>
         <meshStandardMaterial color={BAR.brass} roughness={0.42} metalness={0.55} />
       </RoundedBox>
-      <pointLight position={[0.15 * sign, 0.85, -0.35]} intensity={3.4} color={side === "left" ? "#d25b3e" : "#3ebfb3"} />
+      <pointLight
+        position={[0.15 * sign, 0.85, -0.35]}
+        intensity={3.4}
+        color={side === "left" ? "#d25b3e" : "#3ebfb3"}
+      />
     </group>
   );
 }
@@ -102,7 +100,14 @@ function BackCounter() {
             <meshStandardMaterial color={BAR.woodDark} roughness={0.72} />
           </RoundedBox>
           {[-2.72, -1.36, 0, 1.36, 2.72].map((x) => (
-            <RoundedBox key={`bracket-${x}`} args={[0.055, 0.26, 0.075]} radius={0.012} position={[x, -0.16, 0.02]} castShadow receiveShadow>
+            <RoundedBox
+              key={`bracket-${x}`}
+              args={[0.055, 0.26, 0.075]}
+              radius={0.012}
+              position={[x, -0.16, 0.02]}
+              castShadow
+              receiveShadow
+            >
               <meshStandardMaterial color="#120907" roughness={0.74} metalness={0.08} />
             </RoundedBox>
           ))}
@@ -193,7 +198,14 @@ function EntryPortal() {
         <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.52} />
       </RoundedBox>
       <pointLight position={[0, 0.4, 0.54]} intensity={5.2} color="#d35f2d" />
-      <Text position={[0, 1.42, 0.17]} fontSize={0.095} color="#d0a15d" anchorX="center" anchorY="middle" letterSpacing={0.16}>
+      <Text
+        position={[0, 1.42, 0.17]}
+        fontSize={0.095}
+        color="#d0a15d"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.16}
+      >
         ENTRADA
       </Text>
     </group>
@@ -214,7 +226,6 @@ function CeilingBeams() {
     </group>
   );
 }
-
 
 // ── pase de arte (Claude): techo, frente, neón, alfombra, lámparas, humo ─────
 
@@ -331,9 +342,7 @@ function SmokeMachine() {
   const { scene } = useThree();
   const burstAtRef = useRef(0);
   const pendingRef = useRef(false);
-  const puffsRef = useRef(
-    Array.from({ length: 26 }, (_, i) => ({ seed: i * 137.5, ref: null }))
-  );
+  const puffsRef = useRef(Array.from({ length: 26 }, (_, i) => ({ seed: i * 137.5, ref: null })));
   const lightRef = useRef(null);
   const fogBase = useRef(null);
 
@@ -404,7 +413,14 @@ function SmokeMachine() {
         <boxGeometry args={[0.05, 0.05, 0.02]} />
         <meshStandardMaterial color="#1a0505" emissive="#ff2e1f" emissiveIntensity={1.4} />
       </mesh>
-      <Text position={[0, 0.28, 0.1]} fontSize={0.075} color="#8f7755" anchorX="center" anchorY="middle" letterSpacing={0.1}>
+      <Text
+        position={[0, 0.28, 0.1]}
+        fontSize={0.075}
+        color="#8f7755"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.1}
+      >
         HUMO
       </Text>
       {puffsRef.current.map((puff, index) => (
@@ -416,7 +432,6 @@ function SmokeMachine() {
     </group>
   );
 }
-
 
 // ── pase de arte 2: lore en las paredes ─────────────────────────────────────
 
@@ -430,7 +445,14 @@ function WantedPoster({ position, rotation, name, crime, tone }) {
         <planeGeometry args={[0.82, 1.14]} />
         <meshStandardMaterial color="#d8c49a" roughness={0.92} />
       </mesh>
-      <Text position={[0, 0.42, 0.04]} fontSize={0.13} color="#3a2210" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+      <Text
+        position={[0, 0.42, 0.04]}
+        fontSize={0.13}
+        color="#3a2210"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.14}
+      >
         SE BUSCA
       </Text>
       {/* la "foto": silueta sombría */}
@@ -442,10 +464,25 @@ function WantedPoster({ position, rotation, name, crime, tone }) {
         <planeGeometry args={[0.34, 0.18]} />
         <meshStandardMaterial color={tone} roughness={0.9} />
       </mesh>
-      <Text position={[0, -0.32, 0.04]} fontSize={0.095} color="#3a2210" anchorX="center" anchorY="middle" letterSpacing={0.06}>
+      <Text
+        position={[0, -0.32, 0.04]}
+        fontSize={0.095}
+        color="#3a2210"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.06}
+      >
         {name}
       </Text>
-      <Text position={[0, -0.46, 0.04]} fontSize={0.052} color="#6b4a26" anchorX="center" anchorY="middle" maxWidth={0.76} textAlign="center">
+      <Text
+        position={[0, -0.46, 0.04]}
+        fontSize={0.052}
+        color="#6b4a26"
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={0.76}
+        textAlign="center"
+      >
         {crime}
       </Text>
     </group>
@@ -491,7 +528,11 @@ function Dartboard() {
         </mesh>
       ))}
       {/* tres dardos clavados torcidos */}
-      {[[0.06, 0.09, 0.5], [-0.1, -0.02, -0.4], [0.02, -0.13, 0.2]].map(([x, y, tilt], index) => (
+      {[
+        [0.06, 0.09, 0.5],
+        [-0.1, -0.02, -0.4],
+        [0.02, -0.13, 0.2]
+      ].map(([x, y, tilt], index) => (
         <group key={index} position={[x, y, 0.05]} rotation={[tilt * 0.4, 0, tilt]}>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.006, 0.006, 0.14, 6]} />
@@ -511,7 +552,11 @@ function Dartboard() {
 function CeilingHaze() {
   return (
     <group name="World_CeilingHaze">
-      {[[-2.4, 3.4, -1.8, 3.4], [1.8, 3.55, 0.6, 4.2], [-0.4, 3.25, 2.2, 3.0]].map(([x, y, z, size], index) => (
+      {[
+        [-2.4, 3.4, -1.8, 3.4],
+        [1.8, 3.55, 0.6, 4.2],
+        [-0.4, 3.25, 2.2, 3.0]
+      ].map(([x, y, z, size], index) => (
         <mesh key={index} position={[x, y, z]} rotation={[-Math.PI / 2, 0, index * 1.3]}>
           <planeGeometry args={[size, size * 0.7]} />
           <meshBasicMaterial color="#8a7a62" transparent opacity={0.045} depthWrite={false} />

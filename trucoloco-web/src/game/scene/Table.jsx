@@ -40,15 +40,18 @@ const FELT_DEEP = "#091d14";
 
 function CardImagePlane({ image, width, height, y = 0.036, flip = false }) {
   const texture = useTexture(image);
-  
+
   return (
-    <mesh
-      position={[0, flip ? -y : y, 0]}
-      rotation={flip ? [Math.PI / 2, 0, Math.PI] : [-Math.PI / 2, 0, 0]}
-    >
+    <mesh position={[0, flip ? -y : y, 0]} rotation={flip ? [Math.PI / 2, 0, Math.PI] : [-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[width, height]} />
       {/* polygonOffset: a distancia de mesa el depth buffer no separa 2.5mm — sin esto la textura pierde contra la caja crema (z-fighting) */}
-      <meshBasicMaterial map={texture} toneMapped={false} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
+      <meshBasicMaterial
+        map={texture}
+        toneMapped={false}
+        polygonOffset
+        polygonOffsetFactor={-4}
+        polygonOffsetUnits={-4}
+      />
     </mesh>
   );
 }
@@ -69,12 +72,14 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
   // played cards read as real naipes, not furniture — keep them modest on the felt
   const TABLE_CARD_SCALE = 0.7;
   // giro natural determinístico (hash del id): igual en todas las pantallas del espejo
-  const idHash = String(card.id ?? "x").split("").reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 997, 7);
-  const settleYaw = ((idHash / 997) - 0.5) * 0.22;
+  const idHash = String(card.id ?? "x")
+    .split("")
+    .reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) % 997, 7);
+  const settleYaw = (idHash / 997 - 0.5) * 0.22;
 
   useEffect(() => {
     progressRef.current = 0;
-        if (groupRef.current) {
+    if (groupRef.current) {
       groupRef.current.rotation.order = "YXZ";
       groupRef.current.position.set(fromX, fromY, fromZ);
       groupRef.current.rotation.set(initialRotX, initialRotY, initialRotZ);
@@ -91,7 +96,7 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
     const raw = progressRef.current;
     const t = 1 - Math.pow(1 - raw, 3);
     // rebote al asentarse: la carta toca el fieltro y respira una vez
-    const settle = raw > 0.82 ? Math.sin((raw - 0.82) / 0.18 * Math.PI) * (1 - raw) * 0.5 : 0;
+    const settle = raw > 0.82 ? Math.sin(((raw - 0.82) / 0.18) * Math.PI) * (1 - raw) * 0.5 : 0;
 
     groupRef.current.position.x = fromX + (position[0] - fromX) * t;
     groupRef.current.position.y = fromY + (position[1] - fromY) * t + settle * 0.18;
@@ -109,11 +114,22 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
 
   return (
     <group ref={groupRef}>
-      <mesh name={`Shadow_${card.owner}_${card.id}`} ref={shadowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.16, 0]}>
+      <mesh
+        name={`Shadow_${card.owner}_${card.id}`}
+        ref={shadowRef}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.16, 0]}
+      >
         <circleGeometry args={[0.78, 28]} />
         <meshBasicMaterial color="#000000" transparent opacity={0} />
       </mesh>
-      <RoundedBox name={`Card_${card.owner}_${card.id}`} args={[1.08, 0.045, 1.58]} radius={0.02} castShadow receiveShadow>
+      <RoundedBox
+        name={`Card_${card.owner}_${card.id}`}
+        args={[1.08, 0.045, 1.58]}
+        radius={0.02}
+        castShadow
+        receiveShadow
+      >
         <meshStandardMaterial color={CARD_EDGE} roughness={0.72} />
       </RoundedBox>
       <mesh position={[0, 0.026, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -130,7 +146,15 @@ function AnimatedTableCard({ card, position, rotation = [0, 0, 0], animationKey 
             <group key={flipSide ? "b" : "f"} rotation={flipSide ? [Math.PI, 0, 0] : [0, 0, 0]}>
               <mesh position={[0, 0.038, -0.52]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[0.9, 0.34]} />
-                <meshBasicMaterial color={suitColor[card.suit] ?? "#8a6a3c"} transparent opacity={0.85} toneMapped={false} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} />
+                <meshBasicMaterial
+                  color={suitColor[card.suit] ?? "#8a6a3c"}
+                  transparent
+                  opacity={0.85}
+                  toneMapped={false}
+                  polygonOffset
+                  polygonOffsetFactor={-6}
+                  polygonOffsetUnits={-6}
+                />
               </mesh>
               <Text
                 position={[-0.16, 0.042, -0.52]}
@@ -270,7 +294,10 @@ function SceneHandCard({ card, position, rotation, faceDown = false }) {
             <>
               <mesh position={[0, 0.03, -0.48]}>
                 <boxGeometry args={[0.72, 0.008, 0.08]} />
-                <meshStandardMaterial color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT} roughness={0.42} />
+                <meshStandardMaterial
+                  color={card.tone ?? suitColor[card.suit] ?? CARD_FACE_HIGHLIGHT}
+                  roughness={0.42}
+                />
               </mesh>
               <Text
                 position={[-0.24, 0.04, -0.42]}
@@ -334,7 +361,12 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
         const cards = trick.cards ?? [trick.humanCard, trick.rivalCard].filter(Boolean);
 
         return (
-          <group key={`trick-${trick.index}`} position={[0, 0.05 + index * 0.075, 0]} rotation={[0, index * 0.22, 0]} scale={0.42}>
+          <group
+            key={`trick-${trick.index}`}
+            position={[0, 0.05 + index * 0.075, 0]}
+            rotation={[0, index * 0.22, 0]}
+            scale={0.42}
+          >
             {/* pila prolija: las seis cartas dobladas casi alineadas, apenas giradas */}
             {cards.slice(0, 6).map((play, cardIndex) => (
               <SceneHandCard
@@ -411,10 +443,19 @@ function LastPlayedMarker({ tableCards }) {
   const pose = getTableCardPose(lastCard, tableCards.length - 1);
 
   return (
-    <group name="Table_LastPlayedMarker" position={[pose.position[0], 0.432, pose.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group
+      name="Table_LastPlayedMarker"
+      position={[pose.position[0], 0.432, pose.position[2]]}
+      rotation={[-Math.PI / 2, 0, 0]}
+    >
       <mesh ref={markerRef}>
         <ringGeometry args={[0.46, 0.56, 54]} />
-        <meshBasicMaterial color={lastCard.side === "A" ? "#63d5c5" : "#d05a44"} transparent opacity={0.2} depthWrite={false} />
+        <meshBasicMaterial
+          color={lastCard.side === "A" ? "#63d5c5" : "#d05a44"}
+          transparent
+          opacity={0.2}
+          depthWrite={false}
+        />
       </mesh>
     </group>
   );
@@ -431,10 +472,12 @@ const getTableCardPose = (card, index) => {
       rotation: [0, angle + Math.PI, 0]
     };
   }
-  return tableCardPoses[card.tableIndex ?? index] ?? {
-    position: [card.side === "A" ? -0.82 : 0.82, 0.42, 0.18],
-    rotation: [0, 0, (card.side === "A" ? -1 : 1) * 0.08]
-  };
+  return (
+    tableCardPoses[card.tableIndex ?? index] ?? {
+      position: [card.side === "A" ? -0.82 : 0.82, 0.42, 0.18],
+      rotation: [0, 0, (card.side === "A" ? -1 : 1) * 0.08]
+    }
+  );
 };
 
 // Pulsing tension ring around center badge — intensity driven by match state
@@ -526,10 +569,13 @@ function TensionRing({ handClosed, outcomeTone, modId }) {
 
 function FeltInlay({ modId, lowPower = false }) {
   const accent =
-    modId === "gafas-legendarias" ? "#40b0d8" :
-    modId === "sustancia-x" ? "#b55bc2" :
-    modId === "exodia-bolsillo" ? "#d4a020" :
-    "#c89040";
+    modId === "gafas-legendarias"
+      ? "#40b0d8"
+      : modId === "sustancia-x"
+        ? "#b55bc2"
+        : modId === "exodia-bolsillo"
+          ? "#d4a020"
+          : "#c89040";
   const rings = lowPower ? [1.42] : [0.96, 1.42, 1.86];
   const radialLines = lowPower ? [0, 2] : [0, 1, 2, 3];
   const segments = lowPower ? 48 : 96;
@@ -561,14 +607,15 @@ function BrassStuds({ lowPower = false }) {
       {Array.from({ length: studCount }, (_, index) => {
         const angle = (Math.PI * 2 * index) / studCount;
         return (
-          <mesh
-            key={index}
-            position={[Math.sin(angle) * 2.52, 0.3, Math.cos(angle) * 2.52]}
-            castShadow
-            receiveShadow
-          >
+          <mesh key={index} position={[Math.sin(angle) * 2.52, 0.3, Math.cos(angle) * 2.52]} castShadow receiveShadow>
             <sphereGeometry args={[0.035, lowPower ? 8 : 10, lowPower ? 6 : 10]} />
-            <meshStandardMaterial color={TABLE_BRASS} roughness={0.26} metalness={0.68} emissive="#3a1c06" emissiveIntensity={0.025} />
+            <meshStandardMaterial
+              color={TABLE_BRASS}
+              roughness={0.26}
+              metalness={0.68}
+              emissive="#3a1c06"
+              emissiveIntensity={0.025}
+            />
           </mesh>
         );
       })}
@@ -584,7 +631,13 @@ function TableRimHighlights({ lowPower = false }) {
       {/* [VISUAL] Thin brass lips catch the warm key light and make the mesa feel built, not primitive. */}
       <mesh position={[0, 0.285, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
         <torusGeometry args={[2.76, 0.018, 8, segments]} />
-        <meshStandardMaterial color={TABLE_BRASS} roughness={0.24} metalness={0.72} emissive="#2a1304" emissiveIntensity={0.02} />
+        <meshStandardMaterial
+          color={TABLE_BRASS}
+          roughness={0.24}
+          metalness={0.72}
+          emissive="#2a1304"
+          emissiveIntensity={0.02}
+        />
       </mesh>
       <mesh position={[0, 0.295, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[2.18, 0.01, 8, segments]} />
@@ -665,12 +718,21 @@ function TableProps({ lowPower = false }) {
         </group>
       ) : null}
 
-      {!lowPower ? coinPositions.map(([x, y, z], index) => (
-        <mesh key={index} name={`Coin_${index + 1}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, index * 0.38]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.08, 0.08, 0.018, 18]} />
-          <meshStandardMaterial color={TABLE_BRASS} roughness={0.25} metalness={0.72} />
-        </mesh>
-      )) : null}
+      {!lowPower
+        ? coinPositions.map(([x, y, z], index) => (
+            <mesh
+              key={index}
+              name={`Coin_${index + 1}`}
+              position={[x, y, z]}
+              rotation={[-Math.PI / 2, 0, index * 0.38]}
+              castShadow
+              receiveShadow
+            >
+              <cylinderGeometry args={[0.08, 0.08, 0.018, 18]} />
+              <meshStandardMaterial color={TABLE_BRASS} roughness={0.25} metalness={0.72} />
+            </mesh>
+          ))
+        : null}
     </group>
   );
 }
@@ -687,7 +749,14 @@ function DuelProp({ position, rotation = [0, 0, 0], flipped = false }) {
         <cylinderGeometry args={[0.055, 0.055, 0.28, 18]} />
         <meshStandardMaterial color="#2b241d" roughness={0.36} metalness={0.55} />
       </mesh>
-      <RoundedBox args={[0.22, 0.055, 0.34]} radius={0.028} position={[gripX, -0.055, 0.16]} rotation={[0.34, 0, flipped ? -0.32 : 0.32]} castShadow receiveShadow>
+      <RoundedBox
+        args={[0.22, 0.055, 0.34]}
+        radius={0.028}
+        position={[gripX, -0.055, 0.16]}
+        rotation={[0.34, 0, flipped ? -0.32 : 0.32]}
+        castShadow
+        receiveShadow
+      >
         <meshStandardMaterial color="#5b2b16" roughness={0.74} metalness={0.04} />
       </RoundedBox>
       <RoundedBox args={[0.46, 0.026, 0.03]} radius={0.01} position={[-0.44, 0.035, 0]}>
@@ -740,7 +809,10 @@ function TableDangerProps({ lowPower = false }) {
 
 function getTurnMarkerPose(seatId) {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
-  const seatIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
+  const seatIndex = Math.max(
+    0,
+    orderedSeats.findIndex((seat) => seat.seatId === seatId)
+  );
   const angle = (Math.PI * 2 * seatIndex) / orderedSeats.length;
 
   return {
@@ -754,12 +826,23 @@ function ManoMarker({ match }) {
   if (!match.manoSeatId || !match.handStarted || match.handClosed) return null;
   const pose = getTurnMarkerPose(match.manoSeatId);
   return (
-    <group name="Mano_Marker" position={[pose.position[0], pose.position[1] - 0.012, pose.position[2]]} rotation={pose.rotation}>
+    <group
+      name="Mano_Marker"
+      position={[pose.position[0], pose.position[1] - 0.012, pose.position[2]]}
+      rotation={pose.rotation}
+    >
       <mesh>
         <ringGeometry args={[0.5, 0.53, 40]} />
         <meshBasicMaterial color="#d9b36c" transparent opacity={0.4} depthWrite={false} />
       </mesh>
-      <Text position={[0, -0.66, 0.01]} fontSize={0.09} color="#d9b36c" anchorX="center" anchorY="middle" letterSpacing={0.2}>
+      <Text
+        position={[0, -0.66, 0.01]}
+        fontSize={0.09}
+        color="#d9b36c"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.2}
+      >
         MANO
       </Text>
     </group>
@@ -829,10 +912,13 @@ function CenterBadge({ handClosed, outcomeTone, modId }) {
   const timeRef = useRef(0);
 
   const badgeColor =
-    outcomeTone === "win" ? "#2f7b52" :
-    outcomeTone === "lose" ? "#7c2f28" :
-    outcomeTone === "draw" ? "#8c6d3d" :
-    "#8c6238";
+    outcomeTone === "win"
+      ? "#2f7b52"
+      : outcomeTone === "lose"
+        ? "#7c2f28"
+        : outcomeTone === "draw"
+          ? "#8c6d3d"
+          : "#8c6238";
 
   useFrame((_, delta) => {
     timeRef.current += delta;
@@ -856,7 +942,8 @@ function CenterBadge({ handClosed, outcomeTone, modId }) {
     if (glowRef.current) {
       let opacity = 0.0;
       if (modId === "sustancia-x") opacity = 0.14 + Math.abs(Math.sin(t * 3.5)) * 0.1;
-      else if (modId === "exodia-bolsillo") opacity = 0.18 + (Math.random() > 0.9 ? 0.12 : 0) + Math.abs(Math.sin(t * 2)) * 0.08;
+      else if (modId === "exodia-bolsillo")
+        opacity = 0.18 + (Math.random() > 0.9 ? 0.12 : 0) + Math.abs(Math.sin(t * 2)) * 0.08;
       else if (handClosed && outcomeTone === "win") opacity = 0.22 + Math.abs(Math.sin(t * 5)) * 0.12;
       glowRef.current.material.opacity = opacity;
     }
@@ -986,13 +1073,7 @@ function ImportedHexBoardAsset() {
         <ringGeometry args={[0.82, 0.96, 96]} />
         <meshBasicMaterial color="#91e9f6" transparent opacity={0.18} depthWrite={false} />
       </mesh>
-      <primitive
-        ref={modelRef}
-        object={clonedScene}
-        scale={normalizedScale * 1.12}
-        position={offset}
-        dispose={null}
-      />
+      <primitive ref={modelRef} object={clonedScene} scale={normalizedScale * 1.12} position={offset} dispose={null} />
     </group>
   );
 }
@@ -1084,7 +1165,11 @@ export function Table({ match, performanceMode = "high" }) {
       <CardTableauGuides active={showActiveTableCards} playedCount={match.tableCards.length} />
       <LastPlayedMarker tableCards={match.tableCards} />
 
-      <ArchivedTrickCards trickHistory={match.trickHistory} showCurrentPair={showCurrentPair} handClosed={match.handClosed} />
+      <ArchivedTrickCards
+        trickHistory={match.trickHistory}
+        showCurrentPair={showCurrentPair}
+        handClosed={match.handClosed}
+      />
 
       {showActiveTableCards
         ? match.tableCards.map((card, index) => {
@@ -1106,10 +1191,7 @@ export function Table({ match, performanceMode = "high" }) {
         {["Mazo", "Descarte"].map((label, index) => (
           <group key={label} name={`Deck_${label}`} position={[0, index * 0.1, index * 0.16]}>
             <RoundedBox args={[0.7, 0.05, 1]} radius={0.05}>
-              <meshStandardMaterial
-                color={index === 0 ? "#c49b48" : "#71442c"}
-                roughness={0.68}
-              />
+              <meshStandardMaterial color={index === 0 ? "#c49b48" : "#71442c"} roughness={0.68} />
             </RoundedBox>
             <Text
               position={[0, 0.07, 0]}
@@ -1193,18 +1275,37 @@ function HeldCard({ card, offset, hovered, selected, dimmed, onOver, onOut, onPl
             <HeldCardFace image={card.image} dimmed={dimmed} />
           </Suspense>
         ) : (
-          <Text position={[0, 0, 0.012]} fontSize={0.055} maxWidth={0.26} color={CARD_TEXT} anchorX="center" anchorY="middle">
+          <Text
+            position={[0, 0, 0.012]}
+            fontSize={0.055}
+            maxWidth={0.26}
+            color={CARD_TEXT}
+            anchorX="center"
+            anchorY="middle"
+          >
             {card.name}
           </Text>
         )}
         {(hovered || selected) && !dimmed ? (
           <mesh position={[0, 0, -0.012]}>
             <planeGeometry args={[0.39, 0.53]} />
-            <meshBasicMaterial color={selected ? "#91e9f6" : "#ffd98a"} transparent opacity={selected ? 0.5 : 0.35} toneMapped={false} />
+            <meshBasicMaterial
+              color={selected ? "#91e9f6" : "#ffd98a"}
+              transparent
+              opacity={selected ? 0.5 : 0.35}
+              toneMapped={false}
+            />
           </mesh>
         ) : null}
         {selected && !dimmed ? (
-          <Text position={[0, -0.31, 0.02]} fontSize={0.055} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.14}>
+          <Text
+            position={[0, -0.31, 0.02]}
+            fontSize={0.055}
+            color="#91e9f6"
+            anchorX="center"
+            anchorY="middle"
+            letterSpacing={0.14}
+          >
             TOCÁ DE NUEVO PARA TIRAR
           </Text>
         ) : null}

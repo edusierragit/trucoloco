@@ -27,11 +27,13 @@ function resolveSixSeatTrick(cards, manoTeam, trickHistory) {
 
   if (topCards.length > 1) {
     const tiedTeams = new Set(topCards.map((play) => play.team));
-    if (tiedTeams.size === 1) return { result: topCards[0].team, winner: topCards[0].team, winnerSeatId: topCards[0].seatId };
+    if (tiedTeams.size === 1)
+      return { result: topCards[0].team, winner: topCards[0].team, winnerSeatId: topCards[0].seatId };
 
     const previousWinner = trickHistory.find((trick) => trick.result !== PARDA)?.winner;
     const winner = previousWinner ?? manoTeam;
-    const winnerSeatId = topCards.find((play) => play.team === winner)?.seatId ?? cards.find((play) => play.team === winner)?.seatId;
+    const winnerSeatId =
+      topCards.find((play) => play.team === winner)?.seatId ?? cards.find((play) => play.team === winner)?.seatId;
     return { result: PARDA, winner, winnerSeatId };
   }
 
@@ -77,7 +79,10 @@ function simulateHand(manoSeatId) {
   const handWinner = getHandWinner(trickHistory, manoTeam);
   assert.ok(handWinner, "The hand should close in at most three tricks.");
   assert.ok(totalPlays <= 18, "A hand should never require more than 18 card plays.");
-  assert.ok(trickHistory.every((trick) => trick.cards.length === orderedSeats.length), "Every trick should include all six seats.");
+  assert.ok(
+    trickHistory.every((trick) => trick.cards.length === orderedSeats.length),
+    "Every trick should include all six seats."
+  );
 
   return { handWinner, totalPlays, trickCount: trickHistory.length };
 }

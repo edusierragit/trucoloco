@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { MATCH_CONFIG } from "../config";
 import { bonusCards, deck, modifiers } from "../data/cards";
-import { characterOptionsByRole, roleDefinitions, roleOptions as availableRoles, tableSeats, teams } from "../data/characters";
+import {
+  characterOptionsByRole,
+  roleDefinitions,
+  roleOptions as availableRoles,
+  tableSeats,
+  teams
+} from "../data/characters";
 import { weaponPool } from "../data/weapons";
 import {
   PARDA,
@@ -39,10 +45,11 @@ const getLanePair = (role, selectedHuman = null) => {
   const selectedTeam = selectedHuman ? getCharacterTeam(selectedHuman.id) : "A";
   const rivalTeam = selectedTeam === "A" ? "B" : "A";
   const fallbackHuman = teams.A.find((player) => player.role === role) ?? teams.A[0];
-  const rival = teams[rivalTeam].find((player) => player.role === role && player.id !== selectedHuman?.id)
-    ?? teams[rivalTeam].find((player) => player.role === role)
-    ?? teams.B.find((player) => player.role === role)
-    ?? teams.B[0];
+  const rival =
+    teams[rivalTeam].find((player) => player.role === role && player.id !== selectedHuman?.id) ??
+    teams[rivalTeam].find((player) => player.role === role) ??
+    teams.B.find((player) => player.role === role) ??
+    teams.B[0];
 
   return {
     role,
@@ -68,7 +75,8 @@ const getPlayersById = () =>
     return lookup;
   }, {});
 
-const getSeatByTeamRole = (team, role) => tableSeats.find((seat) => seat.team === team && seat.role === role) ?? tableSeats[0];
+const getSeatByTeamRole = (team, role) =>
+  tableSeats.find((seat) => seat.team === team && seat.role === role) ?? tableSeats[0];
 const getSeatById = (seatId) => tableSeats.find((seat) => seat.seatId === seatId) ?? tableSeats[0];
 const getPlayerBySeatId = (seatId) => {
   const seat = getSeatById(seatId);
@@ -79,13 +87,19 @@ const getSeatPlayerName = (seatId) => getPlayerBySeatId(seatId)?.name ?? "Jugado
 
 const getNextSeatId = (seatId) => {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
-  const currentIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
+  const currentIndex = Math.max(
+    0,
+    orderedSeats.findIndex((seat) => seat.seatId === seatId)
+  );
   return orderedSeats[(currentIndex + 1) % orderedSeats.length].seatId;
 };
 
 const getPreviousSeatId = (seatId) => {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
-  const currentIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
+  const currentIndex = Math.max(
+    0,
+    orderedSeats.findIndex((seat) => seat.seatId === seatId)
+  );
   return orderedSeats[(currentIndex - 1 + orderedSeats.length) % orderedSeats.length].seatId;
 };
 
@@ -142,10 +156,12 @@ const buildSharedPool = () => shuffle(deck);
 const buildHandIndex = (cardId, side, index) => `${cardId}-${side}-${index}-${Math.random()}`;
 
 const drawWeapons = () =>
-  shuffle(weaponPool).slice(0, 2).map((weapon, index) => ({
-    ...weapon,
-    handIndex: `${weapon.id}-${index}-${Math.random()}`
-  }));
+  shuffle(weaponPool)
+    .slice(0, 2)
+    .map((weapon, index) => ({
+      ...weapon,
+      handIndex: `${weapon.id}-${index}-${Math.random()}`
+    }));
 
 const dealSeatHands = (pool) => {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
@@ -239,9 +255,7 @@ const syncLaneHands = (state, selectedRole) => {
 
 const describeWeaponEffect = (effect) => {
   if (!effect) return "";
-  return effect.delta > 0
-    ? `${effect.weaponName} empuja esa carta.`
-    : `${effect.weaponName} ensucia esa carta rival.`;
+  return effect.delta > 0 ? `${effect.weaponName} empuja esa carta.` : `${effect.weaponName} ensucia esa carta rival.`;
 };
 
 const joinEventParts = (...parts) => parts.filter(Boolean).join(" ");
@@ -298,7 +312,11 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
       handsBySeat: nextHandsBySeat,
       currentTurnSeatId: nextTurnSeatId,
       tableCards: nextTableCards,
-      eventLog: joinEventParts(`${getSeatPlayerName(seatId)} juega.`, weaponEffectLog, `Sigue ${getSeatPlayerName(nextTurnSeatId)}.`),
+      eventLog: joinEventParts(
+        `${getSeatPlayerName(seatId)} juega.`,
+        weaponEffectLog,
+        `Sigue ${getSeatPlayerName(nextTurnSeatId)}.`
+      ),
       highlight: `Vuelta ${currentVuelta}. Actua ${getSeatPlayerName(nextTurnSeatId)}.`,
       outcomeTone: seat.team === "A" ? "neutral" : "neutral",
       pendingAnimationKey: current.pendingAnimationKey + 1
@@ -307,7 +325,12 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
     return syncLaneHands(nextState, selectedRole);
   }
 
-  const resolution = resolveTableTrick(nextTableCards, current.trickHistory, current.manoTeam, current.currentLeadSeatId);
+  const resolution = resolveTableTrick(
+    nextTableCards,
+    current.trickHistory,
+    current.manoTeam,
+    current.currentLeadSeatId
+  );
   const nextTrickWins =
     resolution.result === PARDA
       ? current.trickWins
@@ -317,8 +340,10 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
         };
   const selectedSeatId = getSelectedSeatId(selectedRole);
   const oppositeSeatId = getOppositeSeatId(selectedRole);
-  const selectedPlay = nextTableCards.find((play) => play.seatId === selectedSeatId) ?? nextTableCards.find((play) => play.team === "A");
-  const oppositePlay = nextTableCards.find((play) => play.seatId === oppositeSeatId) ?? nextTableCards.find((play) => play.team === "B");
+  const selectedPlay =
+    nextTableCards.find((play) => play.seatId === selectedSeatId) ?? nextTableCards.find((play) => play.team === "A");
+  const oppositePlay =
+    nextTableCards.find((play) => play.seatId === oppositeSeatId) ?? nextTableCards.find((play) => play.team === "B");
   const trickHistory = [
     ...current.trickHistory,
     {
@@ -347,7 +372,10 @@ const playSeatCard = (current, seatId, card, activeLane, selectedRole) => {
     pendingAnimationKey: current.pendingAnimationKey + 1,
     eventLog: joinEventParts(
       `${describeTableCards(nextTableCards)}.`,
-      nextTableCards.map((play) => describeWeaponEffect(play.weaponEffect)).filter(Boolean).join(" "),
+      nextTableCards
+        .map((play) => describeWeaponEffect(play.weaponEffect))
+        .filter(Boolean)
+        .join(" "),
       resolution.highlight
     ),
     highlight: resolution.highlight,
@@ -435,7 +463,8 @@ const isValidSnapshotState = (state) => {
   if (!state.trickWins || !isFiniteNumber(state.trickWins.A) || !isFiniteNumber(state.trickWins.B)) return false;
   if (!isFiniteNumber(state.vueltaIndex) || !isFiniteNumber(state.activeBet)) return false;
   if (!Array.isArray(state.tableCards) || !Array.isArray(state.trickHistory)) return false;
-  if (typeof state.handsBySeat !== "object" || state.handsBySeat === null || Array.isArray(state.handsBySeat)) return false;
+  if (typeof state.handsBySeat !== "object" || state.handsBySeat === null || Array.isArray(state.handsBySeat))
+    return false;
   if (!Object.values(state.handsBySeat).every((hand) => Array.isArray(hand))) return false;
   return true;
 };
@@ -468,8 +497,12 @@ const applyEnvidoCallBySeat = (current, seat, activeLane) => {
       winner,
       points
     },
-    eventLog: responderWants ? `Envido querido. ${resolution.humanValue}-${resolution.rivalValue}.` : "Envido no querido.",
-    highlight: responderWants ? `${resolution.humanValue}-${resolution.rivalValue}. Gana ${winnerName}.` : "Envido no querido.",
+    eventLog: responderWants
+      ? `Envido querido. ${resolution.humanValue}-${resolution.rivalValue}.`
+      : "Envido no querido.",
+    highlight: responderWants
+      ? `${resolution.humanValue}-${resolution.rivalValue}. Gana ${winnerName}.`
+      : "Envido no querido.",
     outcomeTone: winner === "A" ? "win" : "lose"
   };
 };
@@ -667,7 +700,8 @@ const clearResolvedTrick = (state, activeLane, selectedRole) => {
   }
 
   const nextVuelta = state.vueltaIndex + 1;
-  const nextTurnSeatId = state.currentLeadSeatId ?? state.manoSeatId ?? getSeatByTeamRole(state.leadTeam, selectedRole).seatId;
+  const nextTurnSeatId =
+    state.currentLeadSeatId ?? state.manoSeatId ?? getSeatByTeamRole(state.leadTeam, selectedRole).seatId;
   const nextLeaderName = getSeatPlayerName(nextTurnSeatId);
 
   return syncLaneHands(
@@ -688,18 +722,27 @@ const getPhaseData = (state, activeLane) => {
   const isNegociante = activeLane.role === "Negociante";
   const isCartachin = activeLane.role === "Cartachin";
   const roleDefinition = roleDefinitions[activeLane.role] ?? roleDefinitions.Cartachin;
-  const openingWindow = state.handStarted && state.vueltaIndex === 0 && state.tableCards.length === 0 && !state.handClosed;
-  const firstCardWindow = state.handStarted && state.vueltaIndex === 0 && state.tableCards.length === 0 && state.trickHistory.length === 0 && !state.handClosed;
-  const displayVueltaNumber =
-    !state.handStarted
-      ? 1
-      : state.handClosed || state.tableCards.length >= tableSeats.length
+  const openingWindow =
+    state.handStarted && state.vueltaIndex === 0 && state.tableCards.length === 0 && !state.handClosed;
+  const firstCardWindow =
+    state.handStarted &&
+    state.vueltaIndex === 0 &&
+    state.tableCards.length === 0 &&
+    state.trickHistory.length === 0 &&
+    !state.handClosed;
+  const displayVueltaNumber = !state.handStarted
+    ? 1
+    : state.handClosed || state.tableCards.length >= tableSeats.length
       ? Math.max(1, state.trickHistory.length)
       : Math.min(state.trickHistory.length + 1, 3);
   const pardaCount = getPardaCount(state.trickHistory);
 
-  const whoStartsName = getSeatPlayerName(state.manoSeatId ?? state.currentLeadSeatId ?? getManoSeatForHand(state.handNumber).seatId);
-  const leadPlayerName = getSeatPlayerName(state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId);
+  const whoStartsName = getSeatPlayerName(
+    state.manoSeatId ?? state.currentLeadSeatId ?? getManoSeatForHand(state.handNumber).seatId
+  );
+  const leadPlayerName = getSeatPlayerName(
+    state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId
+  );
   const selectedSeatId = getSelectedSeatId(activeLane.role);
   const currentTurnSeat = state.currentTurnSeatId ? getSeatById(state.currentTurnSeatId) : null;
   const currentActorName = state.currentTurnSeatId ? getSeatPlayerName(state.currentTurnSeatId) : null;
@@ -710,7 +753,8 @@ const getPhaseData = (state, activeLane) => {
   const handEndsCopy = "Gana 2 vueltas.";
   const nextTrucoCall = getNextTrucoCall(state.activeBet);
   const humanHasTrucoRaise = !state.trucoRaiseOwner || state.trucoRaiseOwner === "A";
-  const canRaiseTruco = Boolean(nextTrucoCall) && tableTrickOpen && isSelectedSeatTurn && humanHasTrucoRaise && !state.trucoPending;
+  const canRaiseTruco =
+    Boolean(nextTrucoCall) && tableTrickOpen && isSelectedSeatTurn && humanHasTrucoRaise && !state.trucoPending;
 
   if (state.trucoPending) {
     const callerName = getPlayerName(state.trucoPending.caller, activeLane);
@@ -730,7 +774,8 @@ const getPhaseData = (state, activeLane) => {
       canUseRolePower: false,
       canSwitchRole: false,
       canRespondTruco: state.trucoPending.target === "A",
-      canRaiseTrucoResponse: Boolean(getNextTrucoCall(state.trucoPending.acceptedBet)) && state.trucoPending.target === "A",
+      canRaiseTrucoResponse:
+        Boolean(getNextTrucoCall(state.trucoPending.acceptedBet)) && state.trucoPending.target === "A",
       trucoResponseRaiseLabel: getNextTrucoCall(state.trucoPending.acceptedBet)?.label,
       displayVueltaNumber,
       pardaCount,
@@ -858,7 +903,9 @@ const getPhaseData = (state, activeLane) => {
   }
 
   if (state.tableCards.length >= tableSeats.length) {
-    const nextLeaderName = getSeatPlayerName(state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId);
+    const nextLeaderName = getSeatPlayerName(
+      state.currentLeadSeatId ?? state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId
+    );
     const nextLeaderCopy = `Sigue ${nextLeaderName}.`;
 
     return {
@@ -907,7 +954,11 @@ const getPhaseData = (state, activeLane) => {
           : `Juega ${currentActorName}.`,
       stepNumber: 2,
       stepTitle: isSelectedSeatTurn ? "Bajar carta" : "Avanzar mesa",
-      advanceLabel: isSelectedSeatTurn ? null : roleOpeningDecisionAvailable ? `Dejar jugar a ${currentActorName}` : `${currentActorName} juega`,
+      advanceLabel: isSelectedSeatTurn
+        ? null
+        : roleOpeningDecisionAvailable
+          ? `Dejar jugar a ${currentActorName}`
+          : `${currentActorName} juega`,
       canPlayCard: isSelectedSeatTurn,
       canUseWeapon: cartachinPowerAvailable,
       canCallEnvido: firstCardWindowForSeat && !state.envidoResolved && state.activeBet === 1,
@@ -974,13 +1025,22 @@ export function useTrucolocoMatch() {
   );
   const activeLane = useMemo(() => getLanePair(selectedRole, selectedCharacter), [selectedCharacter, selectedRole]);
   const roster = useMemo(() => ({ A: teams.A, B: teams.B }), []);
-  const [state, setState] = useState(() => buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(MATCH_CONFIG.defaultRole)));
+  const [state, setState] = useState(() =>
+    buildRoleSelectState(1, { A: 0, B: 0 }, getLanePair(MATCH_CONFIG.defaultRole))
+  );
 
   const negotiatePoints = () => {
     setState((current) => {
-      const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
+      const openingWindow =
+        current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
 
-      if (activeLane.role !== "Negociante" || current.negotiationUsed || current.envidoPending || current.trucoPending || !openingWindow) {
+      if (
+        activeLane.role !== "Negociante" ||
+        current.negotiationUsed ||
+        current.envidoPending ||
+        current.trucoPending ||
+        !openingWindow
+      ) {
         return current;
       }
 
@@ -993,7 +1053,9 @@ export function useTrucolocoMatch() {
         negotiationUsed: true,
         pointsInverted: success,
         negotiationDice: { humanDie, rivalDie, success },
-        eventLog: success ? `Dados ${humanDie}+${rivalDie}. Cobro invertido.` : `Dados ${humanDie}+${rivalDie}. Cobro normal.`,
+        eventLog: success
+          ? `Dados ${humanDie}+${rivalDie}. Cobro invertido.`
+          : `Dados ${humanDie}+${rivalDie}. Cobro normal.`,
         highlight: success ? "Negociacion aprobada." : "Negociacion rechazada.",
         outcomeTone: success ? "neutral" : "lose"
       };
@@ -1002,9 +1064,16 @@ export function useTrucolocoMatch() {
 
   const useWeapon = (weaponId) => {
     setState((current) => {
-      const openingWindow = current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
+      const openingWindow =
+        current.handStarted && current.vueltaIndex === 0 && current.tableCards.length === 0 && !current.handClosed;
 
-      if (activeLane.role !== "Cartachin" || current.weaponUsed || current.envidoPending || current.trucoPending || !openingWindow) {
+      if (
+        activeLane.role !== "Cartachin" ||
+        current.weaponUsed ||
+        current.envidoPending ||
+        current.trucoPending ||
+        !openingWindow
+      ) {
         return current;
       }
 
@@ -1223,9 +1292,10 @@ export function useTrucolocoMatch() {
         scores,
         matchWinner,
         agreementApplied: true,
-        eventLog: da || db
-          ? `Acuerdo sellado: ${da >= 0 ? `+${da}` : da} casa, ${db >= 0 ? `+${db}` : db} visita.`
-          : "Acuerdo sellado: cobro automático.",
+        eventLog:
+          da || db
+            ? `Acuerdo sellado: ${da >= 0 ? `+${da}` : da} casa, ${db >= 0 ? `+${db}` : db} visita.`
+            : "Acuerdo sellado: cobro automático.",
         highlight: da || db ? "Los negociantes movieron la aguja." : "Cobro confirmado."
       };
     });
@@ -1339,7 +1409,9 @@ export function useTrucolocoMatch() {
   const tableFlow = buildTableFlow(state, activeLane, selectedRole, phaseData.nextActorName);
   const dealerSeat = tableFlow.seats.find((seat) => seat.isDealer);
   const dealerTeam = dealerSeat?.team ?? (state.manoTeam === "A" ? "B" : "A");
-  const dealerName = dealerSeat?.player?.name ?? getSeatPlayerName(getPreviousSeatId(state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId));
+  const dealerName =
+    dealerSeat?.player?.name ??
+    getSeatPlayerName(getPreviousSeatId(state.manoSeatId ?? getManoSeatForHand(state.handNumber).seatId));
 
   return {
     ...state,
@@ -1376,7 +1448,11 @@ export function useTrucolocoMatch() {
       if (!snap || typeof snap !== "object") return;
       if (!isValidSnapshotState(snap.state)) return;
       if (availableRoles.includes(snap.selectedRole)) setSelectedRole(snap.selectedRole);
-      if (snap.selectedCharacterIdsByRole && typeof snap.selectedCharacterIdsByRole === "object" && !Array.isArray(snap.selectedCharacterIdsByRole)) {
+      if (
+        snap.selectedCharacterIdsByRole &&
+        typeof snap.selectedCharacterIdsByRole === "object" &&
+        !Array.isArray(snap.selectedCharacterIdsByRole)
+      ) {
         setSelectedCharacterIdsByRole(snap.selectedCharacterIdsByRole);
       }
       setState(snap.state);
@@ -1409,7 +1485,10 @@ export function useTrucolocoMatch() {
           }
           case "callEnvido": {
             const firstCardWindow =
-              seatTurnOpen && current.vueltaIndex === 0 && current.tableCards.length === 0 && current.trickHistory.length === 0;
+              seatTurnOpen &&
+              current.vueltaIndex === 0 &&
+              current.tableCards.length === 0 &&
+              current.trickHistory.length === 0;
             if (!firstCardWindow || current.envidoResolved || current.activeBet !== 1) return current;
             return applyEnvidoCallBySeat(current, seat, activeLane);
           }
@@ -1434,7 +1513,12 @@ export function useTrucolocoMatch() {
           case "rejectTruco": {
             const pending = current.trucoPending;
             if (!pending || pending.target !== seat.team || current.handClosed) return current;
-            const scoring = applyHandPoints(current.scores, pending.caller, pending.rejectedPoints, current.pointsInverted);
+            const scoring = applyHandPoints(
+              current.scores,
+              pending.caller,
+              pending.rejectedPoints,
+              current.pointsInverted
+            );
             const matchWinner = getMatchWinner(scoring.scores);
             const callerName = getPlayerName(pending.caller, activeLane);
             return {

@@ -10,7 +10,14 @@ import { tableSeats } from "./game/data/characters";
 import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
-import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
+import {
+  createTrucolocoRoom,
+  findOpenSala,
+  genRoomCode,
+  getPlayerId,
+  openSalaBackfill,
+  ROOM_LIMIT
+} from "./game/net/room";
 import { buildGuestMatchView } from "./game/net/guestView";
 import {
   getCombatPos as getConflictCombatPos,
@@ -114,17 +121,15 @@ export default function App() {
     handleCameraViewChange("walk");
   }, [handleCameraViewChange]);
 
-  const conflictWeaponContext = useMemo(() => ({
-    role: match.selectedRole,
-    activeWeapon: match.activeWeapon
-  }), [match.activeWeapon, match.selectedRole]);
+  const conflictWeaponContext = useMemo(
+    () => ({
+      role: match.selectedRole,
+      activeWeapon: match.activeWeapon
+    }),
+    [match.activeWeapon, match.selectedRole]
+  );
 
-  const {
-    debateState,
-    resetDebateState,
-    triggerDebateAction,
-    switchDebateMode
-  } = useConflictCombat({
+  const { debateState, resetDebateState, triggerDebateAction, switchDebateMode } = useConflictCombat({
     enabled: cameraView === "ring",
     onExit: handleRingExit,
     weaponContext: conflictWeaponContext
@@ -135,41 +140,44 @@ export default function App() {
   const [roster, setRoster] = useState([]);
   const netRoomRef = useRef(null);
 
-  const joinSala = useCallback((code, isHost) => {
-    netRoomRef.current?.leave();
-    const profile = {
-      playerId: getPlayerId(),
-      name: match.selectedCharacter?.name ?? "Pibe",
-      role: match.selectedRole,
-      characterId: match.selectedCharacter?.id ?? null
-    };
-    const room = createTrucolocoRoom(code, { isHost, profile });
-    room.onRoster(setRoster);
-    setRemotePos({});
-    room.onPos((peerId, data) =>
-      setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw } }))
-    );
-    if (!isHost) {
-      // guest: tu pantalla ES la partida del host (hydrate valida el shape)
-      room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
-    } else {
-      // host-autoritativo: snapshot inicial apenas existe la sala, para que
-      // el primer guest no se quede con su estado local por defecto (el
-      // onPeerJoin de room.js se lo manda al que entra)
-      room.sendSnapshot(matchRef.current.getSnapshot());
-      // jugadas remotas: el intent vale solo si la silla que dice usar es la
-      // que ese peer reclamó en la sala; después el match revalida los gates
-      room.onIntent((peerId, intentData) => {
-        const sender = rosterRef.current.find((peer) => peer.peerId === peerId);
-        if (!sender || sender.seatId !== intentData.seatId) return;
-        matchRef.current.applyIntent?.(intentData);
-      });
-    }
-    netRoomRef.current = room;
-    setNetRoom(room);
-    // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
-    window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
-  }, [match.selectedCharacter, match.selectedRole]);
+  const joinSala = useCallback(
+    (code, isHost) => {
+      netRoomRef.current?.leave();
+      const profile = {
+        playerId: getPlayerId(),
+        name: match.selectedCharacter?.name ?? "Pibe",
+        role: match.selectedRole,
+        characterId: match.selectedCharacter?.id ?? null
+      };
+      const room = createTrucolocoRoom(code, { isHost, profile });
+      room.onRoster(setRoster);
+      setRemotePos({});
+      room.onPos((peerId, data) =>
+        setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw } }))
+      );
+      if (!isHost) {
+        // guest: tu pantalla ES la partida del host (hydrate valida el shape)
+        room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
+      } else {
+        // host-autoritativo: snapshot inicial apenas existe la sala, para que
+        // el primer guest no se quede con su estado local por defecto (el
+        // onPeerJoin de room.js se lo manda al que entra)
+        room.sendSnapshot(matchRef.current.getSnapshot());
+        // jugadas remotas: el intent vale solo si la silla que dice usar es la
+        // que ese peer reclamó en la sala; después el match revalida los gates
+        room.onIntent((peerId, intentData) => {
+          const sender = rosterRef.current.find((peer) => peer.peerId === peerId);
+          if (!sender || sender.seatId !== intentData.seatId) return;
+          matchRef.current.applyIntent?.(intentData);
+        });
+      }
+      netRoomRef.current = room;
+      setNetRoom(room);
+      // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
+      window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
+    },
+    [match.selectedCharacter, match.selectedRole]
+  );
 
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
@@ -230,18 +238,21 @@ export default function App() {
 
   // reclamo de silla: viaja en el perfil; conflicto lo gana el reclamo más viejo
   // (empate: peerId menor). Todos aplican la misma regla → convergen solos.
-  const claimSeat = useCallback((seatId) => {
-    const room = netRoomRef.current;
-    if (!room) return;
-    room.updateProfile({ seatId, seatAt: Date.now() });
-    const seat = tableSeats.find((item) => item.seatId === seatId);
-    if (seat && match.canSwitchRole) {
-      match.selectRole(seat.role);
-      // tu avatar pasa a ser el personaje de esa silla: dos humanos en sillas
-      // distintas dejan de verse como el mismo Pochex replicado
-      if (seat.playerId) match.selectCharacter(seat.playerId);
-    }
-  }, [match]);
+  const claimSeat = useCallback(
+    (seatId) => {
+      const room = netRoomRef.current;
+      if (!room) return;
+      room.updateProfile({ seatId, seatAt: Date.now() });
+      const seat = tableSeats.find((item) => item.seatId === seatId);
+      if (seat && match.canSwitchRole) {
+        match.selectRole(seat.role);
+        // tu avatar pasa a ser el personaje de esa silla: dos humanos en sillas
+        // distintas dejan de verse como el mismo Pochex replicado
+        if (seat.playerId) match.selectCharacter(seat.playerId);
+      }
+    },
+    [match]
+  );
 
   // resolución de conflicto: si dos reclaman la misma silla, gana el más viejo
   useEffect(() => {
@@ -370,10 +381,7 @@ export default function App() {
   // ─── LA MESA JUEGA SOLA ───────────────────────────────────────────────────
   // los turnos de los bots avanzan con cadencia humana: nada de apretar
   // "Dejar jugar a X" seis veces por vuelta. ?auto=0 lo desactiva (validador).
-  const autoPlayEnabled = useMemo(
-    () => new URLSearchParams(window.location.search).get("auto") !== "0",
-    []
-  );
+  const autoPlayEnabled = useMemo(() => new URLSearchParams(window.location.search).get("auto") !== "0", []);
   useEffect(() => {
     if (!autoPlayEnabled) return undefined;
     if (netRoom && !netRoom.isHost) return undefined; // espejo: manda el host
@@ -485,46 +493,49 @@ export default function App() {
     }));
   }, []);
 
-  const handleWalkInteract = useCallback((hotspot) => {
-    const currentMatch = matchRef.current;
+  const handleWalkInteract = useCallback(
+    (hotspot) => {
+      const currentMatch = matchRef.current;
 
-    if (hotspot === "door") {
-      handleCameraViewChange("seat");
-      return;
-    }
+      if (hotspot === "door") {
+        handleCameraViewChange("seat");
+        return;
+      }
 
-    if (hotspot === "bar") {
+      if (hotspot === "bar") {
+        window.clearTimeout(walkNoticeTimerRef.current);
+        setWalkNotice("Botellas, humo bajo y promesas de truco. Todavía no hay acción.");
+        walkNoticeTimerRef.current = window.setTimeout(() => setWalkNotice(""), 2300);
+        return;
+      }
+
+      if (hotspot === "ring") {
+        resetDebateState();
+        handleCameraViewChange("ring");
+        return;
+      }
+
+      if (hotspot !== "table") return;
+
+      window.clearTimeout(returnToTableTimerRef.current);
       window.clearTimeout(walkNoticeTimerRef.current);
-      setWalkNotice("Botellas, humo bajo y promesas de truco. Todavía no hay acción.");
-      walkNoticeTimerRef.current = window.setTimeout(() => setWalkNotice(""), 2300);
-      return;
-    }
+      setWalkHotspot(null);
+      setWalkNotice("");
 
-    if (hotspot === "ring") {
-      resetDebateState();
-      handleCameraViewChange("ring");
-      return;
-    }
+      if (currentMatch.phase === "role-select" && currentMatch.canAdvance) {
+        currentMatch.startHand();
+        return;
+      }
 
-    if (hotspot !== "table") return;
-
-    window.clearTimeout(returnToTableTimerRef.current);
-    window.clearTimeout(walkNoticeTimerRef.current);
-    setWalkHotspot(null);
-    setWalkNotice("");
-
-    if (currentMatch.phase === "role-select" && currentMatch.canAdvance) {
-      currentMatch.startHand();
-      return;
-    }
-
-    setIsSeatingRitual(true);
-    setCameraView("seat");
-    returnToTableTimerRef.current = window.setTimeout(() => {
-      setCameraView("table");
-      setIsSeatingRitual(false);
-    }, 950);
-  }, [handleCameraViewChange, resetDebateState]);
+      setIsSeatingRitual(true);
+      setCameraView("seat");
+      returnToTableTimerRef.current = window.setTimeout(() => {
+        setCameraView("table");
+        setIsSeatingRitual(false);
+      }, 950);
+    },
+    [handleCameraViewChange, resetDebateState]
+  );
 
   const stageClassName = [
     "stage-shell",
@@ -535,7 +546,9 @@ export default function App() {
     cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : "",
     // espectador puro = guest SIN silla; con silla reclamada, el guest juega
     isGuest && !mySeatId ? "stage-espectador" : ""
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -605,7 +618,9 @@ export default function App() {
                 <button
                   key={view.id}
                   type="button"
-                  className={cameraView === view.id ? "camera-dock-button camera-dock-button-active" : "camera-dock-button"}
+                  className={
+                    cameraView === view.id ? "camera-dock-button camera-dock-button-active" : "camera-dock-button"
+                  }
                   aria-pressed={cameraView === view.id}
                   onClick={() => handleCameraViewChange(view.id)}
                 >
@@ -629,7 +644,7 @@ export default function App() {
                         ? "F · Mirar barra"
                         : walkHotspot === "ring"
                           ? "F · Entrar a pelear"
-                        : "WASD / Flechas"}
+                          : "WASD / Flechas"}
                 </strong>
                 <span className="walk-hint-character">
                   {match.selectedCharacter?.name ?? match.activeLane.human.name}
@@ -644,9 +659,9 @@ export default function App() {
                         ? "Volvés a tu silla en la mesa"
                         : walkHotspot === "bar"
                           ? "Botellas, humo y promesas de truco"
-                        : walkHotspot === "ring"
-                          ? "Entrás a una sala aparte: golpes y cero jurisprudencia"
-                          : "WASD para moverte · Q/E giran la cámara · Shift corre")}
+                          : walkHotspot === "ring"
+                            ? "Entrás a una sala aparte: golpes y cero jurisprudencia"
+                            : "WASD para moverte · Q/E giran la cámara · Shift corre")}
                 </small>
               </div>
 
@@ -731,18 +746,10 @@ export default function App() {
                   >
                     RUN
                   </button>
-                  <button
-                    type="button"
-                    className="walk-touch-button"
-                    onClick={triggerWalkTouchJump}
-                  >
+                  <button type="button" className="walk-touch-button" onClick={triggerWalkTouchJump}>
                     JMP
                   </button>
-                  <button
-                    type="button"
-                    className="walk-touch-button"
-                    onClick={triggerWalkTouchBox}
-                  >
+                  <button type="button" className="walk-touch-button" onClick={triggerWalkTouchBox}>
                     BOX
                   </button>
                 </div>
@@ -751,7 +758,10 @@ export default function App() {
           ) : null}
 
           {cameraView === "ring" && !isSeatingRitual ? (
-            <div className={debateState.resolved ? "debate-hint debate-hint-resolved" : "debate-hint"} aria-live="polite">
+            <div
+              className={debateState.resolved ? "debate-hint debate-hint-resolved" : "debate-hint"}
+              aria-live="polite"
+            >
               <div className="debate-hint-header">
                 <span>Conflicto</span>
                 <strong>
@@ -767,13 +777,21 @@ export default function App() {
                 <div className="debate-meter-row">
                   <span>Vos</span>
                   <div className="debate-meter debate-meter-player">
-                    <i style={{ "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.playerTrigger / 6) * 100) : Math.max(0, debateState.playerHealth ?? 100)}%` }} />
+                    <i
+                      style={{
+                        "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.playerTrigger / 6) * 100) : Math.max(0, debateState.playerHealth ?? 100)}%`
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="debate-meter-row">
-                    <span>Rival</span>
+                  <span>Rival</span>
                   <div className="debate-meter debate-meter-rival">
-                    <i style={{ "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.rivalTrigger / 6) * 100) : Math.max(0, debateState.rivalHealth ?? 100)}%` }} />
+                    <i
+                      style={{
+                        "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.rivalTrigger / 6) * 100) : Math.max(0, debateState.rivalHealth ?? 100)}%`
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -801,35 +819,59 @@ export default function App() {
                     ) : null}
                     {debateState.vulnerable ? <span>rival vulnerable</span> : null}
                     {(debateState.streak ?? 0) > 0 ? <span>racha {debateState.streak}</span> : null}
-                    <span>{getConflictRingRead(getConflictCombatVector(getConflictCombatPos(debateState, "player"), getConflictCombatPos(debateState, "rival")).distance, debateState.playerStamina)}</span>
+                    <span>
+                      {getConflictRingRead(
+                        getConflictCombatVector(
+                          getConflictCombatPos(debateState, "player"),
+                          getConflictCombatPos(debateState, "rival")
+                        ).distance,
+                        debateState.playerStamina
+                      )}
+                    </span>
                   </>
                 )}
               </div>
               <div className="debate-actions" aria-label="Acciones de conflicto">
                 {debateState.mode === "ruleta" ? (
                   <>
-                    <button type="button" onClick={() => triggerDebateAction("gatillo")} disabled={!debateState.resolved && debateState.turn !== "player"}>
+                    <button
+                      type="button"
+                      onClick={() => triggerDebateAction("gatillo")}
+                      disabled={!debateState.resolved && debateState.turn !== "player"}
+                    >
                       {debateState.resolved ? "Otra botella" : "Apretar"}
                     </button>
-                    <button type="button" onClick={() => switchDebateMode("ring")}>Ring</button>
-                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
+                    <button type="button" onClick={() => switchDebateMode("ring")}>
+                      Ring
+                    </button>
+                    <button type="button" onClick={() => handleCameraViewChange("walk")}>
+                      Salir
+                    </button>
                   </>
                 ) : debateState.resolved ? (
                   <>
-                    <button type="button" onClick={() => triggerDebateAction("golpe")}>Revancha</button>
-                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
+                    <button type="button" onClick={() => triggerDebateAction("golpe")}>
+                      Revancha
+                    </button>
+                    <button type="button" onClick={() => handleCameraViewChange("walk")}>
+                      Salir
+                    </button>
                   </>
-                ) : (
-                  null
-                )}
+                ) : null}
               </div>
-              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : "P1 WASD + click/Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir"}</small>
+              <small>
+                {debateState.mode === "ruleta"
+                  ? "Espacio/click: apretar · G: ring · Esc: volver"
+                  : "P1 WASD + click/Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir"}
+              </small>
             </div>
           ) : null}
 
           <div className="stage-overlay">
             <span className="stage-overlay-kicker">{match.phase === "role-select" ? "Elegi rol" : "Mano clasica"}</span>
-            <strong>{match.activeLane.human.name} vs {match.activeLane.rival.name}</strong>
+            <strong>
+              {match.activeLane.human.name} vs {match.activeLane.rival.name}
+            </strong>
             <p>
               {match.phase === "role-select"
                 ? `Rol ${match.selectedRole} · Cuando arranque, sale primero ${match.whoStartsName}`
@@ -839,7 +881,9 @@ export default function App() {
             <div className="stage-overlay-meta">
               <span>Paso {match.stepNumber}</span>
               <span>Vuelta {match.displayVueltaNumber}/3</span>
-              <span>Vos {match.trickWins.A} · {match.activeLane.rival.name} {match.trickWins.B}</span>
+              <span>
+                Vos {match.trickWins.A} · {match.activeLane.rival.name} {match.trickWins.B}
+              </span>
               <span>{match.pointsInverted ? "Puntos invertidos" : "Cobro normal"}</span>
             </div>
           </div>
@@ -848,7 +892,9 @@ export default function App() {
             <div className="seating-ritual" aria-live="polite">
               <span>Te sentás en la mesa</span>
               <strong>{match.activeLane.human.name}</strong>
-              <small>{match.selectedRole} · sale {match.whoStartsName}</small>
+              <small>
+                {match.selectedRole} · sale {match.whoStartsName}
+              </small>
             </div>
           ) : null}
         </section>
@@ -860,13 +906,17 @@ export default function App() {
 
       {createPortal(
         netRoom ? (
-          <div className={`${salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}${match.phase === "role-select" ? "" : " sala-lower"}`}>
+          <div
+            className={`${salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}${match.phase === "role-select" ? "" : " sala-lower"}`}
+          >
             <div className="sala-head">
               <div className="sala-head-id">
                 <span className="sala-kicker">SALA</span>
                 <strong className="sala-code">{netRoom.code}</strong>
               </div>
-              <span className="sala-count">{roster.length}/{ROOM_LIMIT}</span>
+              <span className="sala-count">
+                {roster.length}/{ROOM_LIMIT}
+              </span>
               <button
                 className="sala-collapse-btn"
                 type="button"
@@ -886,7 +936,9 @@ export default function App() {
                     return (
                       <button
                         key={seat.seatId}
-                        className={mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"}
+                        className={
+                          mine ? "seat-slot seat-slot-mine" : owner ? "seat-slot seat-slot-taken" : "seat-slot"
+                        }
                         type="button"
                         title={`${seat.label} · ${seat.role}`}
                         onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
@@ -930,15 +982,17 @@ export default function App() {
                   </label>
                 ) : null}
 
-                <p className="sala-note">
-                  Reclamá tu silla arriba y pasale el link a los pibes.
-                </p>
+                <p className="sala-note">Reclamá tu silla arriba y pasale el link a los pibes.</p>
               </>
             )}
           </div>
         ) : (
           <div className={`sala-join-box${match.phase === "role-select" ? "" : " sala-lower"}`}>
-            <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
+            <button
+              className="canto-chip canto-chip-advance"
+              type="button"
+              onClick={() => joinSala(genRoomCode(), true)}
+            >
               🌐 Crear sala
             </button>
             {searchingRandom ? (

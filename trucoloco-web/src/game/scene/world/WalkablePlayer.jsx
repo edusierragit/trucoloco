@@ -47,10 +47,12 @@ function keepOutOfTable(position) {
 }
 
 function getNearestHotspot(position) {
-  return WALK_HOTSPOTS.find((hotspot) => {
-    const distance = Math.hypot(position.x - hotspot.x, position.z - hotspot.z);
-    return distance <= hotspot.radius;
-  })?.id ?? null;
+  return (
+    WALK_HOTSPOTS.find((hotspot) => {
+      const distance = Math.hypot(position.x - hotspot.x, position.z - hotspot.z);
+      return distance <= hotspot.radius;
+    })?.id ?? null
+  );
 }
 
 function readStoredClipOverrides(characterId) {
@@ -169,7 +171,15 @@ function AvatarBody({ refs, character, motionMode }) {
   );
 }
 
-export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChange, onInteract, onAnimationDebugChange, onMove }) {
+export function WalkablePlayer({
+  enabled,
+  character,
+  virtualInput,
+  onHotspotChange,
+  onInteract,
+  onAnimationDebugChange,
+  onMove
+}) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const leftLegRef = useRef(null);
@@ -347,23 +357,24 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     }
 
     const inputX = clamp(
-      (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0) + (virtual.x ?? 0),
+      (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
+        (keys.has("a") || keys.has("arrowleft") ? 1 : 0) +
+        (virtual.x ?? 0),
       -1,
       1
     );
     const inputZ = clamp(
-      (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0) + (virtual.z ?? 0),
+      (keys.has("s") || keys.has("arrowdown") ? 1 : 0) -
+        (keys.has("w") || keys.has("arrowup") ? 1 : 0) +
+        (virtual.z ?? 0),
       -1,
       1
     );
     const moving = inputX !== 0 || inputZ !== 0;
     const sprinting = keys.has("shift") || Boolean(virtual.sprint);
     const speed = sprinting ? RUN_SPEED : WALK_SPEED;
-    const nextMotionMode = timeRef.current < actionUntilRef.current
-      ? actionModeRef.current
-      : moving
-        ? sprinting ? "run" : "walk"
-        : "idle";
+    const nextMotionMode =
+      timeRef.current < actionUntilRef.current ? actionModeRef.current : moving ? (sprinting ? "run" : "walk") : "idle";
 
     if (motionModeRef.current !== nextMotionMode) {
       motionModeRef.current = nextMotionMode;
@@ -393,7 +404,10 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
       keepOutOfTable(positionRef.current);
 
       const targetYaw = Math.atan2(velocityRef.current.x, velocityRef.current.z);
-      const deltaYaw = Math.atan2(Math.sin(targetYaw - groupRef.current.rotation.y), Math.cos(targetYaw - groupRef.current.rotation.y));
+      const deltaYaw = Math.atan2(
+        Math.sin(targetYaw - groupRef.current.rotation.y),
+        Math.cos(targetYaw - groupRef.current.rotation.y)
+      );
       groupRef.current.rotation.y += deltaYaw * (1 - Math.exp(-Math.min(delta, 0.08) * 12));
     }
 
@@ -407,9 +421,10 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     onMove?.(positionRef.current.x, positionRef.current.z, groupRef.current.rotation.y, moving);
 
     const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
-    const jumpProgress = actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current
-      ? clamp((timeRef.current - jumpStartedAtRef.current) / JUMP_DURATION, 0, 1)
-      : 1;
+    const jumpProgress =
+      actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current
+        ? clamp((timeRef.current - jumpStartedAtRef.current) / JUMP_DURATION, 0, 1)
+        : 1;
     const jumpLift = jumpProgress < 1 ? Math.sin(jumpProgress * Math.PI) * JUMP_HEIGHT : 0;
     if (leftLegRef.current) leftLegRef.current.rotation.x = swing * 0.46;
     if (rightLegRef.current) rightLegRef.current.rotation.x = -swing * 0.46;
@@ -430,7 +445,11 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
     const desiredCamera = desiredCameraRef.current;
     desiredCamera.x = clamp(desiredCamera.x, ROOM_BOUNDS.minX + 0.3, ROOM_BOUNDS.maxX - 0.3);
-    desiredCamera.z = clamp(desiredCamera.z, ROOM_BOUNDS.minZ + 0.6 + ROOM_WORLD_OFFSET.z, ROOM_BOUNDS.maxZ + 1.55 + ROOM_WORLD_OFFSET.z);
+    desiredCamera.z = clamp(
+      desiredCamera.z,
+      ROOM_BOUNDS.minZ + 0.6 + ROOM_WORLD_OFFSET.z,
+      ROOM_BOUNDS.maxZ + 1.55 + ROOM_WORLD_OFFSET.z
+    );
 
     camera.position.lerp(desiredCamera, 1 - Math.exp(-Math.min(delta, 0.08) * 6.5));
     cameraTargetRef.current

@@ -53,10 +53,12 @@ export function useConflictCombat({ enabled, onExit, weaponContext }) {
   }, [weaponContext]);
 
   const resetDebateState = useCallback((overrides = {}) => {
-    setDebateState((current) => createDebateState({
-      token: (current.token ?? 0) + 1,
-      ...overrides
-    }));
+    setDebateState((current) =>
+      createDebateState({
+        token: (current.token ?? 0) + 1,
+        ...overrides
+      })
+    );
   }, []);
 
   const triggerDebateAction = useCallback((kind) => {
@@ -104,13 +106,16 @@ export function useConflictCombat({ enabled, onExit, weaponContext }) {
   }, []);
 
   const switchDebateMode = useCallback((mode) => {
-    setDebateState((current) => createDebateState({
-      mode,
-      token: current.token + 1,
-      lastMove: mode === "ruleta"
-        ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
-        : "Modo ring real-time. Movete libre, pega cuando estes cerca y defendete si P2 te encima."
-    }));
+    setDebateState((current) =>
+      createDebateState({
+        mode,
+        token: current.token + 1,
+        lastMove:
+          mode === "ruleta"
+            ? "Modo ruleta de utileria. Dos tambores, seis posiciones por lado. Si salta el corcho, pierde la disputa."
+            : "Modo ring real-time. Movete libre, pega cuando estes cerca y defendete si P2 te encima."
+      })
+    );
   }, []);
 
   useEffect(() => {

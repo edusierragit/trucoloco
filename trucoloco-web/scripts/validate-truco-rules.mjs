@@ -32,7 +32,11 @@ assert.equal(getHandWinner([trick("A"), trick("B"), trick("A")], "B"), "A", "La 
 assert.equal(getHandWinner([trick(PARDA), trick(PARDA)], "B"), "B", "Dos pardas favorecen a mano.");
 assert.equal(getHandWinner([trick(PARDA), trick("A")], "B"), "A", "Primera parda: la segunda define.");
 assert.equal(getHandWinner([trick("A"), trick(PARDA)], "B"), "A", "Segunda parda: la primera define.");
-assert.equal(getHandWinner([trick("B"), trick("A"), trick(PARDA)], "A"), "B", "Tercera parda: la primera ventaja define.");
+assert.equal(
+  getHandWinner([trick("B"), trick("A"), trick(PARDA)], "A"),
+  "B",
+  "Tercera parda: la primera ventaja define."
+);
 assert.equal(getPardaCount([trick(PARDA), trick("A"), trick(PARDA)]), 2, "Cuenta pardas jugadas.");
 
 assert.equal(
@@ -140,7 +144,6 @@ assert.deepEqual(
 
 console.log("Truco rules OK");
 
-
 // ── auditoría de puntos de cantos (sesión 2026-07-03) ────────────────────────
 // La escalera del truco: querido paga 2/3/4, no querido paga 1/2/3.
 {
@@ -149,7 +152,11 @@ console.log("Truco rules OK");
   assert.deepEqual(applyHandPoints(base, "A", 3, false).scores, { A: 3, B: 0 }, "Retruco querido paga 3.");
   assert.deepEqual(applyHandPoints(base, "A", 4, false).scores, { A: 4, B: 0 }, "Vale cuatro querido paga 4.");
   assert.deepEqual(applyHandPoints(base, "B", 1, false).scores, { A: 0, B: 1 }, "Truco no querido paga 1 al cantor.");
-  assert.deepEqual(applyHandPoints(base, "B", 3, false).scores, { A: 0, B: 3 }, "Vale cuatro no querido paga 3 al cantor.");
+  assert.deepEqual(
+    applyHandPoints(base, "B", 3, false).scores,
+    { A: 0, B: 3 },
+    "Vale cuatro no querido paga 3 al cantor."
+  );
   // cobro invertido (modificador trucoloco): el que gana no cobra, cobra el otro
   const inverted = applyHandPoints(base, "A", 4, true);
   assert.equal(inverted.scoringWinner, "B", "Con cobro invertido, vale cuatro lo cobra el rival.");

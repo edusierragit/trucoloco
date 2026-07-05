@@ -22,10 +22,12 @@ function clampRingPos(pos) {
 
 export function getCombatPos(state, actor) {
   const fallbackX = actor === "player" ? -0.72 : 0.72;
-  const fallbackLane = actor === "player" ? state.playerLane ?? -0.18 : state.rivalLane ?? 0.18;
-  return clampRingPos(actor === "player"
-    ? state.playerPos ?? { x: fallbackX, z: fallbackLane * 0.84 }
-    : state.rivalPos ?? { x: fallbackX, z: fallbackLane * 0.84 });
+  const fallbackLane = actor === "player" ? (state.playerLane ?? -0.18) : (state.rivalLane ?? 0.18);
+  return clampRingPos(
+    actor === "player"
+      ? (state.playerPos ?? { x: fallbackX, z: fallbackLane * 0.84 })
+      : (state.rivalPos ?? { x: fallbackX, z: fallbackLane * 0.84 })
+  );
 }
 
 export function getCombatVector(from, to) {
@@ -45,21 +47,25 @@ function laneFromPos(pos) {
 
 function withActorPos(state, actor, pos, facingTarget) {
   const nextPos = clampRingPos(pos);
-  const facing = facingTarget ? getFacing(nextPos, facingTarget) : actor === "player" ? state.playerFacing : state.rivalFacing;
+  const facing = facingTarget
+    ? getFacing(nextPos, facingTarget)
+    : actor === "player"
+      ? state.playerFacing
+      : state.rivalFacing;
 
   return actor === "player"
     ? {
-      ...state,
-      playerPos: nextPos,
-      playerLane: laneFromPos(nextPos),
-      playerFacing: Number.isFinite(facing) ? facing : state.playerFacing
-    }
+        ...state,
+        playerPos: nextPos,
+        playerLane: laneFromPos(nextPos),
+        playerFacing: Number.isFinite(facing) ? facing : state.playerFacing
+      }
     : {
-      ...state,
-      rivalPos: nextPos,
-      rivalLane: laneFromPos(nextPos),
-      rivalFacing: Number.isFinite(facing) ? facing : state.rivalFacing
-    };
+        ...state,
+        rivalPos: nextPos,
+        rivalLane: laneFromPos(nextPos),
+        rivalFacing: Number.isFinite(facing) ? facing : state.rivalFacing
+      };
 }
 
 export function getRingRead(distance, stamina) {
@@ -156,7 +162,9 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
       lastDamageToPlayer: 0,
       lastDamageToRival: 0,
       hitStrength: 0.08,
-      lastMove: isPlayer ? "P1 cubre arriba. Reducis dano frontal, pero si te rodean te la cobran." : "P2 levanta guardia."
+      lastMove: isPlayer
+        ? "P1 cubre arriba. Reducis dano frontal, pero si te rodean te la cobran."
+        : "P2 levanta guardia."
     };
   }
 
@@ -181,7 +189,9 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
       lastDamageToPlayer: 0,
       lastDamageToRival: 0,
       hitStrength: 0,
-      lastMove: isPlayer ? "P1 esquiva corto. Saliste del eje: entra con click si quedo cerca." : "P2 esquiva y busca otro angulo."
+      lastMove: isPlayer
+        ? "P1 esquiva corto. Saliste del eje: entra con click si quedo cerca."
+        : "P2 esquiva y busca otro angulo."
     };
   }
 
@@ -204,12 +214,13 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
   const nextDefenderHealth = clamp((current[defenderHealthKey] ?? 100) - damage, 0, 100);
   const nextAttackerHealth = clamp((current[attackerHealthKey] ?? 100) - counterDamage, 0, 100);
   const defenderKnockback = damage > 0 ? actionConfig.knockback * (guarded ? 0.45 : 1) : 0;
-  const nextDefenderPos = damage > 0
-    ? clampRingPos({
-      x: defenderPos.x + vector.x * defenderKnockback,
-      z: defenderPos.z + vector.z * defenderKnockback
-    })
-    : defenderPos;
+  const nextDefenderPos =
+    damage > 0
+      ? clampRingPos({
+          x: defenderPos.x + vector.x * defenderKnockback,
+          z: defenderPos.z + vector.z * defenderKnockback
+        })
+      : defenderPos;
   const nextStateWithDefenderPos = withActorPos(current, defender, nextDefenderPos, attackerPos);
   const attackerWon = nextDefenderHealth <= 0;
   const defenderWon = nextAttackerHealth <= 0;
@@ -231,7 +242,8 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
     [defenderCooldownKey]: Math.max(0, current[defenderCooldownKey] ?? 0),
     [attackerGuardKey]: 0,
     [defenderGuardKey]: guarded ? Math.max(0, defenderGuard - 0.34) : 0,
-    [defenderHitStunKey]: damage >= actionConfig.stunDamage ? 0.22 : damage > 0 ? 0.08 : Math.max(0, current[defenderHitStunKey] ?? 0),
+    [defenderHitStunKey]:
+      damage >= actionConfig.stunDamage ? 0.22 : damage > 0 ? 0.08 : Math.max(0, current[defenderHitStunKey] ?? 0),
     [attackerHitStunKey]: counterDamage > 0 ? 0.08 : Math.max(0, current[attackerHitStunKey] ?? 0),
     lastDamageToPlayer: isPlayer ? counterDamage : damage,
     lastDamageToRival: isPlayer ? damage : counterDamage,
@@ -240,20 +252,36 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
     rival: Math.min(5, Math.floor((100 - (isPlayer ? nextAttackerHealth : nextDefenderHealth)) / 20)),
     resolved: attackerWon || defenderWon,
     lastMove: attackerWon
-      ? (isPlayer ? "KO. P1 saco a P2 del ring: tu version gana el conflicto." : "KO. P2 saco a P1 del ring.")
+      ? isPlayer
+        ? "KO. P1 saco a P2 del ring: tu version gana el conflicto."
+        : "KO. P2 saco a P1 del ring."
       : defenderWon
-        ? (isPlayer ? "KO. P2 contesto y P1 cayo." : "KO. P2 cayo por contra.")
+        ? isPlayer
+          ? "KO. P2 contesto y P1 cayo."
+          : "KO. P2 cayo por contra."
         : !canAttack
           ? !hasAir
-            ? (isPlayer ? "P1 sin aire: corre, esquiva o bloquea para recuperar." : "P2 se quedo sin aire.")
-            : (isPlayer ? "Cooldown: el golpe todavia no salio." : "P2 quiso repetir demasiado rapido.")
+            ? isPlayer
+              ? "P1 sin aire: corre, esquiva o bloquea para recuperar."
+              : "P2 se quedo sin aire."
+            : isPlayer
+              ? "Cooldown: el golpe todavia no salio."
+              : "P2 quiso repetir demasiado rapido."
           : hitLanded
             ? guarded
-              ? (isPlayer ? "P1 pego sobre guardia. Hizo dano menor y cobro un raspon." : "P1 bloqueo parte del golpe de P2.")
+              ? isPlayer
+                ? "P1 pego sobre guardia. Hizo dano menor y cobro un raspon."
+                : "P1 bloqueo parte del golpe de P2."
               : guardBroken
-                ? (isPlayer ? "Especial rompe guardia. Entro fuerte." : "P2 rompio tu guardia con especial.")
-                : (isPlayer ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.` : `P2 conecto ${actionConfig.label.toLowerCase()}.`)
-            : (isPlayer ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.` : "P2 pego al aire.")
+                ? isPlayer
+                  ? "Especial rompe guardia. Entro fuerte."
+                  : "P2 rompio tu guardia con especial."
+                : isPlayer
+                  ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.`
+                  : `P2 conecto ${actionConfig.label.toLowerCase()}.`
+            : isPlayer
+              ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.`
+              : "P2 pego al aire."
   };
 }
 
@@ -270,7 +298,8 @@ export function stepArenaCombat(current, keys, dt) {
     playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - safeDt),
     rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - safeDt),
     fightIntro: Math.max(0, (current.fightIntro ?? 0) - safeDt),
-    playerGuard: keys.has("f") || keys.has("rightclick") ? 0.38 : Math.max(0, (current.playerGuard ?? 0) - safeDt * 1.45),
+    playerGuard:
+      keys.has("f") || keys.has("rightclick") ? 0.38 : Math.max(0, (current.playerGuard ?? 0) - safeDt * 1.45),
     rivalGuard: keys.has("p") ? 0.38 : Math.max(0, (current.rivalGuard ?? 0) - safeDt * 1.25),
     playerDash: Math.max(0, (current.playerDash ?? 0) - safeDt),
     rivalDash: Math.max(0, (current.rivalDash ?? 0) - safeDt),
@@ -320,10 +349,15 @@ export function stepArenaCombat(current, keys, dt) {
       playerEngaged: true
     };
     if (rivalInputX || rivalInputZ) {
-      next = withActorPos(next, "rival", {
-        x: currentRivalPos.x + (rivalInputX / rivalInputLength) * 1.26 * safeDt,
-        z: currentRivalPos.z + (rivalInputZ / rivalInputLength) * 1.26 * safeDt
-      }, currentPlayerPos);
+      next = withActorPos(
+        next,
+        "rival",
+        {
+          x: currentRivalPos.x + (rivalInputX / rivalInputLength) * 1.26 * safeDt,
+          z: currentRivalPos.z + (rivalInputZ / rivalInputLength) * 1.26 * safeDt
+        },
+        currentPlayerPos
+      );
       next.rivalMoving = 0.18;
     } else {
       next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));

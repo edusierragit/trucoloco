@@ -47,14 +47,16 @@ function AmbientAudio() {
 }
 
 function Header({ match }) {
-  const subtitle = match.phase === "role-select"
-    ? "Elegí rol."
-    : match.handClosed
-    ? "Mano cerrada."
-    : `Sale ${match.nextActorName ?? match.whoStartsName}.`;
-  const scoreNames = match.phase === "role-select"
-    ? `Reparte ${match.dealerName} · sale ${match.whoStartsName}`
-    : `${match.activeLane.human.name} vs ${match.activeLane.rival.name}`;
+  const subtitle =
+    match.phase === "role-select"
+      ? "Elegí rol."
+      : match.handClosed
+        ? "Mano cerrada."
+        : `Sale ${match.nextActorName ?? match.whoStartsName}.`;
+  const scoreNames =
+    match.phase === "role-select"
+      ? `Reparte ${match.dealerName} · sale ${match.whoStartsName}`
+      : `${match.activeLane.human.name} vs ${match.activeLane.rival.name}`;
 
   const isRoleSelect = match.phase === "role-select";
 
@@ -67,7 +69,9 @@ function Header({ match }) {
 
       {isRoleSelect ? null : (
         <div className="scoreboard">
-          <span className="score-label">Mano {match.handNumber} · Mano vale {match.activeBet}</span>
+          <span className="score-label">
+            Mano {match.handNumber} · Mano vale {match.activeBet}
+          </span>
           <strong key={`${match.scores.A}-${match.scores.B}`} className="score-pop">
             {match.scores.A} - {match.scores.B}
           </strong>
@@ -92,9 +96,7 @@ function RoleSelector({ match }) {
       <section className="role-lock">
         <div>
           <span className="panel-kicker">{match.handClosed ? "Rol de la partida" : "Rol en juego"}</span>
-          <strong>
-            {selectedCharacter.name}
-          </strong>
+          <strong>{selectedCharacter.name}</strong>
           <small>{match.selectedRole}</small>
         </div>
         <span className="role-spotlight-tag">{selectedRoleDef.powerName}</span>
@@ -160,14 +162,11 @@ function RoleSelector({ match }) {
       </div>
 
       <article className="role-ready-strip">
-        <button
-          className="role-start-button"
-          disabled={!match.canAdvance}
-          onClick={startSelectedRole}
-          type="button"
-        >
+        <button className="role-start-button" disabled={!match.canAdvance} onClick={startSelectedRole} type="button">
           <span className="role-start-main">▶ JUGAR</span>
-          <span className="role-start-sub">{selectedCharacter.name} · {match.selectedRole}</span>
+          <span className="role-start-sub">
+            {selectedCharacter.name} · {match.selectedRole}
+          </span>
         </button>
       </article>
     </section>
@@ -256,8 +255,8 @@ function TableFlowPanel({ match }) {
     return null;
   }
 
-  const focusSeats = match.tableFlow.seats.filter((seat) =>
-    seat.isActing || seat.isSelectedDuel || seat.isMano || seat.isDealer
+  const focusSeats = match.tableFlow.seats.filter(
+    (seat) => seat.isActing || seat.isSelectedDuel || seat.isMano || seat.isDealer
   );
 
   return (
@@ -274,15 +273,15 @@ function TableFlowPanel({ match }) {
             seat.isActing ? "table-flow-seat-acting" : "",
             seat.isMano ? "table-flow-seat-mano" : "",
             seat.isDealer ? "table-flow-seat-dealer" : ""
-          ].filter(Boolean).join(" ");
+          ]
+            .filter(Boolean)
+            .join(" ");
 
           return (
             <article key={seat.seatId} className={className}>
               <span>{seat.label}</span>
               <strong>{seat.player?.name}</strong>
-              <small>
-                {seat.isActing ? "Actua" : seat.isMano ? "Mano" : seat.isDealer ? "Reparte" : seat.role}
-              </small>
+              <small>{seat.isActing ? "Actua" : seat.isMano ? "Mano" : seat.isDealer ? "Reparte" : seat.role}</small>
             </article>
           );
         })}
@@ -543,8 +542,7 @@ function TrickLedger({ match }) {
       <span className="panel-kicker">Vueltas jugadas</span>
       <div className="trick-ledger-list">
         {match.trickHistory.map((trick) => {
-          const result =
-            trick.result === "tie" ? "Parda" : trick.winner === "A" ? "Tu equipo" : "Rival";
+          const result = trick.result === "tie" ? "Parda" : trick.winner === "A" ? "Tu equipo" : "Rival";
           const winningCard = trick.cards?.find((card) => card.seatId === trick.winnerSeatId);
           const summary = winningCard?.card?.name ?? winningCard?.name ?? getShortCardName(trick.humanCard);
           const winnerName = getTrickWinnerName(trick, match);
@@ -657,18 +655,26 @@ function TrucoResponsePanel({ match }) {
         <div className="decision-copy">
           <span className="panel-kicker">Truco</span>
           <strong>{pending.label}</strong>
-          <p>Quiere: {pending.acceptedBet}. No quiere: {pending.rejectedPoints} para {callerName}.</p>
+          <p>
+            Quiere: {pending.acceptedBet}. No quiere: {pending.rejectedPoints} para {callerName}.
+          </p>
         </div>
 
         <div className="truco-ladder" aria-hidden="true">
           <span className={pending.label === "Truco" ? "truco-step truco-step-active" : "truco-step"}>Truco</span>
           <span className={pending.label === "Retruco" ? "truco-step truco-step-active" : "truco-step"}>Retruco</span>
-          <span className={pending.label === "Vale cuatro" ? "truco-step truco-step-active" : "truco-step"}>Vale 4</span>
+          <span className={pending.label === "Vale cuatro" ? "truco-step truco-step-active" : "truco-step"}>
+            Vale 4
+          </span>
         </div>
 
         <div className="decision-action-stack truco-response-actions">
           {raiseLabel ? (
-            <button className="action-button action-button-secondary next-hand" onClick={match.raiseTrucoResponse} type="button">
+            <button
+              className="action-button action-button-secondary next-hand"
+              onClick={match.raiseTrucoResponse}
+              type="button"
+            >
               Quiero {raiseLabel.toLowerCase()}
             </button>
           ) : null}
@@ -740,15 +746,23 @@ function AgreementPill({ match }) {
       <div className="agreement-body">
         <div className="agreement-side">
           <span>Vos</span>
-          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v - 1))} type="button">−</button>
+          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v - 1))} type="button">
+            −
+          </button>
           <strong>{fmt(deltaSelf)}</strong>
-          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v + 1))} type="button">+</button>
+          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v + 1))} type="button">
+            +
+          </button>
         </div>
         <div className="agreement-side">
           <span>{rivalName}</span>
-          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v - 1))} type="button">−</button>
+          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v - 1))} type="button">
+            −
+          </button>
           <strong>{fmt(deltaRival)}</strong>
-          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v + 1))} type="button">+</button>
+          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v + 1))} type="button">
+            +
+          </button>
         </div>
         {outOfChances ? (
           <button className="canto-chip canto-chip-advance" onClick={() => match.applyAgreement(0, 0)} type="button">
@@ -826,7 +840,8 @@ function getHandPanelCopy(match) {
 }
 
 function BottomDock({ match, handFocus, setHandFocus }) {
-  const nextLabel = match.advanceLabel ?? (match.matchWinner ? "Nueva partida" : match.handClosed ? "Siguiente mano" : "Seguir");
+  const nextLabel =
+    match.advanceLabel ?? (match.matchWinner ? "Nueva partida" : match.handClosed ? "Siguiente mano" : "Seguir");
   const advanceHandler = getAdvanceHandler(match);
   const showWeaponsPanel =
     match.handStarted &&
@@ -839,7 +854,9 @@ function BottomDock({ match, handFocus, setHandFocus }) {
     showHandCards ? "hand-panel-focus" : handFocus ? "hand-panel-focus" : "",
     showHandCards && match.canPlayCard ? "hand-panel-play" : "",
     showHandCards && !match.canPlayCard ? "hand-panel-preview" : ""
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
   const handWinnerName = getTeamLabel(match.handWinner);
   const scoringWinnerName = getTeamLabel(match.scoringWinner);
   const showResultPanel = match.handStarted && (match.handClosed || match.matchWinner);
@@ -900,7 +917,12 @@ function BottomDock({ match, handFocus, setHandFocus }) {
           {showWeaponsPanel ? (
             <div className="decision-weapons">
               {match.weaponHand.map((weapon) => (
-                <WeaponButton key={weapon.handIndex} weapon={weapon} disabled={!match.canUseWeapon} onUse={match.useWeapon} />
+                <WeaponButton
+                  key={weapon.handIndex}
+                  weapon={weapon}
+                  disabled={!match.canUseWeapon}
+                  onUse={match.useWeapon}
+                />
               ))}
             </div>
           ) : null}
@@ -962,9 +984,7 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
   if (showResultPanel) {
     const resultTone = match.scoringWinner === "A" ? "win" : "lose";
-    const resultTitle = match.matchWinner
-      ? `${scoringWinnerName} gana la partida`
-      : `${handWinnerName} gana la mano`;
+    const resultTitle = match.matchWinner ? `${scoringWinnerName} gana la partida` : `${handWinnerName} gana la mano`;
     const resultCopy = match.matchWinner
       ? `A ${match.config.winningScore}.`
       : match.pointsInverted
@@ -977,41 +997,45 @@ function BottomDock({ match, handFocus, setHandFocus }) {
         {createPortal(
           <footer className="bottom-dock bottom-dock-result result-dock-right">
             <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
-          <div className="hand-result-copy">
-            <strong>{resultTitle}</strong>
-            <p>{resultCopy}</p>
-          </div>
+              <div className="hand-result-copy">
+                <strong>{resultTitle}</strong>
+                <p>{resultCopy}</p>
+              </div>
 
+              {match.canSwitchRole && !match.matchWinner ? (
+                <div className="role-switch-row">
+                  <span className="role-switch-label">Rol para la próxima</span>
+                  {match.roleOptions.map((role) => (
+                    <button
+                      key={role}
+                      className={
+                        role === match.selectedRole
+                          ? "canto-chip canto-chip-role canto-chip-role-active"
+                          : "canto-chip canto-chip-role"
+                      }
+                      onClick={() => match.selectRole(role)}
+                      type="button"
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
 
-          {match.canSwitchRole && !match.matchWinner ? (
-            <div className="role-switch-row">
-              <span className="role-switch-label">Rol para la próxima</span>
-              {match.roleOptions.map((role) => (
-                <button
-                  key={role}
-                  className={
-                    role === match.selectedRole
-                      ? "canto-chip canto-chip-role canto-chip-role-active"
-                      : "canto-chip canto-chip-role"
-                  }
-                  onClick={() => match.selectRole(role)}
-                  type="button"
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <button
-            className="action-button action-button-primary next-hand"
-            disabled={!match.canAdvance || (match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied)}
-            onClick={advanceHandler}
-            type="button"
-          >
-            {match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied ? "Falta el acuerdo" : nextLabel}
-          </button>
-        </section>
+              <button
+                className="action-button action-button-primary next-hand"
+                disabled={
+                  !match.canAdvance ||
+                  (match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied)
+                }
+                onClick={advanceHandler}
+                type="button"
+              >
+                {match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied
+                  ? "Falta el acuerdo"
+                  : nextLabel}
+              </button>
+            </section>
           </footer>,
           document.body
         )}
@@ -1050,40 +1074,42 @@ function BottomDock({ match, handFocus, setHandFocus }) {
 
   return (
     <footer className={showHandCards && match.canPlayCard ? "bottom-dock bottom-dock-play" : "bottom-dock"}>
-      {match.handStarted && !match.handClosed && !match.matchWinner ? createPortal(
-        <div className="canto-bar">
-          <span className="canto-copy">{getHandPanelCopy(match)}</span>
-          {match.canCallEnvido ? (
-            <button className="canto-chip canto-chip-envido" onClick={match.callEnvido} type="button">
-              Envido
-            </button>
-          ) : null}
-          {match.canCallTruco ? (
-            <button className="canto-chip canto-chip-truco" onClick={match.callTruco} type="button">
-              {match.trucoCallLabel ?? "Truco"}
-            </button>
-          ) : null}
-          {match.canUseWeapon
-            ? match.weaponHand.map((weapon) => (
-                <button
-                  key={weapon.handIndex}
-                  className="canto-chip canto-chip-weapon"
-                  title={weapon.summary}
-                  onClick={() => match.useWeapon(weapon.handIndex)}
-                  type="button"
-                >
-                  {weapon.name}
+      {match.handStarted && !match.handClosed && !match.matchWinner
+        ? createPortal(
+            <div className="canto-bar">
+              <span className="canto-copy">{getHandPanelCopy(match)}</span>
+              {match.canCallEnvido ? (
+                <button className="canto-chip canto-chip-envido" onClick={match.callEnvido} type="button">
+                  Envido
                 </button>
-              ))
-            : null}
-          {!match.canPlayCard && match.canAdvance ? (
-            <button className="canto-chip canto-chip-advance" onClick={advanceHandler} type="button">
-              {nextLabel}
-            </button>
-          ) : null}
-        </div>,
-        document.body
-      ) : null}
+              ) : null}
+              {match.canCallTruco ? (
+                <button className="canto-chip canto-chip-truco" onClick={match.callTruco} type="button">
+                  {match.trucoCallLabel ?? "Truco"}
+                </button>
+              ) : null}
+              {match.canUseWeapon
+                ? match.weaponHand.map((weapon) => (
+                    <button
+                      key={weapon.handIndex}
+                      className="canto-chip canto-chip-weapon"
+                      title={weapon.summary}
+                      onClick={() => match.useWeapon(weapon.handIndex)}
+                      type="button"
+                    >
+                      {weapon.name}
+                    </button>
+                  ))
+                : null}
+              {!match.canPlayCard && match.canAdvance ? (
+                <button className="canto-chip canto-chip-advance" onClick={advanceHandler} type="button">
+                  {nextLabel}
+                </button>
+              ) : null}
+            </div>,
+            document.body
+          )
+        : null}
       <section className={handPanelClassName}>
         <div className="panel-header">
           <div>
@@ -1134,9 +1160,9 @@ function BottomDock({ match, handFocus, setHandFocus }) {
                 ? "Repartí cartas."
                 : match.phase === "table-auto-turn"
                   ? "Avanzá mesa."
-                : match.matchWinner
-                  ? "Marcador cerrado."
-                  : "Siguiente mano."}
+                  : match.matchWinner
+                    ? "Marcador cerrado."
+                    : "Siguiente mano."}
             </p>
           </div>
         )}
@@ -1197,13 +1223,15 @@ export function Hud({ match, cameraView = "table", onReturnToTable }) {
     isAwayFromTable ? "hud-away-from-table" : "",
     match.handStarted && !match.handClosed ? "hud-hand-active" : "",
     match.canPlayCard ? "hud-can-play" : ""
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={hudClassName}>
       <div className="hud-top-stack">
         <AmbientAudio />
-      <Header match={match} />
+        <Header match={match} />
         <RoleSelector match={match} />
       </div>
 

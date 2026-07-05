@@ -46,7 +46,7 @@ const cardBody = {
   y: -871.13782
 };
 
-const layer = getTranslateNear("id=\"layer1\"", 8);
+const layer = getTranslateNear('id="layer1"', 8);
 const sourceIds = suits.flatMap(([, sourceSuit]) => ranks.map(([, sourceRank]) => `${sourceRank}_${sourceSuit}`));
 const firstCardStart = Math.min(...sourceIds.map((sourceId) => findGroupStart(sourceId)));
 const sourcePrefix = preparePrefix(sourceSvg.slice(0, firstCardStart));
@@ -60,20 +60,25 @@ function cardSvg({ sourceId, rankLabel, suitLabel }) {
   const ariaLabel = `${rankLabel} de ${suitLabel}`;
   const viewBox = `${x} ${y} ${cell.width} ${cell.height}`;
 
-  return sourcePrefix
-    .replace(/<\?xml[^>]*>\s*/u, `<?xml version="1.0" encoding="UTF-8"?>\n`)
-    .replace(/<!--[\s\S]*?-->\s*/u, "")
-    .replace(/<svg\b[\s\S]*?>/u, (openingTag) => {
-      const cleaned = openingTag
-        .replace(/\swidth="[^"]*"/u, "")
-        .replace(/\sheight="[^"]*"/u, "")
-        .replace(/\sid="[^"]*"/u, "");
+  return (
+    sourcePrefix
+      .replace(/<\?xml[^>]*>\s*/u, `<?xml version="1.0" encoding="UTF-8"?>\n`)
+      .replace(/<!--[\s\S]*?-->\s*/u, "")
+      .replace(/<svg\b[\s\S]*?>/u, (openingTag) => {
+        const cleaned = openingTag
+          .replace(/\swidth="[^"]*"/u, "")
+          .replace(/\sheight="[^"]*"/u, "")
+          .replace(/\sid="[^"]*"/u, "");
 
-      return cleaned.replace(
-        />$/u,
-        ` width="420" height="644" viewBox="${viewBox}" role="img" aria-label="${ariaLabel}">`
-      );
-    }) + dependencies + group + "\n  </g>\n</svg>\n";
+        return cleaned.replace(
+          />$/u,
+          ` width="420" height="644" viewBox="${viewBox}" role="img" aria-label="${ariaLabel}">`
+        );
+      }) +
+    dependencies +
+    group +
+    "\n  </g>\n</svg>\n"
+  );
 }
 
 function preparePrefix(prefix) {
@@ -175,7 +180,9 @@ function getIds(svg) {
 }
 
 function getRefs(svg) {
-  return [...new Set([...svg.matchAll(/xlink:href="#([^"]+)"/gu)].map((match) => match[1]).filter((id) => id !== "(null)"))];
+  return [
+    ...new Set([...svg.matchAll(/xlink:href="#([^"]+)"/gu)].map((match) => match[1]).filter((id) => id !== "(null)"))
+  ];
 }
 
 function extractElementById(id) {

@@ -12,12 +12,7 @@ import { joinRoom, selfId } from "trystero";
 
 const APP_ID = "frikex-trucoloco-v1";
 // relays pineados — los defaults fallan seguido (lección de slingshot)
-const RELAYS = [
-  "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://nostr.mom",
-  "wss://relay.primal.net"
-];
+const RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://nostr.mom", "wss://relay.primal.net"];
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ROOM_LIMIT = 6; // trucoloco 3v3: seis sillas, ni una más
 

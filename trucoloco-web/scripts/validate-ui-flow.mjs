@@ -98,16 +98,20 @@ async function main() {
   }
 
   const userDataDir = mkdtempSync(join(tmpdir(), "trucoloco-ui-"));
-  const browser = spawn(browserPath, [
-    "--headless=new",
-    `--remote-debugging-port=${DEBUG_PORT}`,
-    `--user-data-dir=${userDataDir}`,
-    "--window-size=1366,768",
-    "--disable-background-networking",
-    APP_URL
-  ], {
-    stdio: "ignore"
-  });
+  const browser = spawn(
+    browserPath,
+    [
+      "--headless=new",
+      `--remote-debugging-port=${DEBUG_PORT}`,
+      `--user-data-dir=${userDataDir}`,
+      "--window-size=1366,768",
+      "--disable-background-networking",
+      APP_URL
+    ],
+    {
+      stdio: "ignore"
+    }
+  );
 
   try {
     await waitForHttp(`http://127.0.0.1:${DEBUG_PORT}/json/version`);
@@ -133,7 +137,9 @@ async function main() {
     };
 
     for (let step = 0; step < 24; step += 1) {
-      const state = await evaluate(client, `(() => {
+      const state = await evaluate(
+        client,
+        `(() => {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
         const handImages = [...document.querySelectorAll(".card-art")];
         const tableImages = [...document.querySelectorAll(".table-card-art")];
@@ -153,7 +159,8 @@ async function main() {
           enabledButtons: enabledButtons.map(txt).filter(Boolean).slice(0, 8),
           bodyText: txt(document.body)
         };
-      })()`);
+      })()`
+      );
 
       observed.maxHandImages = Math.max(observed.maxHandImages, state.handImages);
       observed.maxHandImagesLoaded = Math.max(observed.maxHandImagesLoaded, state.handImagesLoaded);
@@ -163,7 +170,9 @@ async function main() {
       if (state.cameraSeatId) observed.cameraSeats.add(state.cameraSeatId);
       if (state.cameraTarget) observed.cameraTargets.add(state.cameraTarget);
 
-      const clicked = await evaluate(client, `(() => {
+      const clicked = await evaluate(
+        client,
+        `(() => {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
         const enabledCards = [...document.querySelectorAll(".card-button:not(:disabled)")];
         if (enabledCards[0]) {
@@ -180,7 +189,8 @@ async function main() {
         const label = txt(preferred);
         preferred.click();
         return label;
-      })()`);
+      })()`
+      );
 
       actions.push(clicked);
 
@@ -189,7 +199,9 @@ async function main() {
       await sleep(420);
     }
 
-    const finalState = await evaluate(client, `(() => {
+    const finalState = await evaluate(
+      client,
+      `(() => {
       const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
       const visibleText = [...document.querySelectorAll(".hud p, .hud strong, .panel-kicker, button, .table-showdown, .trick-ledger-row")]
         .map(txt)
@@ -210,7 +222,8 @@ async function main() {
         longestText: visibleText.reduce((max, item) => item.length > max.length ? item : max, ""),
         longestTextLength: visibleText.reduce((max, item) => Math.max(max, item.length), 0)
       };
-    })()`);
+    })()`
+    );
 
     const failures = [];
     observed.maxHandImages = Math.max(observed.maxHandImages, finalState.handImages);
@@ -225,9 +238,12 @@ async function main() {
     if (observed.maxHandImagesLoaded < observed.maxHandImages) failures.push("some hand card images did not load");
     if (observed.maxTableImages < 6) failures.push(`expected 6 table card images, got ${observed.maxTableImages}`);
     if (observed.maxTableImagesLoaded < observed.maxTableImages) failures.push("some table card images did not load");
-    if (observed.actingSeats.size < 3) failures.push(`active turn focus did not rotate enough: ${[...observed.actingSeats].join(", ")}`);
-    if (observed.cameraSeats.size < 3) failures.push(`camera active seat did not rotate enough: ${[...observed.cameraSeats].join(", ")}`);
-    if (observed.cameraTargets.size < 3) failures.push(`camera target did not change enough: ${[...observed.cameraTargets].join(" | ")}`);
+    if (observed.actingSeats.size < 3)
+      failures.push(`active turn focus did not rotate enough: ${[...observed.actingSeats].join(", ")}`);
+    if (observed.cameraSeats.size < 3)
+      failures.push(`camera active seat did not rotate enough: ${[...observed.cameraSeats].join(", ")}`);
+    if (observed.cameraTargets.size < 3)
+      failures.push(`camera target did not change enough: ${[...observed.cameraTargets].join(" | ")}`);
     if (finalState.hasSlotText) failures.push("slot placeholder text is visible");
     if (finalState.longestTextLength > 120) failures.push(`visible copy too long: ${finalState.longestText}`);
 
@@ -235,7 +251,9 @@ async function main() {
       throw new Error(`UI flow failed: ${failures.join("; ")}. Actions: ${actions.filter(Boolean).join(" -> ")}`);
     }
 
-    console.log(`UI flow OK. Actions: ${actions.filter(Boolean).join(" -> ")}. Max hand images: ${observed.maxHandImages}. Max table images: ${observed.maxTableImages}. Acting seats: ${[...observed.actingSeats].join(", ")}. Camera seats: ${[...observed.cameraSeats].join(", ")}.`);
+    console.log(
+      `UI flow OK. Actions: ${actions.filter(Boolean).join(" -> ")}. Max hand images: ${observed.maxHandImages}. Max table images: ${observed.maxTableImages}. Acting seats: ${[...observed.actingSeats].join(", ")}. Camera seats: ${[...observed.cameraSeats].join(", ")}.`
+    );
     client.close();
   } finally {
     browser.kill();

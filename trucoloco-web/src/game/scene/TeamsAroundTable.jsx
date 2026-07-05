@@ -77,8 +77,14 @@ function CharacterSeat({
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
   const roleScale = skin?.modelSrc
-    ? character.role === "Jugador Estrella" ? 1.04 : character.role === "Negociante" ? 0.96 : 1
-    : character.role === "Jugador Estrella" ? 0.94 : 0.96;
+    ? character.role === "Jugador Estrella"
+      ? 1.04
+      : character.role === "Negociante"
+        ? 0.96
+        : 1
+    : character.role === "Jugador Estrella"
+      ? 0.94
+      : 0.96;
   const chairSeatColor = skin?.chairSeatColor ?? "#2d1d16";
   const chairBackColor = skin?.chairBackColor ?? "#231813";
   const upperBaseY = skin?.modelSrc ? 1.28 : 1.47;
@@ -148,18 +154,18 @@ function CharacterSeat({
     }
 
     // ---- Outer ring — only for special states ----
-      if (outerRingRef.current) {
-        let opacity = 0.0;
-        let scale = 1.12;
+    if (outerRingRef.current) {
+      let opacity = 0.0;
+      let scale = 1.12;
 
-        if (isSelectedCharacter || isSelectedLane || isCurrentActor) {
-          opacity = (isSelectedCharacter ? 0.14 : 0.08) + Math.abs(Math.sin(t * 1.4)) * 0.06;
-        }
+      if (isSelectedCharacter || isSelectedLane || isCurrentActor) {
+        opacity = (isSelectedCharacter ? 0.14 : 0.08) + Math.abs(Math.sin(t * 1.4)) * 0.06;
+      }
 
-        if (isExodia && isGazpacho) {
-          opacity = 0.3 + Math.abs(Math.sin(t * 1.8 + 1.0)) * 0.2;
-          scale = 1.12 + Math.abs(Math.sin(t * 1.8)) * 0.06;
-        } else if (isSustancia) {
+      if (isExodia && isGazpacho) {
+        opacity = 0.3 + Math.abs(Math.sin(t * 1.8 + 1.0)) * 0.2;
+        scale = 1.12 + Math.abs(Math.sin(t * 1.8)) * 0.06;
+      } else if (isSustancia) {
         opacity = 0.12 + Math.abs(Math.sin(t * 2.8 + 0.8)) * 0.1;
         scale = 1.12 + Math.abs(Math.sin(t * 2.8)) * 0.05;
       } else if (handClosed && outcomeTone === "win" && lastWinner === seat.team) {
@@ -172,21 +178,21 @@ function CharacterSeat({
     }
 
     // ---- Torso subtle emissive pulse ----
-      if (torsoRef.current) {
-        let emissive = "#000000";
-        let emissiveIntensity = 0.0;
+    if (torsoRef.current) {
+      let emissive = "#000000";
+      let emissiveIntensity = 0.0;
 
-        if (isCurrentActor || isSelectedCharacter || isSelectedLane) {
-          emissive = character.accent;
-          emissiveIntensity = isCurrentActor
-            ? 0.18 + Math.abs(Math.sin(t * 2.4)) * 0.12
-            : isSelectedCharacter
-              ? 0.12 + Math.abs(Math.sin(t * 1.4)) * 0.07
-              : 0.05 + Math.abs(Math.sin(t * 1.4)) * 0.04;
-        }
+      if (isCurrentActor || isSelectedCharacter || isSelectedLane) {
+        emissive = character.accent;
+        emissiveIntensity = isCurrentActor
+          ? 0.18 + Math.abs(Math.sin(t * 2.4)) * 0.12
+          : isSelectedCharacter
+            ? 0.12 + Math.abs(Math.sin(t * 1.4)) * 0.07
+            : 0.05 + Math.abs(Math.sin(t * 1.4)) * 0.04;
+      }
 
-        if (isExodia && isGazpacho) {
-          emissive = "#d4a020";
+      if (isExodia && isGazpacho) {
+        emissive = "#d4a020";
         emissiveIntensity = 0.3 + Math.abs(Math.sin(t * 2)) * 0.3;
       } else if (isSustancia) {
         emissive = character.accent;
@@ -284,7 +290,12 @@ function CharacterSeat({
         <group name={`SeatState_${character.name}`}>
           <mesh position={[0, 0.025, -0.03]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.6, 0.7, 36]} />
-            <meshBasicMaterial color={isSeatedView ? "#91e9f6" : "#d9b36c"} transparent opacity={isSeatedView ? 0.32 : 0.16} depthWrite={false} />
+            <meshBasicMaterial
+              color={isSeatedView ? "#91e9f6" : "#d9b36c"}
+              transparent
+              opacity={isSeatedView ? 0.32 : 0.16}
+              depthWrite={false}
+            />
           </mesh>
           <Text
             position={[0, 0.13, -0.82]}
@@ -343,10 +354,25 @@ function CharacterSeat({
 
       {netPeer ? (
         <Billboard position={[0, 2.35, 0]} follow>
-          <Text fontSize={0.13} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.08} outlineWidth={0.008} outlineColor="#04222a">
+          <Text
+            fontSize={0.13}
+            color="#91e9f6"
+            anchorX="center"
+            anchorY="middle"
+            letterSpacing={0.08}
+            outlineWidth={0.008}
+            outlineColor="#04222a"
+          >
             {`● ${netPeer.name}`}
           </Text>
-          <Text position={[0, -0.16, 0]} fontSize={0.065} color="#5fb9c9" anchorX="center" anchorY="middle" letterSpacing={0.18}>
+          <Text
+            position={[0, -0.16, 0]}
+            fontSize={0.065}
+            color="#5fb9c9"
+            anchorX="center"
+            anchorY="middle"
+            letterSpacing={0.18}
+          >
             EN LÍNEA
           </Text>
         </Billboard>
@@ -371,7 +397,11 @@ function CharacterSeat({
             anchorY="middle"
             letterSpacing={0.08}
           >
-            {isCurrentActor ? character.name.toUpperCase() : isSelectedCharacter ? "ELEGIDO" : character.role.toUpperCase()}
+            {isCurrentActor
+              ? character.name.toUpperCase()
+              : isSelectedCharacter
+                ? "ELEGIDO"
+                : character.role.toUpperCase()}
           </Text>
         </Billboard>
       ) : null}
@@ -400,16 +430,15 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
   const isNarrow = size.width < 640;
   const lowPower = performanceMode === "low";
 
-  const actingSeat = match.handStarted && !match.handClosed
-    ? visibleRosterSeats.find((seat) => seat.character?.name === match.nextActorName)
-    : null;
+  const actingSeat =
+    match.handStarted && !match.handClosed
+      ? visibleRosterSeats.find((seat) => seat.character?.name === match.nextActorName)
+      : null;
 
   // en elección de rol solo estás vos frente a la mesa vacía;
   // al repartir "llegan" los demás (antesala del modo online con salas)
   const seatsToShow = isRoleSelect
-    ? visibleRosterSeats.filter(
-        (seat) => seat.team === "A" && seat.character.role === match.selectedRole
-      )
+    ? visibleRosterSeats.filter((seat) => seat.team === "A" && seat.character.role === match.selectedRole)
     : visibleRosterSeats;
 
   return (

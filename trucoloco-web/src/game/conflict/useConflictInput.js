@@ -1,15 +1,7 @@
 import { useEffect } from "react";
 import { ARROW_COMBAT_KEYS, HELD_COMBAT_KEYS } from "./combatConstants";
 
-export function useConflictInput({
-  enabled,
-  mode,
-  keysRef,
-  onExit,
-  onPrimaryAction,
-  onRivalAction,
-  onSwitchMode
-}) {
+export function useConflictInput({ enabled, mode, keysRef, onExit, onPrimaryAction, onRivalAction, onSwitchMode }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (!enabled) return;

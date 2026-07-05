@@ -97,7 +97,14 @@ export const getHandWinner = (trickHistory, manoTeam) => {
   return third;
 };
 
-export const getWeaponPowerAdjustment = ({ basePower, seatId, selectedSeatId, oppositeSeatId, selectedRole, activeWeapon }) => {
+export const getWeaponPowerAdjustment = ({
+  basePower,
+  seatId,
+  selectedSeatId,
+  oppositeSeatId,
+  selectedRole,
+  activeWeapon
+}) => {
   if (!activeWeapon || selectedRole !== "Cartachin") {
     return { power: basePower, effect: null };
   }
@@ -136,7 +143,9 @@ export const getWeaponPowerAdjustment = ({ basePower, seatId, selectedSeatId, op
 export const resolveVuelta = (humanCard, rivalCard, activeWeapon, activeLane, manoTeam, trickHistory) => {
   let humanPower = humanCard.power;
   let rivalPower = rivalCard.power;
-  const logs = [`${activeLane.human.name} baja ${humanCard.name}. ${activeLane.rival.name} responde con ${rivalCard.name}.`];
+  const logs = [
+    `${activeLane.human.name} baja ${humanCard.name}. ${activeLane.rival.name} responde con ${rivalCard.name}.`
+  ];
 
   if (activeWeapon?.id === "parca-utileria") {
     humanPower += activeWeapon.effectValue ?? 2;
