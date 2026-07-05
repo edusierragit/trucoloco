@@ -28,7 +28,16 @@ jobs:
           cache: npm
           cache-dependency-path: trucoloco-web/package-lock.json
       - run: npm ci
+      # los 4 checks obligatorios (CLAUDE.md): si alguno falla, NO se despliega
+      - run: npm run check:rules
+      - run: npm run check:flow
       - run: npm run build
+      - name: check:ui contra el build real
+        env:
+          TRUCOLOCO_URL: "http://127.0.0.1:4173/?auto=0"
+        run: |
+          npx vite preview --port 4173 &
+          npm run check:ui
       - uses: actions/upload-pages-artifact@v3
         with:
           path: trucoloco-web/dist

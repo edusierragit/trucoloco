@@ -5,10 +5,16 @@ import { join } from "node:path";
 
 const APP_URL = process.env.TRUCOLOCO_URL ?? "http://127.0.0.1:5173/?auto=0";
 const DEBUG_PORT = Number(process.env.TRUCOLOCO_CDP_PORT ?? 9223);
-const EDGE_PATHS = [
+// cualquier navegador Chromium sirve (CDP): Edge local en Windows, Chrome en
+// el runner de CI. TRUCOLOCO_BROWSER pisa la lista si hace falta otra ruta.
+const BROWSER_PATHS = [
+  process.env.TRUCOLOCO_BROWSER,
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
-];
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium"
+].filter(Boolean);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -30,8 +36,8 @@ async function waitForHttp(url, timeoutMs = 6000) {
   throw new Error(`No response from ${url}: ${lastError?.message ?? "timeout"}`);
 }
 
-function getEdgePath() {
-  return EDGE_PATHS.find((path) => existsSync(path));
+function getBrowserPath() {
+  return BROWSER_PATHS.find((path) => existsSync(path));
 }
 
 class CdpClient {
@@ -86,13 +92,13 @@ async function evaluate(client, expression) {
 async function main() {
   await waitForHttp(APP_URL);
 
-  const edgePath = getEdgePath();
-  if (!edgePath) {
-    throw new Error("Microsoft Edge not found.");
+  const browserPath = getBrowserPath();
+  if (!browserPath) {
+    throw new Error("No Chromium-based browser found (set TRUCOLOCO_BROWSER).");
   }
 
   const userDataDir = mkdtempSync(join(tmpdir(), "trucoloco-ui-"));
-  const browser = spawn(edgePath, [
+  const browser = spawn(browserPath, [
     "--headless=new",
     `--remote-debugging-port=${DEBUG_PORT}`,
     `--user-data-dir=${userDataDir}`,
