@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useEffect } from "react";
 import { sfx } from "../audio/sfx";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { roleDefinitions } from "../data/characters";
@@ -698,6 +697,9 @@ function AgreementPill({ match }) {
   const [attempts, setAttempts] = useState(0);
   const [rivalSays, setRivalSays] = useState(null);
   const [thinking, setThinking] = useState(false);
+  const thinkTimerRef = useRef(null);
+
+  useEffect(() => () => window.clearTimeout(thinkTimerRef.current), []);
 
   const open =
     match.selectedRole === "Negociante" &&
@@ -721,7 +723,7 @@ function AgreementPill({ match }) {
     if (thinking) return;
     setThinking(true);
     setRivalSays(`${rivalName} lo piensa…`);
-    window.setTimeout(() => {
+    thinkTimerRef.current = window.setTimeout(() => {
       setThinking(false);
       if (rivalAccepts) {
         match.applyAgreement(deltaSelf, deltaRival);
