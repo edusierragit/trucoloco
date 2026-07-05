@@ -283,7 +283,6 @@ export function stepArenaCombat(current, keys, dt) {
   };
 
   const playerPos = getCombatPos(next, "player");
-  const rivalPos = getCombatPos(next, "rival");
   const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
   const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
   const inputLength = Math.hypot(inputX, inputZ) || 1;

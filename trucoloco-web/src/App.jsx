@@ -60,7 +60,7 @@ export default function App() {
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
   const [walkNotice, setWalkNotice] = useState("");
-  const [walkAnimationDebug, setWalkAnimationDebug] = useState(null);
+  const [, setWalkAnimationDebug] = useState(null);
   const [walkTouchInput, setWalkTouchInput] = useState(() => createEmptyWalkTouchInput());
   const previousHandStartedRef = useRef(match.handStarted);
   const returnToTableTimerRef = useRef(null);

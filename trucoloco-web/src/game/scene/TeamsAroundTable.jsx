@@ -4,7 +4,7 @@ import { Billboard, Text } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
 import { CharacterFigure } from "./CharacterFigure";
 
-function getVisibleRosterSeats(match) {
+function getVisibleRosterSeats() {
   const playersById = [...teams.A, ...teams.B].reduce((lookup, player) => {
     lookup[player.id] = player;
     return lookup;
@@ -393,7 +393,7 @@ function CharacterSeat({
 
 export function TeamsAroundTable({ match, cameraView = "table", performanceMode = "high", netRoster = [] }) {
   const modId = match.activeModifier?.id ?? "";
-  const visibleRosterSeats = getVisibleRosterSeats(match);
+  const visibleRosterSeats = getVisibleRosterSeats();
   const isRoleSelect = match.phase === "role-select";
   const selectedCharacterId = match.selectedCharacter?.id;
   const { size } = useThree();

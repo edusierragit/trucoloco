@@ -449,12 +449,8 @@ function TensionRing({ handClosed, outcomeTone, modId }) {
 
     if (!ringRef.current || !ring2Ref.current) return;
 
-    // Base color by outcome or modifier
-    let color = "#8c6238";
-    let opacity = 0.0;
-    let scale = 1.0;
-    let opacity2 = 0.0;
-    let scale2 = 1.0;
+    // Base color by outcome or modifier (toda rama asigna las cinco)
+    let color, opacity, scale, opacity2, scale2;
 
     if (!handClosed) {
       // Mid-hand: gentle amber pulse
@@ -1001,7 +997,7 @@ function ImportedHexBoardAsset() {
   );
 }
 
-function ImportedHexBoard({ handClosed, outcomeTone, modId }) {
+function ImportedHexBoard() {
   return (
     <group name="Imported_Tablero_Central" position={[0, 0.34, 0.08]} rotation={[0, 0, 0]} scale={0.5}>
       <Suspense fallback={null}>

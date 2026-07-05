@@ -10,6 +10,10 @@
     "check:rules": "node scripts/validate-truco-rules.mjs",
     "check:flow": "node scripts/validate-truco-flow.mjs",
     "check:ui": "node scripts/validate-ui-flow.mjs",
+    "lint": "eslint src scripts",
+    "lint:fix": "eslint src scripts --fix",
+    "format": "prettier --write src scripts",
+    "format:check": "prettier --check src scripts",
     "build": "vite build .",
     "preview": "vite preview"
   },
@@ -26,6 +30,12 @@
     "vite": "^8.0.8"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
     "threejs-devtools-mcp": "^0.4.1"
   }
 }

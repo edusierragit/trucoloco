@@ -529,7 +529,7 @@ function getTableResultCopy(match, lastTrick) {
   return "Mesa limpia.";
 }
 
-function TableSpotlight({ match }) {
+function TableSpotlight() {
   return null;
 }
 
@@ -577,11 +577,11 @@ function StatusStrip({ match }) {
   );
 }
 
-function RolePowerBar({ match }) {
+function RolePowerBar() {
   return null;
 }
 
-function AwayFromTablePanel({ match, onReturnToTable }) {
+function AwayFromTablePanel({ onReturnToTable }) {
   return (
     <section className="away-from-table-panel">
       <span className="focus-badge focus-badge-neutral">Fuera de mesa</span>
