@@ -170,8 +170,9 @@ function AvatarBody({ refs, character, motionMode }) {
 }
 
 export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChange, onInteract, onAnimationDebugChange, onMove }) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const groupRef = useRef(null);
+  const camZoomRef = useRef(1);
   const leftLegRef = useRef(null);
   const rightLegRef = useRef(null);
   const leftArmRef = useRef(null);
@@ -229,6 +230,20 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   useEffect(() => {
     virtualInputRef.current = virtualInput ?? { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 };
   }, [virtualInput]);
+
+  // zoom con la rueda mientras caminás: acerca/aleja la cámara de tercera
+  // persona (rueda arriba = acercar). Sentado no lleva zoom: solo giro lateral.
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const el = gl.domElement;
+    const onWheel = (event) => {
+      event.preventDefault();
+      const dir = event.deltaY > 0 ? 1 : -1; // abajo aleja, arriba acerca
+      camZoomRef.current = clamp(camZoomRef.current + dir * 0.12, 0.62, 1.7);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [enabled, gl]);
 
   useEffect(() => {
     if (!enabled) {
@@ -422,11 +437,15 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     const tableFocus = 1 - clamp((tableDistance - TABLE_CLEAR_RADIUS) / 1.25, 0, 1);
 
     // [VISUAL] Keep full character scale, then solve table readability with camera composition instead of shrinking the player.
+    // zoom de la rueda: escala distancia y altura (la altura mas suave para no
+    // subir de mas al alejar y no clavar la vista en el piso al acercar).
+    const camZoom = camZoomRef.current;
+    const heightZoom = 0.5 + camZoom * 0.5;
     desiredCameraRef.current
       .copy(worldPositionRef.current)
-      .addScaledVector(forwardRef.current, -WALK_CAMERA_DISTANCE - tableFocus * 0.44)
+      .addScaledVector(forwardRef.current, (-WALK_CAMERA_DISTANCE - tableFocus * 0.44) * camZoom)
       .addScaledVector(rightRef.current, WALK_CAMERA_SIDE_OFFSET + tableFocus * 0.48)
-      .setY(worldPositionRef.current.y + WALK_CAMERA_HEIGHT + tableFocus * 0.38);
+      .setY(worldPositionRef.current.y + (WALK_CAMERA_HEIGHT + tableFocus * 0.38) * heightZoom);
 
     const desiredCamera = desiredCameraRef.current;
     desiredCamera.x = clamp(desiredCamera.x, ROOM_BOUNDS.minX + 0.3, ROOM_BOUNDS.maxX - 0.3);
