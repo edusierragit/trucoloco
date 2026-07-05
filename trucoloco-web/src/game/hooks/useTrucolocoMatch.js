@@ -455,7 +455,8 @@ const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(v
 // El snapshot viene de la red: no se confía en su shape. Solo se validan los
 // campos que rompen el juego si llegan corruptos (scores no numéricos, manos
 // que no son arrays, etc.); el resto del estado es presentacional.
-const isValidSnapshotState = (state) => {
+// exportado para tests (snapshot forjado/malformado no debe pisar el estado)
+export const isValidSnapshotState = (state) => {
   if (!state || typeof state !== "object" || Array.isArray(state)) return false;
   if (typeof state.handStarted !== "boolean" || typeof state.handClosed !== "boolean") return false;
   if (!isFiniteNumber(state.handNumber) || state.handNumber < 1) return false;

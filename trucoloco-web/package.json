@@ -15,7 +15,8 @@
     "format": "prettier --write src scripts",
     "format:check": "prettier --check src scripts",
     "build": "vite build .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -36,6 +37,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
     "prettier": "^3.9.4",
-    "threejs-devtools-mcp": "^0.4.1"
+    "threejs-devtools-mcp": "^0.4.1",
+    "vitest": "^4.1.9"
   }
 }
