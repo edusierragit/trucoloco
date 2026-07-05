@@ -183,7 +183,7 @@ const pickAutoCard = (hand, currentTrickCards) => {
 };
 
 const resolveTableTrick = (tableCards, trickHistory, manoTeam, currentLeadSeatId) => {
-  const maxPower = Math.max(...tableCards.map((play) => play.power ?? play.card.power));
+  const maxPower = Math.max(...tableCards.map((play) => play.power ?? play.card.power), 0);
   const topCards = tableCards.filter((play) => (play.power ?? play.card.power) === maxPower);
 
   if (topCards.length > 1) {
