@@ -181,7 +181,9 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const outfitMaterialRef = useRef(null);
   const keysRef = useRef(new Set());
   const yawRef = useRef(0);
-  const positionRef = useRef(new Vector3(0, PLAYER_Y, 3.15));
+  // spawn adentro del salón: en 3.15 la cámara en tercera persona nacía
+  // dentro del portal de entrada y el jugador veía todo negro
+  const positionRef = useRef(new Vector3(0, PLAYER_Y, 2.35));
   const velocityRef = useRef(new Vector3());
   const forwardRef = useRef(new Vector3(0, 0, -1));
   const rightRef = useRef(new Vector3(1, 0, 0));
@@ -449,7 +451,9 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
     const desiredCamera = desiredCameraRef.current;
     desiredCamera.x = clamp(desiredCamera.x, ROOM_BOUNDS.minX + 0.3, ROOM_BOUNDS.maxX - 0.3);
-    desiredCamera.z = clamp(desiredCamera.z, ROOM_BOUNDS.minZ + 0.6 + ROOM_WORLD_OFFSET.z, ROOM_BOUNDS.maxZ + 1.55 + ROOM_WORLD_OFFSET.z);
+    // la cámara NUNCA sale de la sala: si cruza la pared frontal, la pared
+    // tapa todo y el jugador ve negro al spawnear cerca de la puerta
+    desiredCamera.z = clamp(desiredCamera.z, ROOM_BOUNDS.minZ + 0.6 + ROOM_WORLD_OFFSET.z, ROOM_BOUNDS.maxZ - 0.2 + ROOM_WORLD_OFFSET.z);
 
     camera.position.lerp(desiredCamera, 1 - Math.exp(-Math.min(delta, 0.08) * 6.5));
     cameraTargetRef.current

@@ -566,6 +566,104 @@ function Dartboard() {
   );
 }
 
+// ─── el ritual: santuario Pink Floyd en la pared izquierda ────────────────
+// Un prisma refractando luz. Los que saben, saben. Los que no, igual sienten
+// que en este antro se escucha OTRA cosa.
+const PRISM_RAYS = [
+  { color: "#c03a2e", angle: -0.30 },
+  { color: "#c46d1a", angle: -0.22 },
+  { color: "#c9a032", angle: -0.14 },
+  { color: "#3f7a44", angle: -0.06 },
+  { color: "#2e5a78", angle: 0.02 },
+  { color: "#5a3a78", angle: 0.10 }
+];
+
+function PinkFloydShrine() {
+  return (
+    <group name="World_PrismShrine" position={[-5.22, 0.95, -0.9]} rotation={[0, Math.PI / 2, 0]}>
+      {/* marco negro profundo */}
+      <RoundedBox args={[1.5, 1.5, 0.06]} radius={0.02} castShadow receiveShadow>
+        <meshStandardMaterial color="#0a0a0c" roughness={0.6} />
+      </RoundedBox>
+      <mesh position={[0, 0, 0.034]}>
+        <planeGeometry args={[1.34, 1.34]} />
+        <meshStandardMaterial color="#050507" roughness={0.9} />
+      </mesh>
+      {/* haz blanco entrando por la izquierda */}
+      <mesh position={[-0.42, -0.05, 0.04]} rotation={[0, 0, 0.32]}>
+        <planeGeometry args={[0.62, 0.022]} />
+        <meshStandardMaterial color="#e8e4d8" emissive="#e8e4d8" emissiveIntensity={0.55} toneMapped={false} />
+      </mesh>
+      {/* el prisma: triángulo de alambre */}
+      <mesh position={[0, 0.02, 0.042]}>
+        <ringGeometry args={[0.235, 0.26, 3]} />
+        <meshStandardMaterial color="#d8d4c8" emissive="#d8d4c8" emissiveIntensity={0.3} toneMapped={false} />
+      </mesh>
+      {/* abanico refractado */}
+      {PRISM_RAYS.map((ray, index) => (
+        <mesh key={index} position={[0.36, -0.02 + index * 0.021, 0.04]} rotation={[0, 0, ray.angle]}>
+          <planeGeometry args={[0.56, 0.024]} />
+          <meshStandardMaterial color={ray.color} emissive={ray.color} emissiveIntensity={0.5} toneMapped={false} />
+        </mesh>
+      ))}
+      <Text position={[0, -0.58, 0.045]} fontSize={0.055} color="#6b5f4a" anchorX="center" anchorY="middle" letterSpacing={0.32}>
+        EL LADO OSCURO DEL ANTRO
+      </Text>
+    </group>
+  );
+}
+
+// vinilos gastados colgados: la discoteca sagrada de la casa
+function VinylWall() {
+  const discos = [
+    { y: 1.35, z: 0.35, r: 0.26, label: "#b03424", title: "LADO A" },
+    { y: 1.02, z: 1.05, r: 0.22, label: "#c9971d", title: "PF" },
+    { y: 1.42, z: 1.28, r: 0.2, label: "#2e5a78", title: "33⅓" }
+  ];
+  return (
+    <group name="World_VinylWall">
+      {discos.map((disco, index) => (
+        <group key={index} position={[5.23, disco.y, disco.z]} rotation={[0, -Math.PI / 2, index * 0.06 - 0.05]}>
+          <mesh>
+            <circleGeometry args={[disco.r, 36]} />
+            <meshStandardMaterial color="#0c0c0e" roughness={0.42} metalness={0.15} />
+          </mesh>
+          <mesh position={[0, 0, 0.004]}>
+            <ringGeometry args={[disco.r * 0.55, disco.r * 0.96, 36]} />
+            <meshStandardMaterial color="#17171a" roughness={0.35} metalness={0.2} />
+          </mesh>
+          <mesh position={[0, 0, 0.006]}>
+            <circleGeometry args={[disco.r * 0.36, 24]} />
+            <meshStandardMaterial color={disco.label} roughness={0.75} />
+          </mesh>
+          <Text position={[0, 0, 0.012]} fontSize={disco.r * 0.22} color="#f0e6c8" anchorX="center" anchorY="middle">
+            {disco.title}
+          </Text>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// la Ley L'Merk en neón vino: nadie sabe qué dice exactamente, pero rige
+function LMerkNeon() {
+  return (
+    <group name="World_LMerkNeon" position={[5.24, 1.75, -1.6]} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, 0, -0.015]}>
+        <planeGeometry args={[1.5, 0.4]} />
+        <meshStandardMaterial color="#120806" roughness={0.9} />
+      </mesh>
+      <Text fontSize={0.17} color="#e86a5a" anchorX="center" anchorY="middle" letterSpacing={0.12}
+        outlineWidth={0.008} outlineColor="#7a1c14" outlineBlur={0.02}>
+        LEY L'MERK
+      </Text>
+      <Text position={[0, -0.14, 0]} fontSize={0.05} color="#c9971d" anchorX="center" anchorY="middle" letterSpacing={0.2}>
+        SE ACATA · NO SE ENTIENDE
+      </Text>
+    </group>
+  );
+}
+
 // bruma alta permanente: el antro respira humo viejo cerca del techo
 function CeilingHaze() {
   return (
@@ -600,6 +698,9 @@ export function BarRoom() {
       <SmokeMachine />
       <WantedWall />
       <Dartboard />
+      <PinkFloydShrine />
+      <VinylWall />
+      <LMerkNeon />
       <CeilingHaze />
     </group>
   );
