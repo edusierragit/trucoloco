@@ -92,8 +92,6 @@ export function useConflictInput({
     };
 
     const handleKeyUp = (event) => {
-      const key = event.key.toLowerCase();
-      keysRef.current.delete(key);
       keysRef.current.delete(event.key.toLowerCase());
     };
 
