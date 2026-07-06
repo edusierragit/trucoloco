@@ -95,6 +95,12 @@
 - **Validación verde** — `check:rules`, `check:flow`, `build` y `check:ui` OK.
   Queda deuda: borrar del inicio de `App.jsx` el bloque legacy muerto de combate
   cuando no haya otro agente tocando el archivo.
+- **Refactor de perspectiva del match** — `useTrucolocoMatch({ mySeatId })`
+  conserva la interfaz local, pero ahora deriva la vista con `deriveView(coreState,
+  mySeatId)` y expone `applyIntent(coreState, { seatId, action, payload })` para
+  host autoritativo. Tests puros agregados a `check:flow`: manos por asiento,
+  snapshot serializable, intent fuera/de turno, envido, truco/retruco/vale cuatro
+  y modo común sin armas.
 
 ## ✅ HECHO (2026-07-03, noche)
 

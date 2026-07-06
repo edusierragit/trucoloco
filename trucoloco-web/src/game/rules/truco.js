@@ -4,6 +4,46 @@ export const PARDA = "tie";
 
 export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+export const ENVIDO_CALLS = {
+  envido: { type: "envido", label: "Envido", points: 2 },
+  real: { type: "real", label: "Real Envido", points: 3 },
+  falta: { type: "falta", label: "Falta Envido", points: 0 }
+};
+
+export const normalizeEnvidoCall = (callType = "envido") =>
+  callType === "real" || callType === "falta" ? callType : "envido";
+
+export const buildEnvidoChain = (chain = [], callType = "envido") => {
+  const normalized = normalizeEnvidoCall(callType);
+  return [...chain, { ...ENVIDO_CALLS[normalized] }];
+};
+
+export const getFaltaEnvidoPoints = (scores = { A: 0, B: 0 }) => {
+  const leadingScore = Math.max(scores.A ?? 0, scores.B ?? 0);
+  return clamp(MATCH_CONFIG.winningScore - leadingScore, 1, MATCH_CONFIG.winningScore);
+};
+
+export const getEnvidoAcceptedPoints = (chain = [], scores = { A: 0, B: 0 }) => {
+  const calls = chain.length ? chain : [ENVIDO_CALLS.envido];
+  if (calls.some((call) => call.type === "falta")) {
+    return getFaltaEnvidoPoints(scores);
+  }
+
+  return calls.reduce((total, call) => total + (call.type === "real" ? 3 : 2), 0);
+};
+
+export const getEnvidoRejectedPoints = (chain = [], scores = { A: 0, B: 0 }) => {
+  const previousCalls = (chain.length ? chain : [ENVIDO_CALLS.envido]).slice(0, -1);
+  if (!previousCalls.length) return 1;
+  return Math.max(1, getEnvidoAcceptedPoints(previousCalls, scores));
+};
+
+export const shouldAutoAcceptEnvido = (ownValue, rivalValue) =>
+  ownValue >= 24 || ownValue >= rivalValue - 2;
+
+export const shouldAutoRaiseEnvido = (ownValue, chain = []) =>
+  ownValue >= 31 && !chain.some((call) => call.type === "real" || call.type === "falta");
+
 const envidoRankValue = {
   Ancho: 1,
   Dos: 2,

@@ -927,9 +927,25 @@ function getHandPanelCopy(match) {
   return "Esperá turno.";
 }
 
-function BottomDock({ match, handFocus, setHandFocus }) {
+// En vista "table" (default) durante la mano, la mano 3D sostenida (HeldHand)
+// toma el control igual que en silla: escondemos la mano HTML chica para que no
+// aparezca el angulo cenital de cartas. Sigue en el DOM y clickeable para el
+// validador (clip, no display:none).
+const HIDDEN_HAND_STYLE = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: 0,
+  margin: 0,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  border: 0
+};
+
+function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
   const nextLabel = match.advanceLabel ?? (match.matchWinner ? "Nueva partida" : match.handClosed ? "Siguiente mano" : "Seguir");
   const advanceHandler = getAdvanceHandler(match);
+  const hide3dHandTakesOver = cameraView === "table" && match.handStarted;
   const showWeaponsPanel =
     match.handStarted &&
     !match.handClosed &&
@@ -1186,7 +1202,7 @@ function BottomDock({ match, handFocus, setHandFocus }) {
         </div>,
         document.body
       ) : null}
-      <section className={handPanelClassName}>
+      <section className={handPanelClassName} style={hide3dHandTakesOver ? HIDDEN_HAND_STYLE : undefined}>
         <div className="panel-header">
           <div>
             <span className="panel-kicker">{match.canPlayCard ? "Acción" : "Tu mano"}</span>
@@ -1322,7 +1338,7 @@ export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer 
       </div>
 
       {isAwayFromTable ? null : <TableSpotlight match={match} />}
-      {isAwayFromTable ? null : <BottomDock match={match} handFocus={handFocus} setHandFocus={setHandFocus} />}
+      {isAwayFromTable ? null : <BottomDock match={match} cameraView={cameraView} handFocus={handFocus} setHandFocus={setHandFocus} />}
     </div>
   );
 }

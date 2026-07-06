@@ -110,3 +110,19 @@ de volumen). Se monta sobre la MISMA sala, cero servidores.
 - Backfill semántico correcto: host togglea "📢 Abrir a randoms"; el botón
   del inicio es "Entrar a sala abierta" (toma la primera oferta con lugar).
   El emparejamiento 1v1 sin propósito fue eliminado.
+
+## Paso 1 implementado — API pura de perspectiva e intents
+
+- `useTrucolocoMatch({ mySeatId })` acepta una perspectiva opcional. Si no se
+  pasa, conserva el comportamiento local anterior: equipo A con el rol elegido.
+- `deriveView(coreState, mySeatId)` es pura y devuelve la vista consumida por
+  HUD/escena: `humanHand`, `rivalHand`, `activeLane`, `selectedSeatId`,
+  `oppositeSeatId`, gates (`canPlayCard`, `canCallEnvido`, `canCallTruco`, etc.)
+  y `tableFlow`.
+- `applyIntent(coreState, { seatId, action, payload })` es el reducer puro para
+  host autoritativo. Acciones MVP: `playCard`, `callEnvido`, `callTruco`,
+  `acceptTruco`, `rejectTruco`, `raiseTruco`, `advance`. Si el intent viola
+  turno, fase o equipo objetivo, devuelve el mismo estado.
+- `scripts/validate-truco-flow.mjs` blinda perspectiva por asiento, snapshot
+  serializable, gates de envido, cadena truco/retruco/vale cuatro y modo común
+  sin armas.

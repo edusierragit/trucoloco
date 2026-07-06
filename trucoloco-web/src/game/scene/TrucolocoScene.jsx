@@ -1362,7 +1362,13 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
   const ownSeat = getOwnSeat(match);
   const ownSeatWorld = getSeatWorld(ownSeat);
 
-  if (cameraView === "entry") {
+  // La vista por defecto ("table") durante la mano se comporta como "seat":
+  // las cartas SIEMPRE se ven sostenidas en primera persona, nunca en angulo
+  // cenital/aereo (pedido tajante del usuario). En role-select "table" mantiene
+  // su encuadre propio (mesa completa).
+  const view = cameraView === "table" && !isRoleSelect ? "seat" : cameraView;
+
+  if (view === "entry") {
     return {
       position: isNarrow ? [0, 2.95, 9.2] : [0, 2.65, 9.85],
       target: [0, -0.74, -0.45],
@@ -1370,7 +1376,7 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
     };
   }
 
-  if (cameraView === "seat") {
+  if (view === "seat") {
     // Liar's Bar framing: seated eye-level at your own chair, the rivals'
     // faces across the felt. The gaze drifts toward whoever is acting.
     const sx = ownSeatWorld.x;
@@ -1391,7 +1397,7 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
     };
   }
 
-  if (cameraView === "ring") {
+  if (view === "ring") {
     return getRingCameraPose(debateAction, isNarrow);
   }
 
@@ -1579,7 +1585,9 @@ export function TrucolocoScene({
       <hemisphereLight intensity={lowPower ? 0.36 : 0.28} color="#dba66e" groundColor="#070b08" />
       <ModifierAmbientFX modId={modId} handClosed={match.handClosed} outcomeTone={match.outcomeTone} lowPower={lowPower} />
 
-      {cameraView === "seat" && !isRoleSelect ? (
+      {/* mano 3D sostenida: en silla y tambien en la vista por defecto (table)
+          durante la mano — las cartas nunca se muestran en angulo cenital */}
+      {(cameraView === "seat" || cameraView === "table") && !isRoleSelect ? (
         <Suspense fallback={null}>
           <HeldHand match={match} />
         </Suspense>
