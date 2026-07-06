@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Billboard, Text } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
+import { pickQuote } from "../data/quotes";
 import { CharacterFigure } from "./CharacterFigure";
 
 function getVisibleRosterSeats(match) {
@@ -44,6 +45,45 @@ function CharacterSeat({
   const groupRef = useRef(null);
   const spawnRef = useRef(0);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
+
+  // ---- el veneno: globos de diálogo con la personalidad de cada uno ----
+  const [bubble, setBubble] = useState(null);
+  const bubbleTimerRef = useRef(null);
+  const prevActorRef = useRef(isCurrentActor);
+  const prevClosedRef = useRef(handClosed);
+  const prevSustanciaRef = useRef(false);
+
+  const say = (mood, chance) => {
+    if (Math.random() > chance) return;
+    const text = pickQuote(character.id, mood);
+    if (!text) return;
+    setBubble(text);
+    window.clearTimeout(bubbleTimerRef.current);
+    bubbleTimerRef.current = window.setTimeout(() => setBubble(null), 2600);
+  };
+
+  useEffect(() => {
+    if (isCurrentActor && !prevActorRef.current && !isRoleSelect && !handClosed) say("turno", 0.45);
+    prevActorRef.current = isCurrentActor;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentActor, isRoleSelect, handClosed]);
+
+  useEffect(() => {
+    if (handClosed && !prevClosedRef.current && !isRoleSelect && lastWinner) {
+      say(lastWinner === seat.team ? "gana" : "pierde", 0.4);
+    }
+    prevClosedRef.current = handClosed;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handClosed, lastWinner, isRoleSelect, seat.team]);
+
+  useEffect(() => {
+    const sustanciaActiva = modId === "sustancia-x";
+    if (sustanciaActiva && !prevSustanciaRef.current) say("sustancia", 0.7);
+    prevSustanciaRef.current = sustanciaActiva;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modId]);
+
+  useEffect(() => () => window.clearTimeout(bubbleTimerRef.current), []);
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
   const roleScale = skin?.modelSrc
@@ -295,6 +335,31 @@ function CharacterSeat({
           </Text>
           <Text position={[0, -0.16, 0]} fontSize={0.065} color="#5fb9c9" anchorX="center" anchorY="middle" letterSpacing={0.18}>
             EN LÍNEA
+          </Text>
+        </Billboard>
+      ) : null}
+
+      {bubble && !isAwayFromSeat ? (
+        <Billboard position={[0, 2.68, 0]} follow>
+          <mesh position={[0, 0, -0.012]}>
+            <planeGeometry args={[Math.min(2.4, bubble.length * 0.058 + 0.44), 0.36]} />
+            <meshBasicMaterial color="#140b06" transparent opacity={0.84} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, -0.22, -0.012]} rotation={[0, 0, Math.PI]}>
+            <circleGeometry args={[0.055, 3]} />
+            <meshBasicMaterial color="#140b06" transparent opacity={0.84} depthWrite={false} />
+          </mesh>
+          <Text
+            fontSize={0.1}
+            color="#f6e7c3"
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={2.2}
+            textAlign="center"
+            outlineWidth={0.005}
+            outlineColor="#140b06"
+          >
+            {bubble}
           </Text>
         </Billboard>
       ) : null}
