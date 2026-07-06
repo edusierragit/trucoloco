@@ -659,7 +659,8 @@ export default function App() {
     const room = netRoomRef.current;
     if (!room) return;
     const now = performance.now();
-    if (now - lastPosSentRef.current < (moving ? 120 : 600)) return;
+    // 20Hz en movimiento: a 8Hz los caminantes remotos se veían robóticos
+    if (now - lastPosSentRef.current < (moving ? 50 : 400)) return;
     lastPosSentRef.current = now;
     room.sendPos({ x, z, yaw });
   }, []);
@@ -957,16 +958,12 @@ export default function App() {
     handClosedRef.current = match.handClosed;
   }, [match.handClosed, match.matchWinner, match.outcomeTone]);
 
-  // repartir = sentarse: dealing a hand drops you into the seated Liar's-Bar view
-  const prevPhaseRef = useRef(match.phase);
+  // INVARIANTE (pedido de Edu): con la mano en juego solo existen dos
+  // cámaras — silla (primera persona) o caminar. Cualquier otra vista
+  // ("table"/"entry": cartas flotando en negro) se corrige sola, incluso
+  // al refrescar a mitad de partida o entrar por link de sala.
   useEffect(() => {
-    const prevPhase = prevPhaseRef.current;
-    prevPhaseRef.current = match.phase;
-    if (
-      prevPhase === "role-select" &&
-      match.phase !== "role-select" &&
-      (cameraView === "table" || cameraView === "entry")
-    ) {
+    if (match.phase !== "role-select" && cameraView !== "seat" && cameraView !== "walk" && cameraView !== "ring") {
       handleCameraViewChange("seat");
     }
   }, [match.phase, cameraView, handleCameraViewChange]);

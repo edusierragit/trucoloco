@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, Text } from "@react-three/drei";
 import { CanvasTexture, RepeatWrapping } from "three";
+import { assetUrl } from "../../assetUrl";
 
 const BAR = {
   wood: "#2b160d",
@@ -613,34 +614,91 @@ function PinkFloydShrine() {
   );
 }
 
-// vinilos gastados colgados: la discoteca sagrada de la casa
+// vinilos gastados colgados: la discoteca sagrada de la casa.
+// Click en cualquiera => suena Dark Side of the Moon de fondo (el ritual).
+// El mp3 va en public/assets/audio/dark-side.mp3 — si falta, el disco avisa.
+let vinylAudio = null;
+
+function toggleVinyl(onFail) {
+  if (!vinylAudio) {
+    vinylAudio = new Audio(assetUrl("assets/audio/dark-side.mp3"));
+    vinylAudio.loop = true;
+    vinylAudio.volume = 0.3;
+  }
+  if (vinylAudio.paused) {
+    vinylAudio.play().catch(() => {
+      vinylAudio = null;
+      onFail?.();
+    });
+    return true;
+  }
+  vinylAudio.pause();
+  return false;
+}
+
 function VinylWall() {
+  const [playing, setPlaying] = useState(false);
+  const [missing, setMissing] = useState(false);
+  const spinRefs = useRef([]);
   const discos = [
     { y: 1.35, z: 0.35, r: 0.26, label: "#b03424", title: "LADO A" },
     { y: 1.02, z: 1.05, r: 0.22, label: "#c9971d", title: "PF" },
     { y: 1.42, z: 1.28, r: 0.2, label: "#2e5a78", title: "33⅓" }
   ];
+
+  useFrame((_, delta) => {
+    if (!playing) return;
+    for (const disc of spinRefs.current) {
+      if (disc) disc.rotation.z -= delta * 1.8; // 33⅓ rpm, más o menos
+    }
+  });
+
+  const handleClick = (event) => {
+    event.stopPropagation();
+    setMissing(false);
+    setPlaying(toggleVinyl(() => {
+      setPlaying(false);
+      setMissing(true);
+    }));
+  };
+
   return (
     <group name="World_VinylWall">
       {discos.map((disco, index) => (
         <group key={index} position={[5.23, disco.y, disco.z]} rotation={[0, -Math.PI / 2, index * 0.06 - 0.05]}>
-          <mesh>
-            <circleGeometry args={[disco.r, 36]} />
-            <meshStandardMaterial color="#0c0c0e" roughness={0.42} metalness={0.15} />
-          </mesh>
-          <mesh position={[0, 0, 0.004]}>
-            <ringGeometry args={[disco.r * 0.55, disco.r * 0.96, 36]} />
-            <meshStandardMaterial color="#17171a" roughness={0.35} metalness={0.2} />
-          </mesh>
-          <mesh position={[0, 0, 0.006]}>
-            <circleGeometry args={[disco.r * 0.36, 24]} />
-            <meshStandardMaterial color={disco.label} roughness={0.75} />
-          </mesh>
-          <Text position={[0, 0, 0.012]} fontSize={disco.r * 0.22} color="#f0e6c8" anchorX="center" anchorY="middle">
-            {disco.title}
-          </Text>
+          <group
+            ref={(node) => { spinRefs.current[index] = node; }}
+            onClick={handleClick}
+            onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+            onPointerOut={() => { document.body.style.cursor = "auto"; }}
+          >
+            <mesh>
+              <circleGeometry args={[disco.r, 36]} />
+              <meshStandardMaterial color="#0c0c0e" roughness={0.42} metalness={0.15} />
+            </mesh>
+            <mesh position={[0, 0, 0.004]}>
+              <ringGeometry args={[disco.r * 0.55, disco.r * 0.96, 36]} />
+              <meshStandardMaterial color="#17171a" roughness={0.35} metalness={0.2} />
+            </mesh>
+            <mesh position={[0, 0, 0.006]}>
+              <circleGeometry args={[disco.r * 0.36, 24]} />
+              <meshStandardMaterial color={disco.label} roughness={0.75} />
+            </mesh>
+            <Text position={[0, 0, 0.012]} fontSize={disco.r * 0.22} color="#f0e6c8" anchorX="center" anchorY="middle">
+              {disco.title}
+            </Text>
+          </group>
         </group>
       ))}
+      {playing ? (
+        <Text position={[5.22, 0.68, 0.85]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.075} color="#c9971d" anchorX="center" anchorY="middle" letterSpacing={0.16}>
+          ♪ SUENA EL LADO OSCURO ♪
+        </Text>
+      ) : missing ? (
+        <Text position={[5.22, 0.68, 0.85]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.06} color="#8f7755" anchorX="center" anchorY="middle" letterSpacing={0.08}>
+          falta el disco (assets/audio/dark-side.mp3)
+        </Text>
+      ) : null}
     </group>
   );
 }

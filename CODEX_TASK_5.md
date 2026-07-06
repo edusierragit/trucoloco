@@ -54,3 +54,22 @@ respetando quién es mano — los gates de TASK_4):
 - Los tests existentes ("Cantos y puntos OK") siguen verdes tal cual.
 
 Documentar en `TRUCOLOCO_TRACKLIST.md` (sección HECHO por Codex, con fecha).
+
+
+## Agregado 2026-07-05 (feedback directo de Edu) — el truco "anda como el orto"
+
+Caso real: canto truco -> la mano termina al instante -> +1 punto, sin que
+se entienda nada. El motor probablemente hizo lo correcto (rival dijo no
+quiero = 1 para el cantor), pero:
+
+4. **El bot NUNCA responde un canto en el mismo tick**: delay minimo 700ms
+   con estado visible en el snapshot (`trucoPending.thinking` o similar)
+   para que la UI muestre "Pol lo piensa...". La respuesta
+   (quiero/no quiero/retruco) debe quedar en el estado (`trucoResponse`)
+   para que la UI la anuncie en grande.
+5. **Auditar la cadena completa con tests**: truco no querido = 1; retruco
+   no querido = 2; vale cuatro no querido = 3; queridos = 2/3/4. Y que la
+   mano SIGUE si el truco fue querido (hoy da la sensacion de que cantar
+   truco cierra la mano aunque haya quiero).
+6. El criterio del bot para querer/rechazar debe depender de la fuerza de
+   su mano, no ser aleatorio ni fijo.
