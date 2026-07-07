@@ -1204,30 +1204,52 @@ function SeatViewFocus({ match }) {
 function CantoVoice({ match }) {
   const [voice, setVoice] = useState(null);
   const groupRef = useRef(null);
-  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1, deal: false });
+  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1, deal: false, responseKey: null });
 
   useEffect(() => {
     const prev = prevRef.current;
-    let text = null;
-    if (!prev.deal && match.agreementApplied) text = "¡TRATO!";
-    if (!prev.envido && match.envidoPending) text = "¡ENVIDO!";
+    let voiceNext = null;
+    if (!prev.deal && match.agreementApplied) voiceNext = { text: "¡TRATO!", color: "#ffce6e" };
+    if (!prev.envido && match.envidoPending) voiceNext = { text: "¡ENVIDO!", color: "#ffce6e" };
     if (!prev.truco && match.trucoPending) {
       const bet = match.activeBet ?? 1;
-      text = bet >= 3 ? "¡VALE CUATRO!" : bet === 2 ? "¡RETRUCO!" : "¡TRUCO!";
+      voiceNext = { text: bet >= 3 ? "¡VALE CUATRO!" : bet === 2 ? "¡RETRUCO!" : "¡TRUCO!", color: "#ffce6e" };
     }
-    if (prev.truco && !match.trucoPending && (match.activeBet ?? 1) > prev.bet) text = "¡QUIERO!";
-    prevRef.current = { envido: !!match.envidoPending, truco: !!match.trucoPending, bet: match.activeBet ?? 1, deal: !!match.agreementApplied };
-    if (text) {
-      setVoice({ text, born: performance.now() });
+
+    // la RESPUESTA al canto, visible y clara (antes: "cantabas y no pasaba nada")
+    const resp = match.trucoResponse;
+    const responseKey = resp ? `${resp.responder}-${resp.label}-${resp.accepted}-${resp.raised ?? false}` : null;
+    if (resp && responseKey !== prev.responseKey) {
+      const lane = match.activeLane;
+      const who = resp.responder === lane?.human?.team ? lane?.human?.name : lane?.rival?.name;
+      const whoName = who ?? "El rival";
+      if (resp.raised) {
+        voiceNext = { text: `¡${(resp.raiseLabel ?? "RE").toUpperCase()}!`, color: "#ffce6e" };
+      } else if (resp.accepted) {
+        voiceNext = { text: "¡QUIERO!", color: "#8be29a", sub: `${whoName} juega. Vale ${resp.points ?? match.activeBet ?? 2}.` };
+      } else {
+        voiceNext = { text: "¡NO QUIERO!", color: "#f0776a", sub: `${whoName} se achica. Cobrás ${resp.points ?? 1}.` };
+      }
+    }
+
+    prevRef.current = {
+      envido: !!match.envidoPending,
+      truco: !!match.trucoPending,
+      bet: match.activeBet ?? 1,
+      deal: !!match.agreementApplied,
+      responseKey: responseKey ?? prev.responseKey
+    };
+    if (voiceNext) {
+      setVoice({ ...voiceNext, born: performance.now() });
       sfx.ensure();
       sfx.canto();
     }
-  }, [match.envidoPending, match.trucoPending, match.activeBet, match.agreementApplied]);
+  }, [match.envidoPending, match.trucoPending, match.activeBet, match.agreementApplied, match.trucoResponse, match.activeLane]);
 
   useFrame(() => {
     if (!voice) return;
     const age = performance.now() - voice.born;
-    if (age > 2000) {
+    if (age > 2400) {
       setVoice(null);
       return;
     }
@@ -1245,7 +1267,7 @@ function CantoVoice({ match }) {
       <group ref={groupRef}>
         <Text
           fontSize={0.52}
-          color="#ffce6e"
+          color={voice.color ?? "#ffce6e"}
           anchorX="center"
           anchorY="middle"
           letterSpacing={0.06}
@@ -1254,6 +1276,19 @@ function CantoVoice({ match }) {
         >
           {voice.text}
         </Text>
+        {voice.sub ? (
+          <Text
+            position={[0, -0.42, 0]}
+            fontSize={0.17}
+            color="#f4e7c8"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.01}
+            outlineColor="#2a0d05"
+          >
+            {voice.sub}
+          </Text>
+        ) : null}
       </group>
     </Billboard>
   );
