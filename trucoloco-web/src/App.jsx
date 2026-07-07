@@ -533,7 +533,10 @@ function resolveCorkRoulettePull(current) {
 }
 
 export default function App() {
-  const match = useTrucolocoMatch();
+  // tu silla online define tu PERSPECTIVA del match (deriveView de Codex):
+  // reclamás B-estrella y el motor te muestra ESA mano, no la del equipo A
+  const [myOnlineSeatId, setMyOnlineSeatId] = useState(null);
+  const match = useTrucolocoMatch({ mySeatId: myOnlineSeatId });
   const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
   const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
@@ -686,6 +689,52 @@ export default function App() {
     roster.length
   ]);
 
+  // HOST: los guests proponen jugadas (intents) desde su silla. La silla
+  // real sale del ROSTER (nunca del mensaje): nadie juega una silla ajena.
+  useEffect(() => {
+    const room = netRoomRef.current;
+    if (!netRoom || !netRoom.isHost || !room?.onIntent) return;
+    room.onIntent((peerId, message) => {
+      const peer = rosterRef.current.find((item) => item.peerId === peerId);
+      if (!peer?.seatId) return;
+      matchRef.current.applyRemoteIntent?.({
+        seatId: peer.seatId,
+        action: message.action,
+        payload: message.payload ?? {}
+      });
+    });
+  }, [netRoom]);
+
+  // GUEST sentado: tus botones no tocan tu estado local — mandan la jugada
+  // al host y la verdad vuelve como snapshot. Mismo Hud, otra cañería.
+  const isSeatedGuest = Boolean(netRoom && !netRoom.isHost && myOnlineSeatId);
+  const playMatch = useMemo(() => {
+    if (!isSeatedGuest) return match;
+    const send = (action, payload = null) => netRoomRef.current?.sendIntent(action, payload);
+    const noop = () => {};
+    return {
+      ...match,
+      playCard: (cardId) => send("playCard", { cardId }),
+      callEnvido: () => send("callEnvido"),
+      raiseEnvido: (callType) => send("raiseEnvido", { callType }),
+      acceptEnvido: () => send("acceptEnvido"),
+      rejectEnvido: () => send("rejectEnvido"),
+      callTruco: () => send("callTruco"),
+      acceptTruco: () => send("acceptTruco"),
+      rejectTruco: () => send("rejectTruco"),
+      raiseTrucoResponse: () => send("raiseTrucoResponse"),
+      // el flujo de mesa (avances, reparto, limpieza) es SOLO del host
+      startHand: noop,
+      startNextHand: noop,
+      advance: noop,
+      nextHand: noop,
+      revealRivalLead: noop,
+      clearTrick: noop,
+      settleEnvido: noop,
+      restartMatch: noop
+    };
+  }, [isSeatedGuest, match]);
+
   // cuando entra alguien a la sala, suena y se siente
   const rosterCountRef = useRef(0);
   useEffect(() => {
@@ -726,6 +775,7 @@ export default function App() {
     if (!room) return;
     if (!seatId) {
       room.updateProfile({ seatId: null, seatAt: null });
+      setMyOnlineSeatId(null);
       return;
     }
     const blockReason = getSeatBlockReason(seatId);
@@ -734,6 +784,7 @@ export default function App() {
       return;
     }
     room.updateProfile({ seatId, seatAt: Date.now() });
+    setMyOnlineSeatId(seatId);
     const seat = tableSeats.find((item) => item.seatId === seatId);
     if (seat && match.canSwitchRole) {
       match.selectRole(seat.role);
@@ -756,6 +807,7 @@ export default function App() {
   }, [claimSeat, getSeatBlockReason, match.selectedCharacter, match.selectedRole, showSalaNotice]);
 
   // resolución de conflicto: si dos reclaman la misma silla, gana el más viejo
+  const autoSeatDoneRef = useRef(false);
   useEffect(() => {
     const me = roster.find((peer) => peer.self);
     if (!me?.seatId) return;
@@ -765,12 +817,16 @@ export default function App() {
         peer.seatId === me.seatId &&
         (peer.seatAt < me.seatAt || (peer.seatAt === me.seatAt && peer.peerId < me.peerId))
     );
-    if (rival) netRoomRef.current?.updateProfile({ seatId: null, seatAt: null });
+    if (rival) {
+      netRoomRef.current?.updateProfile({ seatId: null, seatAt: null });
+      setMyOnlineSeatId(null);
+      // perdiste el desempate: volvé a elegir una silla LIBRE distinta
+      autoSeatDoneRef.current = false;
+    }
   }, [roster]);
 
   // al entrar a una sala con más gente, tomás automáticamente una silla LIBRE
   // (distinta) para no aparecer como el mismo personaje que otro
-  const autoSeatDoneRef = useRef(false);
   useEffect(() => {
     if (!netRoom) {
       autoSeatDoneRef.current = false;
@@ -845,6 +901,7 @@ export default function App() {
     setNetRoom(null);
     setRoster([]);
     setRemotePos({});
+    setMyOnlineSeatId(null);
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
@@ -913,6 +970,16 @@ export default function App() {
     if (!match.canAdvance || match.canPlayCard) return undefined;
     const autoPhases = ["table-auto-turn", "pre-rival-lead", "rival-leads", "trick-closed", "envido-resolution"];
     if (!autoPhases.includes(match.phase)) return undefined;
+    // si la silla en turno la ocupa un HUMANO conectado, el bot no juega por
+    // él: el host espera su intent (las fases de limpieza sí avanzan solas)
+    if (
+      match.phase !== "trick-closed" &&
+      match.phase !== "envido-resolution" &&
+      match.currentTurnSeatId &&
+      roster.some((peer) => !peer.self && peer.seatId === match.currentTurnSeatId)
+    ) {
+      return undefined;
+    }
     const delay = match.phase === "trick-closed" ? 2100 : match.phase === "envido-resolution" ? 2300 : 1000;
     const timer = window.setTimeout(() => {
       if (match.phase === "envido-resolution") match.settleEnvido();
@@ -921,7 +988,7 @@ export default function App() {
       else match.advance();
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [autoPlayEnabled, match]);
+  }, [autoPlayEnabled, match, roster]);
 
   // audio: el contexto se despierta con el primer gesto (política de autoplay)
   useEffect(() => {
@@ -1051,7 +1118,7 @@ export default function App() {
     cameraView === "ring" && !isSeatingRitual ? "stage-ring-mode" : "",
     cameraView === "seat" && !isSeatingRitual ? "stage-seat-mode" : "",
     cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : "",
-    netRoom && !netRoom.isHost ? "stage-espectador" : ""
+    netRoom && !netRoom.isHost && !myOnlineSeatId ? "stage-espectador" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {
@@ -1095,7 +1162,7 @@ export default function App() {
               remoteWalkers={roster
                 .filter((peer) => !peer.self && remotePos[peer.peerId])
                 .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
-              match={match}
+              match={playMatch}
               cameraView={cameraView}
               debateAction={debateState}
               selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
@@ -1372,7 +1439,7 @@ export default function App() {
 
         <aside className="stage-sidebar">
           <Hud
-            match={match}
+            match={playMatch}
             cameraView={cameraView}
             onReturnToTable={() => handleCameraViewChange("table")}
             multiplayer={{
