@@ -9,7 +9,9 @@ const RELAYS = [
   "wss://relay.damus.io",
   "wss://nos.lol",
   "wss://nostr.mom",
-  "wss://relay.primal.net"
+  "wss://relay.primal.net",
+  "wss://relay.snort.social",
+  "wss://nostr-pub.wellorder.net"
 ];
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ROOM_LIMIT = 6; // trucoloco 3v3: seis sillas, ni una más

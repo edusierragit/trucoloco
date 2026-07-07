@@ -5496,3 +5496,18 @@ select {
   opacity: 0.35;
   cursor: default;
 }
+
+/* diagnóstico de conexión de sala: que nunca quede mudo en 1/6 */
+.sala-conn-help {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(240, 119, 106, 0.1);
+  border: 1px solid rgba(240, 119, 106, 0.3);
+}
+.sala-conn-help p {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #f0c9c3;
+}

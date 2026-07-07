@@ -644,6 +644,25 @@ export default function App() {
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
   const [salaNotice, setSalaNotice] = useState("");
+  // feedback de conexión: si te quedás solo mucho rato, el relay P2P no
+  // enganchó (Brave Shields / red). Antes el panel se quedaba mudo en 1/6.
+  const [connTimedOut, setConnTimedOut] = useState(false);
+  useEffect(() => {
+    if (!netRoom) { setConnTimedOut(false); return undefined; }
+    if (roster.length >= 2) { setConnTimedOut(false); return undefined; }
+    setConnTimedOut(false);
+    const timer = window.setTimeout(() => setConnTimedOut(true), 12000);
+    return () => window.clearTimeout(timer);
+  }, [netRoom, roster.length]);
+
+  const retrySala = useCallback(() => {
+    const room = netRoomRef.current;
+    if (!room) return;
+    const code = room.code;
+    const isHost = room.isHost;
+    setConnTimedOut(false);
+    joinSala(code, isHost); // recrea la conexión al mismo código
+  }, [joinSala]);
   const [remotePos, setRemotePos] = useState({});
   const lastPosSentRef = useRef(0);
   const salaNoticeTimerRef = useRef(null);
@@ -1518,8 +1537,20 @@ export default function App() {
                     <p className={roster.length >= ROOM_LIMIT ? "sala-lobby-status sala-lobby-full" : "sala-lobby-status"}>
                       {roster.length >= ROOM_LIMIT
                         ? "¡Mesa completa! A jugar."
-                        : `⏳ Esperando jugadores… ${roster.length}/${ROOM_LIMIT}`}
+                        : roster.length >= 2
+                          ? `⏳ Esperando jugadores… ${roster.length}/${ROOM_LIMIT}`
+                          : connTimedOut
+                            ? "⚠ No conecta con nadie todavía."
+                            : "🔌 Conectando a la sala…"}
                     </p>
+                    {roster.length < 2 && connTimedOut ? (
+                      <div className="sala-conn-help">
+                        <p>Si estás con otra persona y no aparece: revisá que los dos tengan el MISMO código, bajá los Shields de Brave 🦁, o probá en Chrome. El enlace P2P a veces tarda o el relay falla.</p>
+                        <button className="sala-btn sala-btn-on" type="button" onClick={retrySala}>
+                          🔄 Reintentar conexión
+                        </button>
+                      </div>
+                    ) : null}
                     {netRoom.isHost ? (
                       <>
                         <label className="sala-toggle">
