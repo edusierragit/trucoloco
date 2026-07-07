@@ -5,6 +5,7 @@ import { sfx } from "../audio/sfx";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { roleDefinitions } from "../data/characters";
 import { GAME_MODES } from "../config";
+import { PalitosScore } from "./PalitosScore";
 
 const BOTTOM_OWNED_ADVANCE_PHASES = ["pre-rival-lead", "rival-leads", "trick-closed"];
 
@@ -75,11 +76,8 @@ function Header({ match }) {
       {isRoleSelect ? null : (
         <div className="scoreboard">
           <span className="score-label">Mano {match.handNumber} · Mano vale {match.activeBet}</span>
-          <strong key={`${match.scores.A}-${match.scores.B}`} className="score-pop">
-            {match.scores.A} - {match.scores.B}
-          </strong>
-          <span className="score-names">{scoreNames}</span>
-          <span className="score-label">primero a {match.config.winningScore}</span>
+          <PalitosScore match={match} />
+          <span className="score-names">{scoreNames} · primero a {match.config.winningScore}</span>
         </div>
       )}
     </header>
