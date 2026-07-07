@@ -4,6 +4,27 @@
 > proyecto: qué se hizo, qué está en curso y qué falta. Cualquier agente (Claude,
 > Codex) debe actualizarlo al terminar su tarea.
 
+## ✅ HECHO por Opus (2026-07-07) — OPUS_TASK_2
+
+- **Cartas SIEMPRE en primera persona** — la vista por defecto ("table")
+  durante la mano usa la pose de silla + la mano 3D sostenida; nunca más el
+  ángulo cenital de cartas. La mano HTML chica se esconde (clip, sigue
+  clickeable para el validador).
+- **Anotador de palitos (fósforos)** — reemplaza el número A-B por la PIZARRA:
+  cada 5 puntos = cuadro de 4 fósforos + diagonal, partido MALAS/BUENAS,
+  columna por equipo (NOSOTROS/ELLOS). Lee `match.scores`. Toggle auto/manual
+  y +/- ya maquetados: usan `match.setScoreMode`/`match.adjustScore` si el
+  motor los expone (CODEX_TASK_5), si no quedan deshabilitados con
+  tooltip "próximamente". `src/game/ui/PalitosScore.jsx`.
+- **Cabezas vivas** — idle sutil sobre torso/cabeza (sway + vistazo a las
+  cartas, desfasado por personaje). Asientos humanos (vos + peers) miran
+  SIEMPRE a la mesa, no giran hacia el que actúa.
+- **PENDIENTE #1 (menú ▶ JUGAR primero)** — la parte "Practicar contra la IA
+  secundario + oculto en sala" ya está en el RoleSelector. El expander
+  ▶ JUGAR que despliega Crear sala/Entrar/Unirse vive en el portal
+  `sala-join-box` de App.jsx (sección sala/red del otro Opus): a coordinar
+  para no pisar.
+
 ## ✅ HECHO por Opus (2026-07-04)
 
 - **SELECTOR DE MODO — Truco Común vs TRUCOLOCO (UI)** — dos cartas grandes al
