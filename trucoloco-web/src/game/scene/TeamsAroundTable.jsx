@@ -171,15 +171,27 @@ function CharacterSeat({
       torsoRef.current.emissiveIntensity = emissiveIntensity;
     }
 
-    // ---- Head bob — each character has a tiny idle motion ----
+    // ---- Cabezas vivas (Liar's Bar): respiración + micro-giros de cabeza y
+    // vistazos ocasionales a las cartas. Suma de senos lentos desfasados por
+    // personaje (timeRef arranca en random) para que sea orgánico, no robótico.
     if (upperRef.current) {
       upperRef.current.position.y = upperBaseY + Math.sin(t * 0.9 + timeRef.current * 0.4) * 0.012;
+      // sway sutil: mira alrededor sin fijar la vista
+      const idleYaw = Math.sin(t * 0.47) * 0.05 + Math.sin(t * 0.19 + 1.3) * 0.028;
+      // vistazo a las cartas: pico suave hacia abajo cada tanto (casi siempre 0)
+      const glance = Math.pow(Math.max(0, Math.sin(t * 0.28 + 0.7)), 6) * 0.13;
+      const idlePitch = Math.sin(t * 0.63) * 0.018 + glance;
+      upperRef.current.rotation.y = idleYaw;
+      upperRef.current.rotation.x = idlePitch;
     }
 
     // ---- Everyone glances at whoever is acting — the table feels alive ----
     if (groupRef.current) {
       let lookYaw = seatYaw;
-      if (actingSeatPos && !isCurrentActor && !isRoleSelect) {
+      // Los jugadores humanos (vos + peers en sala) miran SIEMPRE a la mesa al
+      // sentarse: no giran la cara hacia el que actúa (pedido explícito de Edu).
+      const isHumanSeat = isPlayerSeat || Boolean(netPeer);
+      if (!isHumanSeat && actingSeatPos && !isCurrentActor && !isRoleSelect) {
         const dx = actingSeatPos[0] - seat.position[0];
         const dz = actingSeatPos[2] - seat.position[2];
         if (Math.hypot(dx, dz) > 0.5) {
