@@ -1204,7 +1204,10 @@ function SeatViewFocus({ match }) {
 function CantoVoice({ match }) {
   const [voice, setVoice] = useState(null);
   const groupRef = useRef(null);
-  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1, deal: false, responseKey: null });
+  const prevRef = useRef({ envido: false, truco: false, bet: match.activeBet ?? 1, deal: false, responseKey: null, chaosId: null });
+
+  // EL CAOS: cuando el Jugador Estrella baja una carta de Yu-Gi-Oh (group bonus)
+  const chaosPlay = (match.tableCards ?? []).find((play) => play.group === "bonus");
 
   useEffect(() => {
     const prev = prevRef.current;
@@ -1232,24 +1235,31 @@ function CantoVoice({ match }) {
       }
     }
 
+    // EL CAOS pisa cualquier otro canto: es EL momento del Estrella
+    const chaosId = chaosPlay ? `${chaosPlay.id}-${chaosPlay.seatId}` : null;
+    if (chaosPlay && chaosId !== prev.chaosId) {
+      voiceNext = { text: `¡${chaosPlay.name.toUpperCase()}!`, color: "#c77dff", sub: `${chaosPlay.owner} rompe la mesa. Deciden los negociantes.`, chaos: true };
+    }
+
     prevRef.current = {
       envido: !!match.envidoPending,
       truco: !!match.trucoPending,
       bet: match.activeBet ?? 1,
       deal: !!match.agreementApplied,
-      responseKey: responseKey ?? prev.responseKey
+      responseKey: responseKey ?? prev.responseKey,
+      chaosId: chaosId ?? prev.chaosId
     };
     if (voiceNext) {
       setVoice({ ...voiceNext, born: performance.now() });
       sfx.ensure();
       sfx.canto();
     }
-  }, [match.envidoPending, match.trucoPending, match.activeBet, match.agreementApplied, match.trucoResponse, match.activeLane]);
+  }, [match.envidoPending, match.trucoPending, match.activeBet, match.agreementApplied, match.trucoResponse, match.activeLane, chaosPlay]);
 
   useFrame(() => {
     if (!voice) return;
     const age = performance.now() - voice.born;
-    if (age > 2400) {
+    if (age > (voice.chaos ? 3200 : 2400)) {
       setVoice(null);
       return;
     }
