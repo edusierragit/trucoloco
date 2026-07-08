@@ -5577,3 +5577,14 @@ select {
 .play-menu-back:hover {
   background: rgba(240, 221, 180, 0.12);
 }
+
+/* preview 3D del personaje elegido (character select) — Opus lo ubica en el menú */
+.character-preview {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 46vh;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #2a1810 0%, #0d0805 80%);
+  border: 1px solid rgba(201, 151, 29, 0.25);
+}
