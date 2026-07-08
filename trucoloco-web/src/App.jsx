@@ -620,6 +620,7 @@ export default function App() {
   const [netRoom, setNetRoom] = useState(null);
   const [roster, setRoster] = useState([]);
   const netRoomRef = useRef(null);
+  const voiceRoomRef = useRef(null);
 
   const joinSala = useCallback((code, isHost) => {
     netRoomRef.current?.leave();
@@ -635,6 +636,11 @@ export default function App() {
     const room = useP2P
       ? createTrucolocoRoom(code, { isHost, profile })
       : createRelayRoom(code, { isHost, profile });
+    // VOZ HÍBRIDA: el juego viaja por relay (confiable); la voz necesita
+    // WebRTC, así que abrimos un canal P2P paralelo SOLO para audio.
+    // Si el P2P no conecta (Brave/CGNAT), el juego sigue perfecto sin voz.
+    voiceRoomRef.current?.leave();
+    voiceRoomRef.current = useP2P ? null : createTrucolocoRoom(`${code}-voz`, { isHost, profile });
     room.onRoster(setRoster);
     setRemotePos({});
     room.onPos((peerId, data) =>
@@ -655,7 +661,7 @@ export default function App() {
   }, [match.selectedCharacter, match.selectedRole, handleCameraViewChange]);
 
   const [micOn, setMicOn] = useState(false);
-  const [salaCollapsed, setSalaCollapsed] = useState(false);
+  const [salaCollapsed, setSalaCollapsed] = useState(true);
   const [salaPos, setSalaPos] = useState(null); // posición arrastrada del panel
   const [salaNotice, setSalaNotice] = useState("");
   // feedback de conexión: si te quedás solo mucho rato, el relay P2P no
@@ -794,7 +800,7 @@ export default function App() {
   }, [roster.length]);
 
   const toggleMic = useCallback(async () => {
-    const room = netRoomRef.current;
+    const room = voiceRoomRef.current ?? netRoomRef.current;
     if (!room) return;
     if (room.micOn) {
       room.disableMic();
@@ -802,8 +808,9 @@ export default function App() {
     } else {
       const ok = await room.enableMic();
       setMicOn(ok);
+      if (!ok) showSalaNotice("No pude activar el micrófono (permiso o navegador).");
     }
-  }, []);
+  }, [showSalaNotice]);
 
   const getSeatBlockReason = useCallback((seatId) => {
     const seat = tableSeats.find((item) => item.seatId === seatId);
@@ -956,6 +963,8 @@ export default function App() {
     setBackfillOpen(false);
     netRoomRef.current?.leave();
     netRoomRef.current = null;
+    voiceRoomRef.current?.leave();
+    voiceRoomRef.current = null;
     setNetRoom(null);
     setRoster([]);
     setRemotePos({});
@@ -1147,7 +1156,7 @@ export default function App() {
     const currentMatch = matchRef.current;
 
     if (hotspot === "door") {
-      handleCameraViewChange("seat");
+      exitToMenu();
       return;
     }
 
@@ -1287,12 +1296,12 @@ export default function App() {
           {cameraView === "walk" && !isSeatingRitual ? (
             <>
               <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
-                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Mesa" : "Caminar"}</span>
+                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Entrada" : "Caminar"}</span>
                 <strong>
                   {walkHotspot === "table"
                     ? "F · Sentarse en mesa"
                     : walkHotspot === "door"
-                      ? "F · Sentarse a la mesa"
+                      ? "F · Salir del bar"
                       : walkHotspot === "bar"
                         ? "F · Mirar barra"
                         : walkHotspot === "ring"
@@ -1309,7 +1318,7 @@ export default function App() {
                         ? "Confirmás rol y se reparten cartas"
                         : "Entrás al duelo desde tu silla"
                       : walkHotspot === "door"
-                        ? "Volvés a tu silla en la mesa"
+                        ? "Salís de la sala y volvés al menú"
                         : walkHotspot === "bar"
                           ? "Botellas, humo y promesas de truco"
                         : walkHotspot === "ring"

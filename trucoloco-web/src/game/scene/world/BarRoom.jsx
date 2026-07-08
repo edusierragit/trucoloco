@@ -957,6 +957,12 @@ function CeilingHaze() {
 export function BarRoom() {
   return (
     <group name="World_BarRoom">
+      {/* suelo base gigante: al mirar el piso en la entrada no se ve un
+          "subsuelo" negro sin sentido */}
+      <mesh position={[0, -2.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[60, 60]} />
+        <meshStandardMaterial color="#120a07" roughness={0.98} />
+      </mesh>
       <FloorPlanks />
       <BrickBackWall />
       <CurtainWall side="left" />

@@ -1280,6 +1280,9 @@ function CantoVoice({ match }) {
 // ── caminantes remotos: los otros jugadores de la sala, en carne y hueso ────
 function RemoteWalker({ peer }) {
   const groupRef = useRef(null);
+  const speedRef = useRef(0);
+  const modeRef = useRef("idle");
+  const [animMode, setAnimMode] = useState("idle");
   const target = peer.pos;
   const allPlayers = [...teams.A, ...teams.B];
   const characterDef = allPlayers.find((player) => player.id === peer.characterId) ?? allPlayers[0];
@@ -1295,6 +1298,16 @@ function RemoteWalker({ peer }) {
     while (deltaYaw > Math.PI) deltaYaw -= Math.PI * 2;
     while (deltaYaw < -Math.PI) deltaYaw += Math.PI * 2;
     g.rotation.y += deltaYaw * alpha;
+
+    // el remoto camina/corre según cuánto le falta llegar a su target:
+    // sin esto quedaba una estatua deslizándose por el piso
+    const gap = Math.hypot(target.x - g.position.x, target.z - g.position.z);
+    speedRef.current = speedRef.current * 0.85 + gap * 0.15;
+    const next = speedRef.current > 0.5 ? "run" : speedRef.current > 0.05 ? "walk" : "idle";
+    if (next !== modeRef.current) {
+      modeRef.current = next;
+      setAnimMode(next);
+    }
   });
 
   if (!target) return null;
@@ -1302,7 +1315,14 @@ function RemoteWalker({ peer }) {
   return (
     <group ref={groupRef} position={[target.x, 0.02, target.z]}>
       <Suspense fallback={null}>
-        <CharacterFigure skin={skin} accent={characterDef?.accent ?? "#91e9f6"} isActiveLane={false} />
+        <CharacterFigure
+          skin={skin}
+          accent={characterDef?.accent ?? "#91e9f6"}
+          isActiveLane={false}
+          animationMode={animMode}
+          animationClipMap={skin?.animationClipMap ?? {}}
+          animationTimeScaleMap={skin?.animationTimeScaleMap ?? {}}
+        />
       </Suspense>
       <Billboard position={[0, 2.1, 0]} follow>
         <Text fontSize={0.12} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.08} outlineWidth={0.008} outlineColor="#04222a">

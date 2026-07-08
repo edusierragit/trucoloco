@@ -11,11 +11,11 @@ export const characterSkins = {
     modelPromptKey: "irvyn",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
-      idle: null,
+      idle: "NlaTrack.003",
       walk: "NlaTrack.004",
-      run: "NlaTrack.002",
+      run: "NlaTrack.001",
       box: "NlaTrack.006",
-      jump: "NlaTrack.001"
+      jump: "NlaTrack.007"
     },
     animationTimeScaleMap: {
       walk: 0.72,
@@ -35,15 +35,15 @@ export const characterSkins = {
     modelPromptKey: "marvyn",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
-      idle: null,
-      walk: "NlaTrack.007",
+      idle: "NlaTrack.006",
+      walk: "NlaTrack",
       run: "NlaTrack",
       box: "NlaTrack.002",
       jump: "NlaTrack.005"
     },
     animationTimeScaleMap: {
       walk: 0.76,
-      run: 0.98,
+      run: 1.35,
       box: 1,
       jump: 1
     },
@@ -61,9 +61,9 @@ export const characterSkins = {
     animationClipMap: {
       idle: null,
       walk: "NlaTrack.003",
-      run: "NlaTrack.002",
+      run: "NlaTrack.004",
       box: "NlaTrack.001",
-      jump: "NlaTrack.004"
+      jump: "NlaTrack.002"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -85,9 +85,9 @@ export const characterSkins = {
     animationClipMap: {
       idle: null,
       walk: "NlaTrack.004",
-      run: "NlaTrack.001",
+      run: "NlaTrack.003",
       box: "NlaTrack",
-      jump: "NlaTrack.003"
+      jump: "NlaTrack.001"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -109,9 +109,9 @@ export const characterSkins = {
     animationClipMap: {
       idle: null,
       walk: "NlaTrack.003",
-      run: "NlaTrack.001",
+      run: "NlaTrack.002",
       box: "NlaTrack.004",
-      jump: "NlaTrack.002"
+      jump: "NlaTrack.001"
     },
     animationTimeScaleMap: {
       walk: 0.76,
@@ -138,6 +138,19 @@ export const characterSkins = {
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.001",
+      run: "NlaTrack.004",
+      box: "NlaTrack",
+      jump: "NlaTrack.005"
+    },
+    animationTimeScaleMap: {
+      walk: 0.8,
+      run: 1,
+      box: 1,
+      jump: 1
+    },
     modelTargetHeight: 1.74,
     modelPromptKey: "gazpacho",
     walkFacingOffset: -Math.PI / 2,
@@ -168,6 +181,19 @@ export const characterSkins = {
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
+    animationClipMap: {
+      idle: null,
+      walk: "NlaTrack.002",
+      run: "NlaTrack.004",
+      box: "NlaTrack",
+      jump: "NlaTrack.003"
+    },
+    animationTimeScaleMap: {
+      walk: 0.8,
+      run: 1,
+      box: 1,
+      jump: 1
+    },
     modelTargetHeight: 1.74,
     modelPromptKey: "myke-keta",
     walkFacingOffset: -Math.PI / 2,
