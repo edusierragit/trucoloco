@@ -10,8 +10,24 @@ const RELAYS = [
   "wss://nos.lol",
   "wss://nostr.mom",
   "wss://relay.primal.net",
-  "wss://relay.snort.social",
   "wss://nostr-pub.wellorder.net"
+];
+
+// ICE: STUN descubre la IP pública. TURN RELEVA el tráfico cuando los dos
+// están detrás de NAT restrictivo (casas) — sin TURN, dos personas en redes
+// distintas no logran el WebRTC aunque la señalización funcione. Era la
+// causa #1 de "no me toma que se une" (mis tests corrían en 1 sola máquina
+// = loopback, por eso nunca lo vi). TURN gratis de openrelay/metered.
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ]
+};
+const TURN_CONFIG = [
+  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
 ];
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ROOM_LIMIT = 6; // trucoloco 3v3: seis sillas, ni una más
@@ -22,7 +38,7 @@ export const genRoomCode = () =>
 export const myPeerId = selfId;
 
 export function createTrucolocoRoom(code, { isHost, profile }) {
-  const room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } }, `sala-${code}`);
+  const room = joinRoom({ appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length }, rtcConfig: RTC_CONFIG, turnConfig: TURN_CONFIG }, `sala-${code}`);
   const hello = room.makeAction("hello");
   const snap = room.makeAction("snap");
   const pos = room.makeAction("pos");
@@ -185,7 +201,7 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
 // El host publica su sala en el canal global; el que busca toma la primera
 // oferta con lugar. Party-first, backfill segundo (ver MULTIPLAYER_DESIGN.md).
 const LOBBY_CHANNEL = "salas-abiertas-v1";
-const lobbyConfig = { appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length } };
+const lobbyConfig = { appId: APP_ID, relayConfig: { urls: RELAYS, redundancy: RELAYS.length }, rtcConfig: RTC_CONFIG, turnConfig: TURN_CONFIG };
 
 export function openSalaBackfill(code, getFreeSeats) {
   const lobby = joinRoom(lobbyConfig, LOBBY_CHANNEL);
