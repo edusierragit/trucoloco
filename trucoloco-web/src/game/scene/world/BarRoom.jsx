@@ -345,22 +345,89 @@ function BoothSilhouettes() {
   );
 }
 
+// La entrada del antro: arco de madera + bronce, doble puerta entreabierta con
+// tableros y manijas, cartel ENTRADA iluminado, cordón de terciopelo entre
+// parantes de bronce y felpudo. Todo hacia la sala (−z local). Cero assets.
 function EntryPortal() {
+  const yF = -1.76; // piso en coords locales (group.y=-0.22, piso world=-1.98)
+  const doorH = 2.9;
+  const doorTopY = yF + doorH;
+  const midY = yF + doorH / 2;
+
   return (
     <group name="World_EntryPortal" position={[0, -0.22, 4.06]}>
-      <RoundedBox args={[2.2, 2.75, 0.22]} radius={0.08} receiveShadow>
-        <meshStandardMaterial color="#0a0605" roughness={0.92} />
+      {/* arco/marco de madera oscura */}
+      <RoundedBox args={[2.52, doorH + 0.26, 0.3]} radius={0.06} position={[0, midY, 0.03]} receiveShadow>
+        <meshStandardMaterial color="#1a0f08" roughness={0.9} metalness={0.06} />
       </RoundedBox>
-      <RoundedBox args={[1.54, 2.24, 0.08]} radius={0.04} position={[0, -0.06, 0.08]}>
-        <meshStandardMaterial color="#070404" roughness={0.98} emissive="#4d210f" emissiveIntensity={0.14} />
+      {/* dintel de bronce */}
+      <RoundedBox args={[2.66, 0.16, 0.36]} radius={0.04} position={[0, doorTopY + 0.07, 0.0]}>
+        <meshStandardMaterial color={BAR.brass} roughness={0.36} metalness={0.6} />
       </RoundedBox>
-      <RoundedBox args={[1.84, 0.09, 0.16]} radius={0.025} position={[0, 1.18, 0.16]}>
-        <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.52} />
-      </RoundedBox>
-      <pointLight position={[0, 0.4, 0.54]} intensity={5.2} color="#d35f2d" />
-      <Text position={[0, 1.42, 0.17]} fontSize={0.095} color="#d0a15d" anchorX="center" anchorY="middle" letterSpacing={0.16}>
-        ENTRADA
-      </Text>
+      {/* hueco oscuro del pasillo */}
+      <mesh position={[0, midY, 0.05]}>
+        <planeGeometry args={[1.94, doorH - 0.08]} />
+        <meshStandardMaterial color="#050303" roughness={1} />
+      </mesh>
+
+      {/* dos hojas entreabiertas (abren hacia adentro), con tableros y manija */}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 0.96, midY, -0.02]} rotation={[0, s * 0.3, 0]}>
+          <RoundedBox args={[0.9, doorH - 0.16, 0.07]} radius={0.02} position={[-s * 0.45, 0, 0]} castShadow>
+            <meshStandardMaterial color="#26150c" roughness={0.72} metalness={0.08} />
+          </RoundedBox>
+          {[0.75, 0.05, -0.65].map((py) => (
+            <RoundedBox key={py} args={[0.58, 0.52, 0.02]} radius={0.03} position={[-s * 0.45, py, -0.05]}>
+              <meshStandardMaterial color="#150b06" roughness={0.82} />
+            </RoundedBox>
+          ))}
+          <mesh position={[-s * 0.08, 0, -0.09]}>
+            <sphereGeometry args={[0.05, 12, 10]} />
+            <meshStandardMaterial color={BAR.brass} roughness={0.3} metalness={0.75} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* cartel ENTRADA iluminado, mirando a la sala */}
+      <group position={[0, doorTopY + 0.34, -0.14]} rotation={[0, Math.PI, 0]}>
+        <RoundedBox args={[1.52, 0.36, 0.09]} radius={0.04}>
+          <meshStandardMaterial color="#0c0805" roughness={0.7} emissive="#7a2a10" emissiveIntensity={0.55} />
+        </RoundedBox>
+        <Text position={[0, 0, 0.06]} fontSize={0.17} color="#ff8a4a" anchorX="center" anchorY="middle" letterSpacing={0.18} outlineWidth={0.006} outlineColor="#3a0f04">
+          ENTRADA
+        </Text>
+      </group>
+
+      {/* cordón de terciopelo: parantes de bronce + soga que cuelga */}
+      {[-1.05, 1.05].map((sx) => (
+        <group key={sx} position={[sx, yF, -0.9]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.12, 0.15, 0.05, 16]} />
+            <meshStandardMaterial color="#15100c" roughness={0.5} metalness={0.4} />
+          </mesh>
+          <mesh position={[0, 0.55, 0]}>
+            <cylinderGeometry args={[0.028, 0.034, 1.05, 12]} />
+            <meshStandardMaterial color={BAR.brass} roughness={0.3} metalness={0.72} />
+          </mesh>
+          <mesh position={[0, 1.09, 0]}>
+            <sphereGeometry args={[0.062, 14, 12]} />
+            <meshStandardMaterial color={BAR.brass} roughness={0.28} metalness={0.78} />
+          </mesh>
+        </group>
+      ))}
+      {/* soga (arco vertical achatado que cuelga entre parantes) */}
+      <mesh position={[0, yF + 1.09, -0.9]} rotation={[0, 0, Math.PI]} scale={[1, 0.26, 1]}>
+        <torusGeometry args={[1.05, 0.03, 10, 40, Math.PI]} />
+        <meshStandardMaterial color="#6a1420" roughness={0.85} />
+      </mesh>
+
+      {/* felpudo */}
+      <mesh position={[0, yF + 0.012, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.7, 0.92]} />
+        <meshStandardMaterial color="#241611" roughness={0.98} />
+      </mesh>
+
+      <pointLight position={[0, 0.6, -0.55]} intensity={4.2} distance={4.2} color="#d35f2d" />
     </group>
   );
 }
