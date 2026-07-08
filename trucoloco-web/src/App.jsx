@@ -768,6 +768,21 @@ export default function App() {
     };
   }, [isSeatedGuest, match]);
 
+  // el vinilo es DE LA SALA: si uno pone Dark Side, suena para todos.
+  // BarRoom emite/escucha window events; acá los puenteamos por la red (fx).
+  useEffect(() => {
+    if (!netRoom) return undefined;
+    const onLocalVinyl = (event) =>
+      netRoomRef.current?.sendFx?.({ vinyl: Boolean(event.detail?.playing) });
+    window.addEventListener("tl-vinyl-local", onLocalVinyl);
+    netRoom.onFx?.((d) => {
+      if (typeof d?.vinyl === "boolean") {
+        window.dispatchEvent(new CustomEvent("tl-vinyl-remote", { detail: { playing: d.vinyl } }));
+      }
+    });
+    return () => window.removeEventListener("tl-vinyl-local", onLocalVinyl);
+  }, [netRoom]);
+
   // cuando entra alguien a la sala, suena y se siente
   const rosterCountRef = useRef(0);
   useEffect(() => {
@@ -816,9 +831,19 @@ export default function App() {
       showSalaNotice(blockReason);
       return;
     }
-    room.updateProfile({ seatId, seatAt: Date.now() });
-    setMyOnlineSeatId(seatId);
     const seat = tableSeats.find((item) => item.seatId === seatId);
+    const seatCharacter = seat?.playerId ? playerById[seat.playerId] : null;
+    // el PERFIL DE RED sigue a la silla: si no actualizás characterId acá,
+    // tu personaje viejo (ej. Gazpacho) queda "fantasma" bloqueándole esa
+    // silla a todos los demás ("no me deja elegir Estrella")
+    room.updateProfile({
+      seatId,
+      seatAt: Date.now(),
+      characterId: seatCharacter?.id ?? null,
+      name: seatCharacter?.name ?? undefined,
+      role: seat?.role ?? undefined
+    });
+    setMyOnlineSeatId(seatId);
     if (seat && match.canSwitchRole) {
       match.selectRole(seat.role);
       // tu avatar pasa a ser el personaje de esa silla: dos humanos en sillas

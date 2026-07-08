@@ -46,9 +46,14 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
   // valida contra el motor y la verdad vuelve como snapshot. Nadie más que
   // el host toca el estado.
   const intent = room.makeAction("intent");
+  const fx = room.makeAction("fx");
   let onSnapshotCb = null;
   let onPosCb = null;
   let onIntentCb = null;
+  let onFxCb = null;
+  fx.onMessage = (data) => {
+    if (data && typeof data === "object") onFxCb?.(data);
+  };
   intent.onMessage = (data, context) => {
     if (data && typeof data === "object" && typeof data.action === "string") {
       onIntentCb?.(context.peerId, data);
@@ -143,6 +148,12 @@ export function createTrucolocoRoom(code, { isHost, profile }) {
     // host: escucha intents y los aplica al motor (validando turno y asiento)
     onIntent(cb) {
       onIntentCb = cb;
+    },
+    sendFx(d) {
+      void fx.send(d);
+    },
+    onFx(cb) {
+      onFxCb = cb;
     },
     onRoster(cb) {
       onRosterChange = cb;

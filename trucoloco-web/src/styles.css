@@ -297,7 +297,8 @@ select {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 96px;
+  bottom: 12px;
+  opacity: 0.92;
   z-index: 6;
   display: grid;
   gap: 3px;

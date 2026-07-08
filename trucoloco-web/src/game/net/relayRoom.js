@@ -28,6 +28,7 @@ export function createRelayRoom(code, { isHost, profile }) {
   let onSnapshotCb = null;
   let onPosCb = null;
   let onIntentCb = null;
+  let onFxCb = null;
   let latestSnapshot = null;
   let closed = false;
   void closed;
@@ -103,6 +104,7 @@ export function createRelayRoom(code, { isHost, profile }) {
     if (data.t === "snap") onSnapshotCb?.(data.d);
     else if (data.t === "pos") onPosCb?.(data.from, data.d);
     else if (data.t === "intent" && data.d && typeof data.d.action === "string") onIntentCb?.(data.from, data.d);
+    else if (data.t === "fx") onFxCb?.(data.d);
     else if (data.t === "bye") {
       peers.delete(data.from);
       emitRoster();
@@ -157,6 +159,13 @@ export function createRelayRoom(code, { isHost, profile }) {
     },
     onIntent(cb) {
       onIntentCb = cb;
+    },
+    // efectos compartidos de la sala (vinilo, humo...): no pasan por el motor
+    sendFx(d) {
+      sendMsg("fx", d);
+    },
+    onFx(cb) {
+      onFxCb = cb;
     },
     onRoster(cb) {
       onRosterChange = cb;

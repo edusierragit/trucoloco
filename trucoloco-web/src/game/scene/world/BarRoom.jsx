@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, Text } from "@react-three/drei";
 import { CanvasTexture, RepeatWrapping } from "three";
@@ -129,63 +129,168 @@ function BrickBackWall() {
   );
 }
 
-function BackCounter() {
-  const bottleColors = [BAR.bottleGreen, BAR.bottleAmber, BAR.bottleBlue, "#4f2118", "#302a15"];
+// Botella de bar: vidrio con licor adentro (nivel real), hombro, cuello,
+// tapa y etiqueta. Compuesta, cero assets. `kind` define la silueta.
+function Bottle({ x = 0, z = 0, kind = "wine", glass = "#26411f", liquid = "#4c150f", label = "#dcc9a0", h = 0.56 }) {
+  const rBody = kind === "whisky" ? 0.058 : kind === "gin" ? 0.05 : kind === "verm" ? 0.052 : 0.044;
+  const rNeck = 0.015;
+  const bodyH = h * (kind === "whisky" ? 0.5 : 0.6);
+  const shoulderH = h * 0.13;
+  const neckH = h * (kind === "gin" ? 0.32 : 0.24);
+  const topY = bodyH + shoulderH + neckH;
 
   return (
-    <group name="World_BackCounter">
-      <RoundedBox args={[6.7, 0.7, 0.62]} radius={0.08} position={[0, -1.15, -3.58]} castShadow receiveShadow>
-        <meshStandardMaterial color={BAR.wood} roughness={0.74} metalness={0.06} />
-      </RoundedBox>
-      <RoundedBox args={[6.9, 0.12, 0.72]} radius={0.04} position={[0, -0.73, -3.58]} castShadow receiveShadow>
-        <meshStandardMaterial color="#3c2112" roughness={0.58} metalness={0.08} />
-      </RoundedBox>
-      <RoundedBox args={[6.5, 0.04, 0.08]} radius={0.012} position={[0, -0.66, -3.2]}>
-        <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.62} />
-      </RoundedBox>
+    <group position={[x, 0, z]}>
+      {/* cuerpo de vidrio */}
+      <mesh position={[0, bodyH / 2, 0]} castShadow>
+        <cylinderGeometry args={[rBody, rBody * 0.96, bodyH, 16]} />
+        <meshStandardMaterial color={glass} roughness={0.08} metalness={0} transparent opacity={0.46} />
+      </mesh>
+      {/* licor adentro (nivel ~66%) */}
+      <mesh position={[0, bodyH * 0.33, 0]}>
+        <cylinderGeometry args={[rBody * 0.9, rBody * 0.88, bodyH * 0.66, 16]} />
+        <meshStandardMaterial color={liquid} roughness={0.34} metalness={0.05} transparent opacity={0.92} />
+      </mesh>
+      {/* hombro cónico */}
+      <mesh position={[0, bodyH + shoulderH / 2, 0]} castShadow>
+        <cylinderGeometry args={[rNeck * 1.4, rBody, shoulderH, 16]} />
+        <meshStandardMaterial color={glass} roughness={0.08} transparent opacity={0.46} />
+      </mesh>
+      {/* cuello */}
+      <mesh position={[0, bodyH + shoulderH + neckH / 2, 0]} castShadow>
+        <cylinderGeometry args={[rNeck, rNeck * 1.2, neckH, 12]} />
+        <meshStandardMaterial color={glass} roughness={0.1} transparent opacity={0.55} />
+      </mesh>
+      {/* tapa / corcho */}
+      <mesh position={[0, topY + 0.022, 0]}>
+        <cylinderGeometry args={[rNeck * 1.25, rNeck * 1.25, 0.045, 10]} />
+        <meshStandardMaterial color={kind === "gin" ? "#1c1c1e" : "#2a1a0c"} roughness={0.65} metalness={0.1} />
+      </mesh>
+      {/* etiqueta al frente */}
+      <mesh position={[0, bodyH * 0.44, rBody * 0.93]}>
+        <planeGeometry args={[rBody * 1.55, bodyH * 0.46]} />
+        <meshStandardMaterial color={label} roughness={0.75} side={2} />
+      </mesh>
+      {/* filete de la etiqueta */}
+      <mesh position={[0, bodyH * 0.22, rBody * 0.94]}>
+        <planeGeometry args={[rBody * 1.55, bodyH * 0.04]} />
+        <meshStandardMaterial color={liquid} roughness={0.6} side={2} />
+      </mesh>
+    </group>
+  );
+}
 
-      {[-1.1, 0.08, 1.22].map((y, row) => (
-        <group key={y} position={[0, y, -3.93]}>
-          <RoundedBox args={[5.8, 0.065, 0.16]} radius={0.016}>
-            <meshStandardMaterial color={BAR.woodDark} roughness={0.72} />
+// Copa colgada boca abajo (rack de la barra)
+function HangingGlass({ x }) {
+  return (
+    <group position={[x, 0, 0]}>
+      <mesh position={[0, -0.09, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.14, 8]} />
+        <meshStandardMaterial color="#cfe0e6" roughness={0.12} transparent opacity={0.5} />
+      </mesh>
+      <mesh position={[0, -0.02, 0]}>
+        <sphereGeometry args={[0.05, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#cfe0e6" roughness={0.1} transparent opacity={0.4} side={2} />
+      </mesh>
+      <mesh position={[0, -0.165, 0]}>
+        <cylinderGeometry args={[0.035, 0.035, 0.008, 12]} />
+        <meshStandardMaterial color="#dfeaee" roughness={0.1} transparent opacity={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+const BOTTLE_KINDS = [
+  { kind: "wine",    glass: "#26411f", liquid: "#4c150f", label: "#dcc9a0", h: 0.60 },
+  { kind: "whisky",  glass: "#5a3a16", liquid: "#8a4a12", label: "#ecd6a0", h: 0.50 },
+  { kind: "gin",     glass: "#274a52", liquid: "#bfe0e6", label: "#e8eef0", h: 0.58 },
+  { kind: "rum",     glass: "#3a2210", liquid: "#6e3a12", label: "#c98a4a", h: 0.52 },
+  { kind: "verm",    glass: "#4a1a1a", liquid: "#7a1414", label: "#e6c0a0", h: 0.55 },
+  { kind: "liqueur", glass: "#3a2a52", liquid: "#7a5ad0", label: "#e0d4f0", h: 0.53 }
+];
+
+// La barra del antro: mostrador con tapa de madera + filo de bronce, panel
+// frontal con boiserie, apoyapiés de bronce, espejo enmarcado atrás, tres
+// estantes con botellas variadas y copas colgadas. Medida contra la pared de
+// ladrillo (z ≈ -3.6 a -3.95) para no tocar la mesa central.
+function BackCounter() {
+  return (
+    <group name="World_BackCounter">
+      {/* ── cuerpo de la barra (frente hacia la mesa) ── */}
+      {/* zócalo/retranqueo oscuro */}
+      <RoundedBox args={[6.8, 0.26, 0.5]} radius={0.03} position={[0, -1.85, -3.42]} receiveShadow>
+        <meshStandardMaterial color="#0b0605" roughness={0.95} />
+      </RoundedBox>
+      {/* panel frontal (boiserie) */}
+      <RoundedBox args={[6.7, 1.06, 0.42]} radius={0.05} position={[0, -1.36, -3.36]} castShadow receiveShadow>
+        <meshStandardMaterial color={BAR.wood} roughness={0.72} metalness={0.06} />
+      </RoundedBox>
+      {/* battientes verticales del panel */}
+      {[-2.6, -1.55, -0.5, 0.5, 1.55, 2.6].map((x) => (
+        <RoundedBox key={`batten-${x}`} args={[0.08, 0.92, 0.06]} radius={0.02} position={[x, -1.34, -3.15]} castShadow>
+          <meshStandardMaterial color="#20110a" roughness={0.78} metalness={0.05} />
+        </RoundedBox>
+      ))}
+      {/* tapa de madera con voladizo */}
+      <RoundedBox args={[6.98, 0.12, 0.66]} radius={0.04} position={[0, -0.74, -3.42]} castShadow receiveShadow>
+        <meshStandardMaterial color="#3c2112" roughness={0.42} metalness={0.12} />
+      </RoundedBox>
+      {/* filo de bronce del mostrador */}
+      <RoundedBox args={[6.98, 0.05, 0.05]} radius={0.02} position={[0, -0.69, -3.1]}>
+        <meshStandardMaterial color={BAR.brass} roughness={0.3} metalness={0.7} />
+      </RoundedBox>
+      {/* apoyapiés de bronce */}
+      <mesh position={[0, -1.78, -3.04]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.03, 0.03, 6.3, 12]} />
+        <meshStandardMaterial color={BAR.brass} roughness={0.32} metalness={0.72} />
+      </mesh>
+      {[-2.9, 0, 2.9].map((x) => (
+        <mesh key={`rail-${x}`} position={[x, -1.88, -3.04]}>
+          <cylinderGeometry args={[0.022, 0.022, 0.2, 8]} />
+          <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.7} />
+        </mesh>
+      ))}
+
+      {/* ── back-bar: espejo enmarcado ── */}
+      <RoundedBox args={[4.7, 2.2, 0.05]} radius={0.03} position={[0, 0.2, -4.0]}>
+        <meshStandardMaterial color="#0f0d0b" roughness={0.16} metalness={0.85} />
+      </RoundedBox>
+      {/* marco de bronce del espejo */}
+      {[[0, 1.34, 4.9, 0.1], [0, -0.94, 4.9, 0.1], [-2.4, 0.2, 0.1, 2.36], [2.4, 0.2, 0.1, 2.36]].map(([mx, my, w, hh], i) => (
+        <RoundedBox key={`frame-${i}`} args={[w, hh, 0.07]} radius={0.02} position={[mx, my, -3.98]}>
+          <meshStandardMaterial color={BAR.brass} roughness={0.36} metalness={0.62} />
+        </RoundedBox>
+      ))}
+
+      {/* ── estantes con botellas ── */}
+      {[-0.95, 0.2, 1.3].map((y, row) => (
+        <group key={y} position={[0, y, -3.9]}>
+          <RoundedBox args={[5.9, 0.07, 0.24]} radius={0.02} position={[0, 0, 0.03]} castShadow receiveShadow>
+            <meshStandardMaterial color={BAR.woodDark} roughness={0.68} metalness={0.06} />
           </RoundedBox>
-          {[-2.72, -1.36, 0, 1.36, 2.72].map((x) => (
-            <RoundedBox key={`bracket-${x}`} args={[0.055, 0.26, 0.075]} radius={0.012} position={[x, -0.16, 0.02]} castShadow receiveShadow>
-              <meshStandardMaterial color="#120907" roughness={0.74} metalness={0.08} />
+          {/* ménsulas */}
+          {[-2.75, 0, 2.75].map((bx) => (
+            <RoundedBox key={`br-${bx}`} args={[0.05, 0.2, 0.1]} radius={0.01} position={[bx, -0.12, 0]}>
+              <meshStandardMaterial color="#120907" roughness={0.74} />
             </RoundedBox>
           ))}
-          {Array.from({ length: 10 }, (_, index) => {
-            const x = -2.45 + index * 0.55 + (row % 2) * 0.16;
-            const height = 0.28 + ((row + index) % 3) * 0.09;
-            const color = bottleColors[(row + index) % bottleColors.length];
-
-            return (
-              <group key={index} position={[x, 0.14, 0.1]}>
-                {/* cuerpo esbelto de vidrio */}
-                <mesh castShadow>
-                  <cylinderGeometry args={[0.038, 0.042, height, 12]} />
-                  <meshStandardMaterial color={color} roughness={0.18} metalness={0.1} transparent opacity={0.66} />
-                </mesh>
-                {/* hombro conico */}
-                <mesh position={[0, height * 0.5 + 0.05, 0]} castShadow>
-                  <cylinderGeometry args={[0.017, 0.04, 0.1, 12]} />
-                  <meshStandardMaterial color={color} roughness={0.2} transparent opacity={0.66} />
-                </mesh>
-                {/* cuello largo fino */}
-                <mesh position={[0, height * 0.5 + 0.16, 0]} castShadow>
-                  <cylinderGeometry args={[0.015, 0.017, 0.14, 10]} />
-                  <meshStandardMaterial color={color} roughness={0.2} transparent opacity={0.7} />
-                </mesh>
-                {/* tapa/corcho */}
-                <mesh position={[0, height * 0.5 + 0.24, 0]} castShadow>
-                  <cylinderGeometry args={[0.017, 0.017, 0.035, 8]} />
-                  <meshStandardMaterial color="#160d07" roughness={0.7} />
-                </mesh>
-              </group>
-            );
+          {Array.from({ length: 6 }, (_, i) => {
+            const spec = BOTTLE_KINDS[(i + row * 2) % BOTTLE_KINDS.length];
+            const x = -2.35 + i * 0.94;
+            return <Bottle key={i} x={x} z={0.09} {...spec} />;
           })}
         </group>
       ))}
+
+      {/* ── rack de copas colgadas sobre la barra ── */}
+      <group position={[0, 1.98, -3.5]}>
+        <RoundedBox args={[3.4, 0.06, 0.1]} radius={0.02} position={[0, 0, 0]}>
+          <meshStandardMaterial color="#1a0f09" roughness={0.7} metalness={0.1} />
+        </RoundedBox>
+        {[-1.2, -0.6, 0, 0.6, 1.2].map((gx) => (
+          <HangingGlass key={`hg-${gx}`} x={gx} />
+        ))}
+      </group>
     </group>
   );
 }
@@ -580,12 +685,12 @@ const PRISM_RAYS = [
 ];
 
 function PinkFloydShrine() {
-  const [playing, setPlaying] = useState(false);
+  const playing = useVinylPlaying();
   const [missing, setMissing] = useState(false);
   const handleClick = (event) => {
     event.stopPropagation();
     setMissing(false);
-    setPlaying(toggleVinyl(() => { setPlaying(false); setMissing(true); }));
+    toggleVinyl(() => setMissing(true));
   };
   return (
     <group name="World_PrismShrine" position={[-5.22, 0.95, -0.9]} rotation={[0, Math.PI / 2, 0]}>
@@ -635,26 +740,58 @@ function PinkFloydShrine() {
 // Click en cualquiera => suena Dark Side of the Moon de fondo (el ritual).
 // El mp3 va en public/assets/audio/dark-side.mp3 — si falta, el disco avisa.
 let vinylAudio = null;
+let vinylPlaying = false;
+const vinylListeners = new Set();
 
-function toggleVinyl(onFail) {
+// El disco es DE LA SALA: si uno lo pone, suena para todos. El puente con la
+// red vive en App (canal fx); acá solo emitimos/escuchamos window events.
+function setVinylPlaying(next, { broadcast = true, onFail } = {}) {
   if (!vinylAudio) {
     vinylAudio = new Audio(assetUrl("assets/audio/dark-side.mp3"));
     vinylAudio.loop = true;
     vinylAudio.volume = 0.3;
   }
-  if (vinylAudio.paused) {
+  if (next) {
     vinylAudio.play().catch(() => {
       vinylAudio = null;
+      vinylPlaying = false;
+      for (const listener of vinylListeners) listener(false);
       onFail?.();
     });
-    return true;
+  } else {
+    vinylAudio.pause();
   }
-  vinylAudio.pause();
-  return false;
+  vinylPlaying = next;
+  for (const listener of vinylListeners) listener(next);
+  if (broadcast) {
+    window.dispatchEvent(new CustomEvent("tl-vinyl-local", { detail: { playing: next } }));
+  }
+}
+
+function toggleVinyl(onFail) {
+  setVinylPlaying(!vinylPlaying, { onFail });
+  return vinylPlaying;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("tl-vinyl-remote", (event) => {
+    const playing = Boolean(event.detail?.playing);
+    if (playing !== vinylPlaying) setVinylPlaying(playing, { broadcast: false });
+  });
+}
+
+// hook para que shrine y vinilos reflejen el estado compartido
+function useVinylPlaying() {
+  const [playing, setPlaying] = useState(vinylPlaying);
+  useEffect(() => {
+    vinylListeners.add(setPlaying);
+    return () => vinylListeners.delete(setPlaying);
+  }, []);
+  return playing;
 }
 
 function VinylWall() {
-  const [playing, setPlaying] = useState(false);
+  const playing = useVinylPlaying();
   const [missing, setMissing] = useState(false);
   const spinRefs = useRef([]);
   const discos = [
@@ -673,10 +810,7 @@ function VinylWall() {
   const handleClick = (event) => {
     event.stopPropagation();
     setMissing(false);
-    setPlaying(toggleVinyl(() => {
-      setPlaying(false);
-      setMissing(true);
-    }));
+    toggleVinyl(() => setMissing(true));
   };
 
   return (
