@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { applyIntent, deriveView } from "../src/game/hooks/useTrucolocoMatch.js";
+import { adjustScoreState, applyIntent, deriveView } from "../src/game/hooks/useTrucolocoMatch.js";
 import { deck } from "../src/game/data/cards.js";
 import { tableSeats } from "../src/game/data/characters.js";
 import { getHandWinner, PARDA } from "../src/game/rules/truco.js";
@@ -22,6 +22,17 @@ function dealDeterministicHands() {
   }, {});
 }
 
+function dealTeamAWinsFastHands() {
+  return orderedSeats.reduce((hands, seat, seatIndex) => {
+    hands[seat.seatId] = [0, 1].map((_, cardIndex) => ({
+      ...deck[(seatIndex * 3 + cardIndex) % deck.length],
+      power: seat.team === "A" ? 30 - seatIndex - cardIndex : 1 + seatIndex + cardIndex,
+      handIndex: `close-${seat.seatId}-${cardIndex}`
+    }));
+    return hands;
+  }, {});
+}
+
 function createCoreState(overrides = {}) {
   const handsBySeat = overrides.handsBySeat ?? dealDeterministicHands();
   return {
@@ -35,6 +46,8 @@ function createCoreState(overrides = {}) {
     gameMode: "trucoloco",
     activeModifier: null,
     activeBet: 1,
+    scoreMode: "auto",
+    suggestedPoints: null,
     handsBySeat,
     currentLeadSeatId: "A-negociante",
     currentTurnSeatId: "A-negociante",
@@ -58,9 +71,11 @@ function createCoreState(overrides = {}) {
     envidoResolved: false,
     envidoResult: null,
     envidoPending: null,
+    envidoChain: [],
     trucoState: "none",
     trucoRaiseOwner: null,
     trucoPending: null,
+    trucoResponse: null,
     pendingAnimationKey: 0,
     eventLog: "",
     highlight: "",
@@ -69,6 +84,29 @@ function createCoreState(overrides = {}) {
     ...overrides,
     handsBySeat
   };
+}
+
+function playUntilClosed(state) {
+  let current = state;
+  let guard = 0;
+
+  while (!current.handClosed && guard < 40) {
+    if (current.currentTurnSeatId && current.tableCards.length < orderedSeats.length) {
+      const card = current.handsBySeat[current.currentTurnSeatId]?.[0];
+      assert.ok(card, `Seat ${current.currentTurnSeatId} should have a card.`);
+      current = applyIntent(current, {
+        seatId: current.currentTurnSeatId,
+        action: "playCard",
+        payload: { cardId: card.handIndex }
+      });
+    } else {
+      current = applyIntent(current, { seatId: current.currentLeadSeatId ?? "A-negociante", action: "advance" });
+    }
+    guard += 1;
+  }
+
+  assert.equal(current.handClosed, true, "The hand should close during simulation.");
+  return current;
 }
 
 function resolveSixSeatTrick(cards, manoTeam, trickHistory) {
@@ -208,6 +246,30 @@ for (const seat of orderedSeats) {
 }
 
 {
+  const pending = applyIntent(createCoreState({ currentTurnSeatId: "A-negociante" }), {
+    seatId: "A-negociante",
+    action: "callEnvido"
+  });
+  assert.equal(pending.envidoPending.points, null, "Envido waits for a response before settling.");
+  assert.equal(pending.envidoChain.map((call) => call.type).join(">"), "envido");
+
+  const raised = applyIntent(pending, {
+    seatId: "B-negociante",
+    action: "raiseEnvido",
+    payload: { callType: "real" }
+  });
+  assert.equal(raised.envidoChain.map((call) => call.type).join(">"), "envido>real", "Envido can be raised to real.");
+
+  const rejected = applyIntent(raised, { seatId: "A-negociante", action: "rejectEnvido" });
+  assert.equal(rejected.envidoPending.accepted, false);
+  assert.equal(rejected.envidoPending.points, 2, "Real no querido after envido pays previous accumulated points.");
+
+  const settled = applyIntent(rejected, { seatId: "A-negociante", action: "advance" });
+  assert.equal(settled.envidoResolved, true);
+  assert.equal(settled.scores[rejected.envidoPending.winner], 2);
+}
+
+{
   const truco = createCoreState({ currentTurnSeatId: "A-negociante" });
   const pending = applyIntent(truco, { seatId: "A-negociante", action: "callTruco" });
   assert.equal(pending.trucoPending.label, "Truco");
@@ -217,6 +279,21 @@ for (const seat of orderedSeats) {
   const accepted = applyIntent(pending, { seatId: "B-negociante", action: "acceptTruco" });
   assert.equal(accepted.activeBet, 2);
   assert.equal(accepted.trucoRaiseOwner, "B");
+  assert.equal(accepted.handClosed, false, "Truco querido must not close the hand.");
+  assert.equal(accepted.trucoResponse.accepted, true);
+
+  const followCard = accepted.handsBySeat["A-negociante"][0];
+  const followed = applyIntent(accepted, {
+    seatId: "A-negociante",
+    action: "playCard",
+    payload: { cardId: followCard.handIndex }
+  });
+  assert.equal(followed.tableCards.length, 1, "After truco querido, the current player can keep playing.");
+
+  const rejectedTruco = applyIntent(pending, { seatId: "B-negociante", action: "rejectTruco" });
+  assert.equal(rejectedTruco.handClosed, true);
+  assert.equal(rejectedTruco.scores.A, 1, "Truco no querido pays 1 to caller.");
+  assert.equal(rejectedTruco.trucoResponse.accepted, false);
 
   const wrongRaiseState = { ...accepted, currentTurnSeatId: "A-negociante" };
   assert.equal(
@@ -237,6 +314,54 @@ for (const seat of orderedSeats) {
   const valeCuatroPending = applyIntent(retrucoPending, { seatId: "A-negociante", action: "raiseTruco" });
   assert.equal(valeCuatroPending.trucoPending.label, "Vale cuatro");
   assert.equal(valeCuatroPending.trucoPending.target, "B");
+
+  const retrucoRejected = applyIntent(retrucoPending, { seatId: "A-negociante", action: "rejectTruco" });
+  assert.equal(retrucoRejected.scores.B, 2, "Retruco no querido pays 2 to caller.");
+
+  const valeCuatroAccepted = applyIntent(valeCuatroPending, { seatId: "B-negociante", action: "acceptTruco" });
+  assert.equal(valeCuatroAccepted.activeBet, 4, "Vale cuatro querido sets hand value to 4.");
+
+  const valeCuatroRejected = applyIntent(valeCuatroPending, { seatId: "B-negociante", action: "rejectTruco" });
+  assert.equal(valeCuatroRejected.scores.A, 3, "Vale cuatro no querido pays 3 to caller.");
+}
+
+{
+  let manual = createCoreState({ scoreMode: "manual", currentTurnSeatId: "A-negociante" });
+  manual = adjustScoreState(manual, "A", 35);
+  assert.deepEqual(manual.scores, { A: 30, B: 0 }, "Manual adjust clamps up to 30.");
+  assert.equal(manual.matchWinner, "A", "Manual adjust can close match.");
+  manual = adjustScoreState(manual, "A", -50);
+  assert.deepEqual(manual.scores, { A: 0, B: 0 }, "Manual adjust clamps down to 0.");
+  assert.equal(manual.matchWinner, null);
+
+  const manualTrucoPending = applyIntent(createCoreState({ scoreMode: "manual", currentTurnSeatId: "A-negociante" }), {
+    seatId: "A-negociante",
+    action: "callTruco"
+  });
+  const manualTrucoRejected = applyIntent(manualTrucoPending, { seatId: "B-negociante", action: "rejectTruco" });
+  assert.deepEqual(manualTrucoRejected.scores, { A: 0, B: 0 }, "Manual mode does not auto-score rejected truco.");
+  assert.equal(manualTrucoRejected.suggestedPoints.kind, "truco");
+  assert.equal(manualTrucoRejected.suggestedPoints.points, 1);
+  assert.equal(manualTrucoRejected.suggestedPoints.scoringWinner, "A");
+
+  const manualEnvidoPending = applyIntent(createCoreState({ scoreMode: "manual", currentTurnSeatId: "A-negociante" }), {
+    seatId: "A-negociante",
+    action: "callEnvido",
+    payload: { accepted: false }
+  });
+  const manualEnvidoSettled = applyIntent(manualEnvidoPending, { seatId: "A-negociante", action: "advance" });
+  assert.deepEqual(manualEnvidoSettled.scores, { A: 0, B: 0 }, "Manual mode does not auto-score envido.");
+  assert.equal(manualEnvidoSettled.suggestedPoints.kind, "envido");
+
+  const closedManual = playUntilClosed(
+    createCoreState({
+      scoreMode: "manual",
+      handsBySeat: dealTeamAWinsFastHands()
+    })
+  );
+  assert.deepEqual(closedManual.scores, { A: 0, B: 0 }, "Manual mode does not auto-score hand close.");
+  assert.equal(closedManual.suggestedPoints.kind, "hand");
+  assert.equal(closedManual.suggestedPoints.points, 1);
 }
 
 {

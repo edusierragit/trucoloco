@@ -3,7 +3,11 @@ import { deck } from "../src/game/data/cards.js";
 import {
   PARDA,
   applyHandPoints,
+  buildEnvidoChain,
+  getEnvidoAcceptedPoints,
+  getEnvidoRejectedPoints,
   getEnvidoValue,
+  getFaltaEnvidoPoints,
   getHandWinner,
   getManoTeam,
   getMatchWinner,
@@ -168,6 +172,27 @@ console.log("Truco rules OK");
   // empate de envido lo gana el mano
   const r = resolveEnvido(negras, negras, "B");
   assert.equal(r.winner, "B", "Envido parejo lo cobra el que es mano.");
+}
+
+// Escalera real de envido: querido suma cadena; no querido cobra lo previo.
+{
+  const chain = (...calls) => calls.reduce((acc, call) => buildEnvidoChain(acc, call), []);
+
+  assert.equal(getEnvidoAcceptedPoints(chain("envido"), { A: 0, B: 0 }), 2, "Envido querido paga 2.");
+  assert.equal(getEnvidoRejectedPoints(chain("envido"), { A: 0, B: 0 }), 1, "Envido no querido paga 1.");
+  assert.equal(getEnvidoAcceptedPoints(chain("envido", "envido"), { A: 0, B: 0 }), 4, "Envido + Envido querido paga 4.");
+  assert.equal(getEnvidoRejectedPoints(chain("envido", "envido"), { A: 0, B: 0 }), 2, "Segundo envido no querido paga lo previo.");
+  assert.equal(getEnvidoAcceptedPoints(chain("envido", "real"), { A: 0, B: 0 }), 5, "Real Envido sobre envido paga 5.");
+  assert.equal(getEnvidoRejectedPoints(chain("envido", "real"), { A: 0, B: 0 }), 2, "Real no querido paga lo previo.");
+  assert.equal(getFaltaEnvidoPoints({ A: 0, B: 0 }), 30, "Falta al inicio vale 30.");
+  assert.equal(getFaltaEnvidoPoints({ A: 25, B: 20 }), 5, "Falta vale lo que le falta al lider.");
+  assert.equal(getFaltaEnvidoPoints({ A: 28, B: 29 }), 1, "Falta nunca baja de 1.");
+  assert.equal(getEnvidoAcceptedPoints(chain("falta"), { A: 0, B: 0 }), 30, "Falta querida en 0-0 paga 30.");
+  assert.equal(getEnvidoAcceptedPoints(chain("envido", "falta"), { A: 25, B: 20 }), 5, "Falta querida usa marcador vigente.");
+  assert.equal(getEnvidoAcceptedPoints(chain("envido", "falta"), { A: 28, B: 29 }), 1, "Falta querida en 28-29 paga 1.");
+  assert.equal(getEnvidoRejectedPoints(chain("falta"), { A: 0, B: 0 }), 1, "Falta directa no querida paga minimo 1.");
+  assert.equal(getEnvidoRejectedPoints(chain("envido", "falta"), { A: 25, B: 20 }), 2, "Falta no querida paga lo acumulado previo.");
+  assert.equal(getEnvidoRejectedPoints(chain("envido", "real", "falta"), { A: 25, B: 20 }), 5, "Falta no querida luego de real paga 5.");
 }
 
 console.log("Cantos y puntos OK");

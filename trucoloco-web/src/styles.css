@@ -5588,3 +5588,26 @@ select {
   background: radial-gradient(ellipse at 50% 35%, #2a1810 0%, #0d0805 80%);
   border: 1px solid rgba(201, 151, 29, 0.25);
 }
+
+/* salir de la partida sin refrescar — botón siempre visible en juego */
+.exit-to-menu {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.82);
+  border: 1px solid rgba(240, 221, 180, 0.28);
+  color: #f0ddb4;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+.exit-to-menu:hover {
+  border-color: rgba(255, 206, 110, 0.6);
+  box-shadow: 0 0 14px rgba(255, 206, 110, 0.2);
+}

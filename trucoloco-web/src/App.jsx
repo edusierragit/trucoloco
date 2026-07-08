@@ -925,7 +925,20 @@ export default function App() {
     setRemotePos({});
     setMyOnlineSeatId(null);
     window.history.replaceState(null, "", window.location.pathname);
+    // frenar la partida al salir: antes los bots seguian tirando cartas
+    matchRef.current?.returnToRoleSelect?.();
+    setCameraView("table");
   }, []);
+
+  // salir de una partida SOLA (o del bar) sin refrescar: vuelve al menú
+  const exitToMenu = useCallback(() => {
+    if (netRoomRef.current) {
+      leaveSala();
+      return;
+    }
+    matchRef.current?.returnToRoleSelect?.();
+    setCameraView("table");
+  }, [leaveSala]);
 
   const startRoomHand = useCallback(() => {
     const room = netRoomRef.current;
@@ -1002,7 +1015,9 @@ export default function App() {
     ) {
       return undefined;
     }
-    const delay = match.phase === "trick-closed" ? 2100 : match.phase === "envido-resolution" ? 2300 : 1000;
+    // pausa larga al cerrar la vuelta para que se VEA quién ganó (antes se
+    // cerraba tan rápido que no llegabas a leer la mano)
+    const delay = match.phase === "trick-closed" ? 3400 : match.phase === "envido-resolution" ? 2600 : 1100;
     const timer = window.setTimeout(() => {
       if (match.phase === "envido-resolution") match.settleEnvido();
       else if (match.phase === "trick-closed") match.clearTrick();
@@ -1162,6 +1177,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {match.handStarted && cameraView !== "ring" ? (
+        <button className="exit-to-menu" type="button" onClick={exitToMenu} title="Salir de la partida sin refrescar">
+          ← Salir al menú
+        </button>
+      ) : null}
       <div className={stageClassName}>
         <section className="stage-viewport">
           <Canvas
