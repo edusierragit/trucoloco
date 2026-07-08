@@ -11,6 +11,7 @@ import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
 import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
+import { createRelayRoom } from "./game/net/relayRoom";
 import {
   getCombatPos as getConflictCombatPos,
   getCombatVector as getConflictCombatVector,
@@ -628,7 +629,12 @@ export default function App() {
       role: match.selectedRole,
       characterId: match.selectedCharacter?.id ?? null
     };
-    const room = createTrucolocoRoom(code, { isHost, profile });
+    // transporte: RELAY (MQTT/WSS) por defecto — funciona con CGNAT, Brave y
+    // sin TURN. ?net=p2p fuerza el WebRTC puro viejo (para pruebas).
+    const useP2P = new URLSearchParams(window.location.search).get("net") === "p2p";
+    const room = useP2P
+      ? createTrucolocoRoom(code, { isHost, profile })
+      : createRelayRoom(code, { isHost, profile });
     room.onRoster(setRoster);
     setRemotePos({});
     room.onPos((peerId, data) =>
