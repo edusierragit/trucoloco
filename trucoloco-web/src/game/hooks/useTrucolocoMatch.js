@@ -1432,7 +1432,15 @@ export function useTrucolocoMatch(options = {}) {
     () => getSelectedCharacterForRole(selectedRole, selectedCharacterIdsByRole[selectedRole]),
     [selectedCharacterIdsByRole, selectedRole]
   );
-  const mySeatId = useMemo(() => getPerspectiveSeatId(requestedMySeatId, selectedRole), [requestedMySeatId, selectedRole]);
+  // Tu silla — y por lo tanto tu EQUIPO (CASA=A / VISITA=B) — la define:
+  // 1) online: la silla que reclamaste; 2) solo: el PERSONAJE que elegiste
+  // (Irvyn=CASA, Marvyn=VISITA, etc.). Antes se forzaba siempre team A, por
+  // eso elegir a Marvyn te sentaba igual como Irvyn.
+  const mySeatId = useMemo(() => {
+    if (isValidSeatId(requestedMySeatId)) return requestedMySeatId;
+    const charSeat = tableSeats.find((seat) => seat.playerId === selectedCharacter?.id);
+    return charSeat?.seatId ?? getDefaultSeatIdForRole(selectedRole);
+  }, [requestedMySeatId, selectedCharacter, selectedRole]);
   const activeLane = useMemo(() => getLanePairForSeat(mySeatId), [mySeatId]);
   const roster = useMemo(() => ({ A: teams.A, B: teams.B }), []);
   const [state, setState] = useState(() =>
