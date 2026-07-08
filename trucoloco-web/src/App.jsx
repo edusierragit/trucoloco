@@ -536,6 +536,9 @@ export default function App() {
   // tu silla online define tu PERSPECTIVA del match (deriveView de Codex):
   // reclamás B-estrella y el motor te muestra ESA mano, no la del equipo A
   const [myOnlineSeatId, setMyOnlineSeatId] = useState(null);
+  // menú "JUGAR primero": el ▶ JUGAR es protagonista; recién al tocarlo se
+  // despliegan las opciones online (crear / entrar / unirse con código)
+  const [playMenuOpen, setPlayMenuOpen] = useState(false);
   const match = useTrucolocoMatch({ mySeatId: myOnlineSeatId });
   const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
   const [cameraView, setCameraView] = useState("table");
@@ -1617,43 +1620,58 @@ export default function App() {
           </div>
         ) : (
           <div className={`sala-join-box${match.phase === "role-select" ? "" : " sala-lower"}`}>
-            <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
-              🌐 Crear sala
-            </button>
-            {searchingRandom ? (
-              <button className="canto-chip sala-btn" type="button" onClick={cancelarBusqueda}>
-                Buscando sala abierta… (cancelar)
+            {!playMenuOpen ? (
+              <button className="play-cta" type="button" onClick={() => setPlayMenuOpen(true)}>
+                <span className="play-cta-main">▶ JUGAR</span>
+                <span className="play-cta-sub">Con amigos, online</span>
               </button>
             ) : (
-              <button className="canto-chip sala-btn" type="button" onClick={buscarSalaAbierta}>
-                🚪 Entrar a sala abierta
-              </button>
+              <>
+                <div className="play-menu-head">
+                  <span className="play-menu-title">Jugar online</span>
+                  <button className="play-menu-back" type="button" onClick={() => setPlayMenuOpen(false)}>
+                    ✕
+                  </button>
+                </div>
+                <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>
+                  🌐 Crear sala
+                </button>
+                {searchingRandom ? (
+                  <button className="canto-chip sala-btn" type="button" onClick={cancelarBusqueda}>
+                    Buscando sala abierta… (cancelar)
+                  </button>
+                ) : (
+                  <button className="canto-chip sala-btn" type="button" onClick={buscarSalaAbierta}>
+                    🚪 Entrar a sala abierta
+                  </button>
+                )}
+                <div className="sala-join-row">
+                  <input
+                    className="sala-code-input"
+                    maxLength={4}
+                    placeholder="CÓDIGO"
+                    autoComplete="off"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        const code = event.currentTarget.value.trim().toUpperCase();
+                        if (code.length === 4) joinSala(code, false);
+                      }
+                    }}
+                  />
+                  <button
+                    className="canto-chip sala-btn"
+                    type="button"
+                    onClick={(event) => {
+                      const input = event.currentTarget.previousSibling;
+                      const code = input?.value?.trim().toUpperCase() ?? "";
+                      if (code.length === 4) joinSala(code, false);
+                    }}
+                  >
+                    Unirse
+                  </button>
+                </div>
+              </>
             )}
-            <div className="sala-join-row">
-              <input
-                className="sala-code-input"
-                maxLength={4}
-                placeholder="CÓDIGO"
-                autoComplete="off"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    const code = event.currentTarget.value.trim().toUpperCase();
-                    if (code.length === 4) joinSala(code, false);
-                  }
-                }}
-              />
-              <button
-                className="canto-chip sala-btn"
-                type="button"
-                onClick={(event) => {
-                  const input = event.currentTarget.previousSibling;
-                  const code = input?.value?.trim().toUpperCase() ?? "";
-                  if (code.length === 4) joinSala(code, false);
-                }}
-              >
-                Unirse
-              </button>
-            </div>
           </div>
         ),
         document.body

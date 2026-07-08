@@ -5511,3 +5511,69 @@ select {
   line-height: 1.5;
   color: #f0c9c3;
 }
+
+/* ============================================================
+   Menú "JUGAR primero": ▶ JUGAR protagonista; al tocarlo se despliegan
+   las opciones online (crear / entrar / unirse).
+   ============================================================ */
+.play-cta {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 15px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 206, 110, 0.55);
+  background: linear-gradient(160deg, #e0a02a, #7a4a0e);
+  color: #fff6e2;
+  cursor: pointer;
+  box-shadow: 0 0 26px rgba(255, 206, 110, 0.28);
+  transition: transform 0.08s, box-shadow 0.15s;
+}
+.play-cta:hover {
+  box-shadow: 0 0 34px rgba(255, 206, 110, 0.5);
+}
+.play-cta:active {
+  transform: scale(0.98);
+}
+.play-cta-main {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+.play-cta-sub {
+  font-size: 0.72rem;
+  opacity: 0.9;
+  letter-spacing: 0.04em;
+}
+.play-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.play-menu-title {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #d8c19a;
+}
+.play-menu-back {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(240, 221, 180, 0.2);
+  background: rgba(240, 221, 180, 0.05);
+  color: #cbb488;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.play-menu-back:hover {
+  background: rgba(240, 221, 180, 0.12);
+}
