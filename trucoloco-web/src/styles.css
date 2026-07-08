@@ -295,8 +295,9 @@ select {
 
 .walk-hint {
   position: absolute;
-  left: 18px;
-  bottom: 116px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 96px;
   z-index: 6;
   display: grid;
   gap: 3px;
@@ -5610,4 +5611,14 @@ select {
 .exit-to-menu:hover {
   border-color: rgba(255, 206, 110, 0.6);
   box-shadow: 0 0 14px rgba(255, 206, 110, 0.2);
+}
+
+/* el header del panel de sala es manija de arrastre */
+.sala-head {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.sala-head:active {
+  cursor: grabbing;
 }

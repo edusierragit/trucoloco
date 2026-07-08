@@ -656,6 +656,7 @@ export default function App() {
 
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
+  const [salaPos, setSalaPos] = useState(null); // posición arrastrada del panel
   const [salaNotice, setSalaNotice] = useState("");
   // feedback de conexión: si te quedás solo mucho rato, el relay P2P no
   // enganchó (Brave Shields / red). Antes el panel se quedaba mudo en 1/6.
@@ -1520,8 +1521,30 @@ export default function App() {
 
       {createPortal(
         netRoom ? (
-          <div className={`${salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}${match.phase === "role-select" ? "" : " sala-lower"}`}>
-            <div className="sala-head">
+          <div
+            className={`${salaCollapsed ? "sala-panel sala-panel-collapsed" : "sala-panel"}${match.phase === "role-select" ? "" : " sala-lower"}`}
+            style={salaPos ? { left: salaPos.x, top: salaPos.y, right: "auto", bottom: "auto" } : undefined}
+          >
+            <div
+              className="sala-head"
+              onPointerDown={(event) => {
+                // el header es la MANIJA: arrastrá el panel a donde no moleste
+                if (event.target.closest("button")) return;
+                const rect = event.currentTarget.parentElement.getBoundingClientRect();
+                const dx = event.clientX - rect.left;
+                const dy = event.clientY - rect.top;
+                const move = (ev) => setSalaPos({
+                  x: Math.max(4, Math.min(window.innerWidth - 140, ev.clientX - dx)),
+                  y: Math.max(4, Math.min(window.innerHeight - 48, ev.clientY - dy))
+                });
+                const up = () => {
+                  window.removeEventListener("pointermove", move);
+                  window.removeEventListener("pointerup", up);
+                };
+                window.addEventListener("pointermove", move);
+                window.addEventListener("pointerup", up);
+              }}
+            >
               <div className="sala-head-id">
                 <span className="sala-kicker">SALA</span>
                 <strong className="sala-code">{netRoom.code}</strong>
