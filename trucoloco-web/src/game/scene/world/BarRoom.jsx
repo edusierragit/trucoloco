@@ -580,35 +580,52 @@ const PRISM_RAYS = [
 ];
 
 function PinkFloydShrine() {
+  const [playing, setPlaying] = useState(false);
+  const [missing, setMissing] = useState(false);
+  const handleClick = (event) => {
+    event.stopPropagation();
+    setMissing(false);
+    setPlaying(toggleVinyl(() => { setPlaying(false); setMissing(true); }));
+  };
   return (
     <group name="World_PrismShrine" position={[-5.22, 0.95, -0.9]} rotation={[0, Math.PI / 2, 0]}>
-      {/* marco negro profundo */}
-      <RoundedBox args={[1.5, 1.5, 0.06]} radius={0.02} castShadow receiveShadow>
-        <meshStandardMaterial color="#0a0a0c" roughness={0.6} />
-      </RoundedBox>
-      <mesh position={[0, 0, 0.034]}>
-        <planeGeometry args={[1.34, 1.34]} />
-        <meshStandardMaterial color="#050507" roughness={0.9} />
-      </mesh>
-      {/* haz blanco entrando por la izquierda */}
-      <mesh position={[-0.42, -0.05, 0.04]} rotation={[0, 0, 0.32]}>
-        <planeGeometry args={[0.62, 0.022]} />
-        <meshStandardMaterial color="#e8e4d8" emissive="#e8e4d8" emissiveIntensity={0.55} toneMapped={false} />
-      </mesh>
-      {/* el prisma: triángulo de alambre */}
-      <mesh position={[0, 0.02, 0.042]}>
-        <ringGeometry args={[0.235, 0.26, 3]} />
-        <meshStandardMaterial color="#d8d4c8" emissive="#d8d4c8" emissiveIntensity={0.3} toneMapped={false} />
-      </mesh>
-      {/* abanico refractado */}
-      {PRISM_RAYS.map((ray, index) => (
-        <mesh key={index} position={[0.36, -0.02 + index * 0.021, 0.04]} rotation={[0, 0, ray.angle]}>
-          <planeGeometry args={[0.56, 0.024]} />
-          <meshStandardMaterial color={ray.color} emissive={ray.color} emissiveIntensity={0.5} toneMapped={false} />
+      {/* todo el cuadro es clickeable: play/pausa de Dark Side of the Moon */}
+      <group
+        onClick={handleClick}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "auto"; }}
+      >
+        {/* marco negro profundo */}
+        <RoundedBox args={[1.5, 1.5, 0.06]} radius={0.02} castShadow receiveShadow>
+          <meshStandardMaterial color="#0a0a0c" roughness={0.6} />
+        </RoundedBox>
+        <mesh position={[0, 0, 0.034]}>
+          <planeGeometry args={[1.34, 1.34]} />
+          <meshStandardMaterial color="#050507" roughness={0.9} />
         </mesh>
-      ))}
+        {/* haz blanco entrando por la izquierda */}
+        <mesh position={[-0.42, -0.05, 0.04]} rotation={[0, 0, 0.32]}>
+          <planeGeometry args={[0.62, 0.022]} />
+          <meshStandardMaterial color="#e8e4d8" emissive="#e8e4d8" emissiveIntensity={0.55} toneMapped={false} />
+        </mesh>
+        {/* el prisma: triángulo de alambre */}
+        <mesh position={[0, 0.02, 0.042]}>
+          <ringGeometry args={[0.235, 0.26, 3]} />
+          <meshStandardMaterial color="#d8d4c8" emissive="#d8d4c8" emissiveIntensity={0.3} toneMapped={false} />
+        </mesh>
+        {/* abanico refractado */}
+        {PRISM_RAYS.map((ray, index) => (
+          <mesh key={index} position={[0.36, -0.02 + index * 0.021, 0.04]} rotation={[0, 0, ray.angle]}>
+            <planeGeometry args={[0.56, 0.024]} />
+            <meshStandardMaterial color={ray.color} emissive={ray.color} emissiveIntensity={0.5} toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
       <Text position={[0, -0.58, 0.045]} fontSize={0.055} color="#6b5f4a" anchorX="center" anchorY="middle" letterSpacing={0.32}>
         EL LADO OSCURO DEL ANTRO
+      </Text>
+      <Text position={[0, 0.68, 0.05]} fontSize={0.07} color={playing ? "#8be29a" : "#c9971d"} anchorX="center" anchorY="middle" letterSpacing={0.14}>
+        {playing ? "♪ SONANDO — click para parar" : missing ? "falta el disco (mp3)" : "▶ CLICK: PONÉ EL DISCO"}
       </Text>
     </group>
   );
