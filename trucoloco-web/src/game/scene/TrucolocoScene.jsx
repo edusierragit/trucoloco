@@ -1122,52 +1122,25 @@ function DebateEntrance() {
   );
 }
 
-function WalkMarker({ active, label, position, color = "#63d5c5" }) {
-  const groupRef = useRef(null);
+// Edu: "sacá los 200 círculos que no sirven para nada". Ahora solo hay UN
+// punto de luz sutil cuando estás parado sobre un hotspot; el hint de la
+// esquina ya explica qué tecla apretar.
+const HOTSPOT_DOTS = {
+  table: [0, 0.06, 2.86],
+  door: [0, 0.06, 3.62],
+  bar: [0, 0.06, -3.06],
+  ring: [-7.45, 0.06, -0.9]
+};
 
-  useFrame((state) => {
-    if (!groupRef.current) return;
-    const pulse = active ? 1 + Math.sin(state.clock.elapsedTime * 4) * 0.045 : 1;
-    groupRef.current.scale.setScalar(pulse);
-  });
-
-  return (
-    <group ref={groupRef} name={`Walk_Hotspot_${label}`} position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.42, 0.54, 42]} />
-        <meshBasicMaterial color={active ? "#f3dfb6" : color} transparent opacity={active ? 0.46 : 0.22} depthWrite={false} />
-      </mesh>
-      <Text
-        position={[0, 0.013, 0.16]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.14}
-        color={active ? "#f3dfb6" : color}
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.08}
-      >
-        {label}
-      </Text>
-    </group>
-  );
-}
-
-function WalkHotspots({ activeHotspot, lowPower = false }) {
+function WalkHotspots({ activeHotspot }) {
+  const position = HOTSPOT_DOTS[activeHotspot];
+  if (!position) return null;
   return (
     <group name="Walk_Hotspots">
-      <mesh position={[0, 0.055, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.56, 2.7, lowPower ? 48 : 96]} />
-        <meshBasicMaterial
-          color={activeHotspot === "table" ? "#f0c06a" : "#63d5c5"}
-          transparent
-          opacity={activeHotspot === "table" ? 0.34 : 0.14}
-          depthWrite={false}
-        />
+      <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.18, 24]} />
+        <meshBasicMaterial color="#f3dfb6" transparent opacity={0.32} depthWrite={false} />
       </mesh>
-      <WalkMarker active={activeHotspot === "table"} label="F SENTARSE" position={[0, 0.062, 2.86]} color="#8bded3" />
-      <WalkMarker active={activeHotspot === "door"} label="F PUERTA" position={[0, 0.064, 3.62]} color="#d9b36c" />
-      <WalkMarker active={activeHotspot === "bar"} label="F BARRA" position={[0, 0.064, -3.06]} color="#8bded3" />
-      <WalkMarker active={activeHotspot === "ring"} label="F PELEAR" position={[-7.45, 0.066, -0.9]} color="#e06b4a" />
     </group>
   );
 }

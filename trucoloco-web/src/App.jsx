@@ -31,7 +31,7 @@ if (typeof window !== "undefined") {
 
 const cameraViews = [
   { id: "seat", label: "Silla", hint: "1 · sentarte" },
-  { id: "walk", label: "Caminar", hint: "2 · WASD" }
+  { id: "walk", label: "🍺 Entrar al bar", hint: "2 · WASD" }
 ];
 
 const playerById = [...teams.A, ...teams.B].reduce((players, player) => {
@@ -642,7 +642,11 @@ export default function App() {
     setNetRoom(room);
     // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
     window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
-  }, [match.selectedCharacter, match.selectedRole]);
+    // EL BAR ES LA SALA: crear o unirte te deja CAMINANDO en el antro con tu
+    // personaje (espacio social). La partida es una actividad que se lanza
+    // adentro. Si ya hay mano en curso, el invariante de cámara manda.
+    if (!matchRef.current?.handStarted) handleCameraViewChange("walk");
+  }, [match.selectedCharacter, match.selectedRole, handleCameraViewChange]);
 
   const [micOn, setMicOn] = useState(false);
   const [salaCollapsed, setSalaCollapsed] = useState(false);
@@ -1233,7 +1237,13 @@ export default function App() {
                   type="button"
                   className={cameraView === view.id ? "camera-dock-button camera-dock-button-active" : "camera-dock-button"}
                   aria-pressed={cameraView === view.id}
-                  onClick={() => handleCameraViewChange(view.id)}
+                  onClick={() => {
+                    if (view.id === "walk" && !netRoomRef.current) {
+                      joinSala(genRoomCode(), true);
+                      return;
+                    }
+                    handleCameraViewChange(view.id);
+                  }}
                 >
                   <span>{view.label}</span>
                   <small>{view.hint}</small>
