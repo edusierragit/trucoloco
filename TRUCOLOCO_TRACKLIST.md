@@ -19,11 +19,12 @@
 - **Cabezas vivas** — idle sutil sobre torso/cabeza (sway + vistazo a las
   cartas, desfasado por personaje). Asientos humanos (vos + peers) miran
   SIEMPRE a la mesa, no giran hacia el que actúa.
-- **PENDIENTE #1 (menú ▶ JUGAR primero)** — la parte "Practicar contra la IA
-  secundario + oculto en sala" ya está en el RoleSelector. El expander
-  ▶ JUGAR que despliega Crear sala/Entrar/Unirse vive en el portal
-  `sala-join-box` de App.jsx (sección sala/red del otro Opus): a coordinar
-  para no pisar.
+- **Menú ▶ JUGAR primero (#1)** — el menú de entrada es un botón grande
+  "▶ JUGAR / Con amigos, online"; al tocarlo se despliegan Crear sala /
+  Entrar a sala abierta / Unirse con código (✕ para colapsar). Cambio
+  presentacional en el portal `sala-join-box`, sin tocar handlers de red.
+  "Practicar contra la IA" queda secundario y oculto dentro de una sala.
+  **OPUS_TASK_2 completo (#1, #2, #3).**
 
 ## ✅ HECHO por Opus (2026-07-04)
 
