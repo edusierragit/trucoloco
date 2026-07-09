@@ -213,84 +213,135 @@ const BOTTLE_KINDS = [
 // frontal con boiserie, apoyapiés de bronce, espejo enmarcado atrás, tres
 // estantes con botellas variadas y copas colgadas. Medida contra la pared de
 // ladrillo (z ≈ -3.6 a -3.95) para no tocar la mesa central.
+// Trago apoyado en la barra: vaso con líquido (y hielo/espuma según tipo).
+function Drink({ x, z = -3.24, kind = "tumbler", liquid = "#a0551a" }) {
+  if (kind === "wine") {
+    return (
+      <group position={[x, 0, z]}>
+        <mesh position={[0, 0.006, 0]}><cylinderGeometry args={[0.05, 0.05, 0.012, 16]} /><meshStandardMaterial color="#dfeef2" roughness={0.1} transparent opacity={0.5} /></mesh>
+        <mesh position={[0, 0.085, 0]}><cylinderGeometry args={[0.006, 0.006, 0.16, 8]} /><meshStandardMaterial color="#dfeef2" roughness={0.1} transparent opacity={0.5} /></mesh>
+        <mesh position={[0, 0.185, 0]}><cylinderGeometry args={[0.052, 0.03, 0.1, 16]} /><meshStandardMaterial color="#dfeef2" roughness={0.06} transparent opacity={0.32} /></mesh>
+        <mesh position={[0, 0.16, 0]}><cylinderGeometry args={[0.043, 0.028, 0.055, 16]} /><meshStandardMaterial color={liquid} roughness={0.3} transparent opacity={0.86} /></mesh>
+      </group>
+    );
+  }
+  if (kind === "beer") {
+    return (
+      <group position={[x, 0, z]}>
+        <mesh position={[0, 0.12, 0]}><cylinderGeometry args={[0.046, 0.04, 0.24, 16]} /><meshStandardMaterial color="#e8d9b0" roughness={0.08} transparent opacity={0.3} /></mesh>
+        <mesh position={[0, 0.1, 0]}><cylinderGeometry args={[0.041, 0.036, 0.19, 16]} /><meshStandardMaterial color="#c8860f" roughness={0.25} transparent opacity={0.9} /></mesh>
+        <mesh position={[0, 0.215, 0]}><cylinderGeometry args={[0.046, 0.045, 0.035, 16]} /><meshStandardMaterial color="#f5edd8" roughness={0.6} /></mesh>
+      </group>
+    );
+  }
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 0.055, 0]}><cylinderGeometry args={[0.046, 0.04, 0.11, 16]} /><meshStandardMaterial color="#dfeef2" roughness={0.06} transparent opacity={0.28} /></mesh>
+      <mesh position={[0, 0.04, 0]}><cylinderGeometry args={[0.041, 0.038, 0.065, 16]} /><meshStandardMaterial color={liquid} roughness={0.3} transparent opacity={0.86} /></mesh>
+      <mesh position={[0.012, 0.06, 0]} rotation={[0.3, 0.4, 0.1]}><boxGeometry args={[0.028, 0.028, 0.028]} /><meshStandardMaterial color="#eaf4f6" roughness={0.1} transparent opacity={0.55} /></mesh>
+    </group>
+  );
+}
+
+const BAR_DRINKS = [
+  { x: -2.7, kind: "tumbler", liquid: "#9a5216" },
+  { x: -1.95, kind: "wine", liquid: "#5a1410" },
+  { x: -1.1, kind: "beer", liquid: "#c8860f" },
+  { x: 0.5, kind: "tumbler", liquid: "#7a3a12" },
+  { x: 1.4, kind: "wine", liquid: "#6a1414" },
+  { x: 2.5, kind: "beer", liquid: "#caa019" }
+];
+
+// La barra del antro: mostrador de madera (tipo bar de boliche) con tragos
+// apoyados arriba y filo de bronce; back-bar bajo con espejo y dos estantes
+// de vidrio con botellas en filas prolijas. TODO por debajo del neón
+// TRUCOLOCO (y≈2.05) para no taparlo. Medida contra la pared de ladrillo.
 function BackCounter() {
   return (
     <group name="World_BackCounter">
-      {/* ── cuerpo de la barra (frente hacia la mesa) ── */}
-      {/* zócalo/retranqueo oscuro */}
+      {/* ── mostrador (frente hacia la mesa) ── */}
       <RoundedBox args={[6.8, 0.26, 0.5]} radius={0.03} position={[0, -1.85, -3.42]} receiveShadow>
         <meshStandardMaterial color="#0b0605" roughness={0.95} />
       </RoundedBox>
-      {/* panel frontal (boiserie) */}
       <RoundedBox args={[6.7, 1.06, 0.42]} radius={0.05} position={[0, -1.36, -3.36]} castShadow receiveShadow>
         <meshStandardMaterial color={BAR.wood} roughness={0.72} metalness={0.06} />
       </RoundedBox>
-      {/* battientes verticales del panel */}
       {[-2.6, -1.55, -0.5, 0.5, 1.55, 2.6].map((x) => (
         <RoundedBox key={`batten-${x}`} args={[0.08, 0.92, 0.06]} radius={0.02} position={[x, -1.34, -3.15]} castShadow>
           <meshStandardMaterial color="#20110a" roughness={0.78} metalness={0.05} />
         </RoundedBox>
       ))}
-      {/* tapa de madera con voladizo */}
-      <RoundedBox args={[6.98, 0.12, 0.66]} radius={0.04} position={[0, -0.74, -3.42]} castShadow receiveShadow>
-        <meshStandardMaterial color="#3c2112" roughness={0.42} metalness={0.12} />
+      {/* tapa de madera con voladizo (la barra donde se apoyan los tragos) */}
+      <RoundedBox args={[6.98, 0.13, 0.7]} radius={0.05} position={[0, -0.73, -3.4]} castShadow receiveShadow>
+        <meshStandardMaterial color="#4a2a15" roughness={0.34} metalness={0.14} />
       </RoundedBox>
-      {/* filo de bronce del mostrador */}
-      <RoundedBox args={[6.98, 0.05, 0.05]} radius={0.02} position={[0, -0.69, -3.1]}>
+      <RoundedBox args={[6.98, 0.05, 0.05]} radius={0.02} position={[0, -0.7, -3.06]}>
         <meshStandardMaterial color={BAR.brass} roughness={0.3} metalness={0.7} />
       </RoundedBox>
       {/* apoyapiés de bronce */}
-      <mesh position={[0, -1.78, -3.04]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh position={[0, -1.78, -3.02]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.03, 0.03, 6.3, 12]} />
         <meshStandardMaterial color={BAR.brass} roughness={0.32} metalness={0.72} />
       </mesh>
       {[-2.9, 0, 2.9].map((x) => (
-        <mesh key={`rail-${x}`} position={[x, -1.88, -3.04]}>
+        <mesh key={`rail-${x}`} position={[x, -1.88, -3.02]}>
           <cylinderGeometry args={[0.022, 0.022, 0.2, 8]} />
           <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.7} />
         </mesh>
       ))}
+      {/* tragos apoyados sobre la barra */}
+      {BAR_DRINKS.map((d) => (
+        <group key={`drink-${d.x}`} position={[0, -0.66, 0]}>
+          <Drink {...d} />
+        </group>
+      ))}
 
-      {/* ── back-bar: espejo enmarcado ── */}
-      <RoundedBox args={[4.7, 2.2, 0.05]} radius={0.03} position={[0, 0.2, -4.0]}>
-        <meshStandardMaterial color="#0f0d0b" roughness={0.16} metalness={0.85} />
+      {/* ── back-bar: mueble bajo + espejo (todo por debajo del neón) ── */}
+      {/* mueble bajo */}
+      <RoundedBox args={[6.2, 0.62, 0.42]} radius={0.04} position={[0, -1.42, -3.74]} receiveShadow>
+        <meshStandardMaterial color={BAR.woodDark} roughness={0.74} metalness={0.05} />
       </RoundedBox>
-      {/* marco de bronce del espejo */}
-      {[[0, 1.34, 4.9, 0.1], [0, -0.94, 4.9, 0.1], [-2.4, 0.2, 0.1, 2.36], [2.4, 0.2, 0.1, 2.36]].map(([mx, my, w, hh], i) => (
-        <RoundedBox key={`frame-${i}`} args={[w, hh, 0.07]} radius={0.02} position={[mx, my, -3.98]}>
+      <RoundedBox args={[6.3, 0.08, 0.5]} radius={0.03} position={[0, -1.06, -3.72]} castShadow receiveShadow>
+        <meshStandardMaterial color="#3c2112" roughness={0.44} metalness={0.12} />
+      </RoundedBox>
+      {/* espejo enmarcado (bajo) */}
+      <RoundedBox args={[4.5, 1.5, 0.04]} radius={0.03} position={[0, -0.15, -4.0]}>
+        <meshStandardMaterial color="#100e0c" roughness={0.18} metalness={0.82} />
+      </RoundedBox>
+      {[[0, 0.62, 4.7, 0.09], [0, -0.92, 4.7, 0.09], [-2.3, -0.15, 0.09, 1.62], [2.3, -0.15, 0.09, 1.62]].map(([mx, my, w, hh], i) => (
+        <RoundedBox key={`frame-${i}`} args={[w, hh, 0.06]} radius={0.02} position={[mx, my, -3.98]}>
           <meshStandardMaterial color={BAR.brass} roughness={0.36} metalness={0.62} />
         </RoundedBox>
       ))}
 
-      {/* ── estantes con botellas ── */}
-      {[-0.95, 0.2, 1.3].map((y, row) => (
-        <group key={y} position={[0, y, -3.9]}>
-          <RoundedBox args={[5.9, 0.07, 0.24]} radius={0.02} position={[0, 0, 0.03]} castShadow receiveShadow>
-            <meshStandardMaterial color={BAR.woodDark} roughness={0.68} metalness={0.06} />
-          </RoundedBox>
-          {/* ménsulas */}
-          {[-2.75, 0, 2.75].map((bx) => (
-            <RoundedBox key={`br-${bx}`} args={[0.05, 0.2, 0.1]} radius={0.01} position={[bx, -0.12, 0]}>
-              <meshStandardMaterial color="#120907" roughness={0.74} />
-            </RoundedBox>
+      {/* ── dos estantes de vidrio con botellas en filas prolijas ── */}
+      {[-0.32, 0.52].map((y, row) => (
+        <group key={y} position={[0, y, -3.86]}>
+          {/* estante de vidrio */}
+          <mesh position={[0, 0, 0.02]} castShadow receiveShadow>
+            <boxGeometry args={[5.6, 0.03, 0.26]} />
+            <meshStandardMaterial color="#bfe6ea" roughness={0.1} metalness={0.1} transparent opacity={0.34} />
+          </mesh>
+          {/* soportes de bronce del estante */}
+          {[-2.6, 2.6].map((sx) => (
+            <mesh key={`sup-${sx}`} position={[sx, -0.09, 0.02]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.18, 8]} />
+              <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.68} />
+            </mesh>
           ))}
-          {Array.from({ length: 6 }, (_, i) => {
-            const spec = BOTTLE_KINDS[(i + row * 2) % BOTTLE_KINDS.length];
-            const x = -2.35 + i * 0.94;
-            return <Bottle key={i} x={x} z={0.09} {...spec} />;
+          {/* tira LED cálida bajo el estante (ilumina las botellas de abajo) */}
+          <mesh position={[0, -0.02, 0.12]}>
+            <boxGeometry args={[5.5, 0.012, 0.012]} />
+            <meshStandardMaterial color="#ffcf8a" emissive="#ffb459" emissiveIntensity={1.4} />
+          </mesh>
+          {/* botellas en fila */}
+          {Array.from({ length: 7 }, (_, i) => {
+            const spec = BOTTLE_KINDS[(i + row * 3) % BOTTLE_KINDS.length];
+            const x = -2.55 + i * 0.85;
+            return <Bottle key={i} x={x} z={0.03} {...spec} />;
           })}
         </group>
       ))}
-
-      {/* ── rack de copas colgadas sobre la barra ── */}
-      <group position={[0, 1.98, -3.5]}>
-        <RoundedBox args={[3.4, 0.06, 0.1]} radius={0.02} position={[0, 0, 0]}>
-          <meshStandardMaterial color="#1a0f09" roughness={0.7} metalness={0.1} />
-        </RoundedBox>
-        {[-1.2, -0.6, 0, 0.6, 1.2].map((gx) => (
-          <HangingGlass key={`hg-${gx}`} x={gx} />
-        ))}
-      </group>
     </group>
   );
 }
