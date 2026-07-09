@@ -23,7 +23,9 @@ const WALK_CAMERA_HEIGHT = 2.92;
 const WALK_CAMERA_DISTANCE = 3.88;
 const WALK_CAMERA_SIDE_OFFSET = 0.86;
 const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
-const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v3";
+// v4 invalida overrides guardados con [/] antes del mapa verificado por
+// contact sheets (2026-07-08): esos overrides viejos pisaban el mapa bueno
+const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v4";
 
 const WALK_HOTSPOTS = [
   { id: "door", x: 0, z: 3.45, radius: 0.95 },
@@ -192,6 +194,8 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const desiredCameraRef = useRef(new Vector3());
   const cameraTargetRef = useRef(new Vector3());
   const hotspotRef = useRef(null);
+  const pendingHotspotRef = useRef(null);
+  const hotspotSinceRef = useRef(0);
   const timeRef = useRef(0);
   const motionModeRef = useRef("idle");
   const actionUntilRef = useRef(0);
@@ -415,13 +419,19 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     }
 
     const nextHotspot = getNearestHotspot(positionRef.current);
-    if (hotspotRef.current !== nextHotspot) {
+    if (pendingHotspotRef.current !== nextHotspot) {
+      pendingHotspotRef.current = nextHotspot;
+      hotspotSinceRef.current = timeRef.current;
+    }
+    // histeresis: el cartel solo cambia si el hotspot se mantiene 0.25s
+    // (antes titilaba como loco al caminar por los bordes de las zonas)
+    if (hotspotRef.current !== nextHotspot && timeRef.current - hotspotSinceRef.current > 0.25) {
       hotspotRef.current = nextHotspot;
       onHotspotChange?.(nextHotspot);
     }
 
     groupRef.current.position.copy(positionRef.current);
-    onMove?.(positionRef.current.x, positionRef.current.z, groupRef.current.rotation.y, moving);
+    onMove?.(positionRef.current.x, positionRef.current.z, groupRef.current.rotation.y, moving, motionModeRef.current);
 
     const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
     const jumpProgress = actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current

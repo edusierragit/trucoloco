@@ -644,7 +644,7 @@ export default function App() {
     room.onRoster(setRoster);
     setRemotePos({});
     room.onPos((peerId, data) =>
-      setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw } }))
+      setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw, mode: data.mode } }))
     );
     if (!isHost) {
       // espejo v1: tu pantalla ES la partida del host
@@ -697,14 +697,15 @@ export default function App() {
     if (salaNoticeTimerRef.current) window.clearTimeout(salaNoticeTimerRef.current);
   }, []);
 
-  const handleMyMove = useCallback((x, z, yaw, moving) => {
+  const handleMyMove = useCallback((x, z, yaw, moving, mode) => {
     const room = netRoomRef.current;
     if (!room) return;
     const now = performance.now();
     // 20Hz en movimiento: a 8Hz los caminantes remotos se veían robóticos
     if (now - lastPosSentRef.current < (moving ? 50 : 400)) return;
     lastPosSentRef.current = now;
-    room.sendPos({ x, z, yaw });
+    // el MODO viaja tambien: el otro ve tu salto/punch/correr de verdad
+    room.sendPos({ x, z, yaw, mode: mode ?? (moving ? "walk" : "idle") });
   }, []);
 
   // host: cada cambio de la mesa viaja como snapshot a los guests

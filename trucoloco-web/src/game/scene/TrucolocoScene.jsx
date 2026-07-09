@@ -1301,9 +1301,13 @@ function RemoteWalker({ peer }) {
 
     // el remoto camina/corre según cuánto le falta llegar a su target:
     // sin esto quedaba una estatua deslizándose por el piso
-    const gap = Math.hypot(target.x - g.position.x, target.z - g.position.z);
-    speedRef.current = speedRef.current * 0.85 + gap * 0.15;
-    const next = speedRef.current > 0.5 ? "run" : speedRef.current > 0.05 ? "walk" : "idle";
+    let next = typeof target.mode === "string" ? target.mode : null;
+    if (!next) {
+      // peers con version vieja no mandan modo: inferirlo por movimiento
+      const gap = Math.hypot(target.x - g.position.x, target.z - g.position.z);
+      speedRef.current = speedRef.current * 0.85 + gap * 0.15;
+      next = speedRef.current > 0.5 ? "run" : speedRef.current > 0.05 ? "walk" : "idle";
+    }
     if (next !== modeRef.current) {
       modeRef.current = next;
       setAnimMode(next);
