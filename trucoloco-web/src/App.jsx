@@ -545,6 +545,14 @@ export default function App() {
   const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
+  // el cartel de caminar se desvanece si no cambia: dejaba de ser info y
+  // pasaba a ser mueble ("queda estatico y molesta")
+  const [walkHintFaded, setWalkHintFaded] = useState(false);
+  useEffect(() => {
+    setWalkHintFaded(false);
+    const timer = window.setTimeout(() => setWalkHintFaded(true), 4500);
+    return () => window.clearTimeout(timer);
+  }, [walkHotspot, cameraView]);
   const [walkNotice, setWalkNotice] = useState("");
   const [walkAnimationDebug, setWalkAnimationDebug] = useState(null);
   const [walkTouchInput, setWalkTouchInput] = useState(() => createEmptyWalkTouchInput());
@@ -1296,7 +1304,7 @@ export default function App() {
 
           {cameraView === "walk" && !isSeatingRitual ? (
             <>
-              <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
+              <div className={`${walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"}${walkHintFaded ? " walk-hint-faded" : ""}`} aria-live="polite">
                 <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Entrada" : "Caminar"}</span>
                 <strong>
                   {walkHotspot === "table"

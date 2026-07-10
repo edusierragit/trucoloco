@@ -5623,3 +5623,14 @@ select {
 .sala-head:active {
   cursor: grabbing;
 }
+
+/* el cartel de caminar respira: si no cambia, se apaga solo */
+.walk-hint {
+  transition: opacity 0.6s ease;
+}
+.walk-hint-faded {
+  opacity: 0.14;
+}
+.walk-hint-faded:hover {
+  opacity: 0.92;
+}

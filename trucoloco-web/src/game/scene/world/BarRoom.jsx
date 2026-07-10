@@ -513,6 +513,14 @@ function CeilingPlane() {
 }
 
 function FrontWall() {
+  // el mismo ladrillo del fondo: la pared de la entrada era un paño negro
+  // muerto y desde las sillas VISITA se miraba directo a esa nada
+  const tex = useMemo(() => {
+    const brickTex = makeBrickTexture();
+    brickTex.repeat.set(1.4, 1.5);
+    return brickTex;
+  }, []);
+
   return (
     <group name="World_FrontWall" position={[0, 0.55, 4.18]}>
       <RoundedBox args={[4.1, 5.2, 0.18]} radius={0.05} position={[-3.45, 0.5, 0]} receiveShadow>
@@ -524,6 +532,35 @@ function FrontWall() {
       <RoundedBox args={[11, 1.6, 0.18]} radius={0.05} position={[0, 2.5, 0]} receiveShadow>
         <meshStandardMaterial color="#0e0806" roughness={0.97} />
       </RoundedBox>
+      {/* cara interior de ladrillo */}
+      <mesh position={[-3.45, 0.5, -0.11]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[4.08, 5.16]} />
+        <meshStandardMaterial map={tex} roughness={0.98} metalness={0.02} />
+      </mesh>
+      <mesh position={[3.45, 0.5, -0.11]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[4.08, 5.16]} />
+        <meshStandardMaterial map={tex} roughness={0.98} metalness={0.02} />
+      </mesh>
+      {/* zócalo de madera + línea de bronce a media altura */}
+      <RoundedBox args={[11, 0.34, 0.1]} radius={0.03} position={[0, -1.96, -0.1]} receiveShadow>
+        <meshStandardMaterial color="#20110a" roughness={0.8} metalness={0.06} />
+      </RoundedBox>
+      <RoundedBox args={[11, 0.05, 0.06]} radius={0.02} position={[0, -0.42, -0.12]}>
+        <meshStandardMaterial color={BAR.brass} roughness={0.34} metalness={0.66} />
+      </RoundedBox>
+      {/* apliques cálidos flanqueando la entrada: la zona deja de ser una cueva */}
+      {[-1.85, 1.85].map((x) => (
+        <group key={x} position={[x, 1.15, -0.14]}>
+          <RoundedBox args={[0.16, 0.4, 0.08]} radius={0.03}>
+            <meshStandardMaterial color="#1a0f08" roughness={0.8} />
+          </RoundedBox>
+          <mesh position={[0, 0.08, -0.07]}>
+            <sphereGeometry args={[0.075, 14, 12]} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffb45e" emissiveIntensity={2.2} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+      <pointLight position={[0, 1.3, -0.9]} intensity={3.2} distance={6.5} color="#e8a35e" />
     </group>
   );
 }

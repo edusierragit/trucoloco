@@ -11,7 +11,7 @@ export const characterSkins = {
     modelPromptKey: "irvyn",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
-      idle: "NlaTrack.003",
+      idle: null,
       walk: "NlaTrack.004",
       run: "NlaTrack.001",
       box: "NlaTrack.006",
@@ -154,19 +154,6 @@ export const characterSkins = {
     modelTargetHeight: 1.74,
     modelPromptKey: "gazpacho",
     walkFacingOffset: -Math.PI / 2,
-    animationClipMap: {
-      idle: null,
-      walk: "NlaTrack.001",
-      run: "NlaTrack.003",
-      box: "NlaTrack",
-      jump: "NlaTrack.004"
-    },
-    animationTimeScaleMap: {
-      walk: 0.76,
-      run: 0.98,
-      box: 1,
-      jump: 1
-    },
     outfitColor: "#493228",
     shirtColor: "#5c554e",
     skinColor: "#b57a56",
@@ -197,20 +184,7 @@ export const characterSkins = {
     modelTargetHeight: 1.74,
     modelPromptKey: "myke-keta",
     walkFacingOffset: -Math.PI / 2,
-    animationClipMap: {
-      idle: null,
-      walk: "NlaTrack.002",
-      run: "NlaTrack.005",
-      box: "NlaTrack",
-      jump: "NlaTrack.004"
-    },
-    animationTimeScaleMap: {
-      walk: 0.76,
-      run: 0.98,
-      box: 1,
-      jump: 1
-    },
-    outfitColor: "#242238",
+        outfitColor: "#242238",
     shirtColor: "#171622",
     skinColor: "#a96f4e",
     beardColor: "#2a1a14",

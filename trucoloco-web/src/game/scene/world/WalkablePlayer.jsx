@@ -111,6 +111,8 @@ function AvatarBody({ refs, character, motionMode }) {
           upperRef={refs.upper}
           isActiveLane
           animationMode={motionMode}
+          animationClipMap={skin.animationClipMap ?? {}}
+          animationTimeScaleMap={skin.animationTimeScaleMap ?? {}}
           animationClipOverride={refs.clipOverrides[motionMode] ?? null}
           onAnimationNames={refs.onAnimationNames}
         />
