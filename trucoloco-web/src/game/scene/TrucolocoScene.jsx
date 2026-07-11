@@ -1374,7 +1374,17 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+// OJO: estas son las coords del ring DENTRO del group "Room_Runtime", que está
+// desplazado. <DebateRoom> se monta ahí con este mismo position, pero la cámara
+// trabaja en WORLD: hay que sumarle el offset del group o la cámara termina por
+// encima del techo del ring y sólo se ve negro.
+const ROOM_RUNTIME_OFFSET = { x: 0, y: -1.35, z: 0.25 };
 const RING_WORLD_ORIGIN = { x: -7.45, y: -1.14, z: -0.9 };
+const RING_ORIGIN_WORLD = {
+  x: RING_WORLD_ORIGIN.x + ROOM_RUNTIME_OFFSET.x,
+  y: RING_WORLD_ORIGIN.y + ROOM_RUNTIME_OFFSET.y,
+  z: RING_WORLD_ORIGIN.z + ROOM_RUNTIME_OFFSET.z
+};
 
 function getRingCameraPose(debateAction, isNarrow) {
   const player = debateAction?.playerPos ?? { x: -0.72, z: 0.18 };
@@ -1386,14 +1396,14 @@ function getRingCameraPose(debateAction, isNarrow) {
 
   return {
     position: [
-      RING_WORLD_ORIGIN.x + followX,
-      RING_WORLD_ORIGIN.y + (isNarrow ? 2.04 : 2.12),
-      RING_WORLD_ORIGIN.z + (isNarrow ? 1.12 : 1.24) + followZ
+      RING_ORIGIN_WORLD.x + followX,
+      RING_ORIGIN_WORLD.y + (isNarrow ? 2.04 : 2.12),
+      RING_ORIGIN_WORLD.z + (isNarrow ? 1.12 : 1.24) + followZ
     ],
     target: [
-      RING_WORLD_ORIGIN.x + followX * 0.55,
-      RING_WORLD_ORIGIN.y + 0.08,
-      RING_WORLD_ORIGIN.z - 0.1 + midpointZ * 0.1
+      RING_ORIGIN_WORLD.x + followX * 0.55,
+      RING_ORIGIN_WORLD.y + 0.08,
+      RING_ORIGIN_WORLD.z - 0.1 + midpointZ * 0.1
     ],
     fov: isNarrow ? 54 : 50
   };
