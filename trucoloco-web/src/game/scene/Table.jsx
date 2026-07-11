@@ -326,28 +326,33 @@ function ArchivedTrickCards({ trickHistory, showCurrentPair, handClosed }) {
   const archivedTricks = showCurrentPair ? trickHistory.slice(0, -1) : trickHistory;
   void handClosed;
 
-  // como en el truco real: las vueltas resueltas se doblan boca abajo junto al
-  // mazo — el centro de la mesa queda libre para las cartas vivas
+  // COMO EN EL TRUCO REAL (pedido de Edu): las cartas de cada vuelta quedan
+  // BOCA ARRIBA frente a su dueño, corridas hacia él por vuelta — al final
+  // de la mano ves las 3 cartas que jugó cada uno, sin panel que tape nada
   return (
-    <group name="TrickHistory3D" position={[2.56, 0.2, 0.74]} rotation={[0, -0.3, 0]}>
-      {archivedTricks.map((trick, index) => {
-        const cards = trick.cards ?? [trick.humanCard, trick.rivalCard].filter(Boolean);
+    <group name="TrickHistory3D">
+      {archivedTricks.map((trick, vueltaIndex) =>
+        (trick.cards ?? [trick.humanCard, trick.rivalCard].filter(Boolean)).slice(0, 6).map((play, cardIndex) => {
+          const card = play.card ?? play;
+          const seat = play.seatId ? tableSeats.find((s) => s.seatId === play.seatId) : null;
+          const angle = seat
+            ? Math.atan2(seat.position[0], seat.position[2])
+            : (Math.PI * 2 * cardIndex) / 6 + Math.PI / 6;
+          const radius = 1.78 + vueltaIndex * 0.34;
+          const yawJitter = ((cardIndex * 7 + vueltaIndex * 13) % 10 - 5) * 0.02;
 
-        return (
-          <group key={`trick-${trick.index}`} position={[0, 0.05 + index * 0.075, 0]} rotation={[0, index * 0.22, 0]} scale={0.42}>
-            {/* pila prolija: las seis cartas dobladas casi alineadas, apenas giradas */}
-            {cards.slice(0, 6).map((play, cardIndex) => (
-              <SceneHandCard
-                key={`${trick.index}-${play.seatId ?? cardIndex}`}
-                card={play.card ?? play}
-                position={[cardIndex * 0.008 - 0.02, cardIndex * 0.012, cardIndex * 0.006]}
-                rotation={[0, (cardIndex % 2 === 0 ? -1 : 1) * 0.05, 0]}
-                faceDown
-              />
-            ))}
-          </group>
-        );
-      })}
+          return (
+            <group
+              key={`${trick.index}-${play.seatId ?? cardIndex}`}
+              position={[Math.sin(angle) * radius, 0.35 + vueltaIndex * 0.004, Math.cos(angle) * radius + 0.08]}
+              rotation={[0, angle + Math.PI + yawJitter, 0]}
+              scale={0.72}
+            >
+              <SceneHandCard card={card} position={[0, 0, 0]} rotation={[0, 0, 0]} />
+            </group>
+          );
+        })
+      )}
     </group>
   );
 }

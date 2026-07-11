@@ -5715,3 +5715,26 @@ select {
   from { transform: translateX(-50%) translateY(-14px); opacity: 0; }
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
+
+/* cinta minima de vuelta resuelta: abajo al centro, sin tapar la mesa */
+.vuelta-strip {
+  position: fixed;
+  bottom: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 42;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: rgba(12, 7, 4, 0.88);
+  border: 1px solid rgba(240, 221, 180, 0.25);
+  color: #f0ddb4;
+  font-size: 14px;
+  backdrop-filter: blur(8px);
+  animation: pill-toast-in 0.3s ease;
+}
+.vuelta-strip-win { border-color: rgba(139, 226, 154, 0.5); }
+.vuelta-strip-lose { border-color: rgba(240, 119, 106, 0.5); }
+.vuelta-strip-draw { border-color: rgba(214, 178, 110, 0.5); }

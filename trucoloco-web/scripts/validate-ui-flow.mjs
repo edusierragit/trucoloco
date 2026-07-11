@@ -123,6 +123,7 @@ async function main() {
       maxTableImagesLoaded: 0,
       actingSeats: new Set(),
       cameraSeats: new Set(),
+      trickResolved: false,
       cameraTargets: new Set()
     };
 
@@ -131,6 +132,7 @@ async function main() {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
         const handImages = [...document.querySelectorAll(".card-art")];
         const tableImages = [...document.querySelectorAll(".table-card-art")];
+        const vueltaStrip = Boolean(document.querySelector(".vuelta-strip"));
         const actingSeat = document.querySelector(".table-flow-seat-acting strong")?.textContent?.trim() ?? "";
         const cameraDebug = window.__TRUCOLOCO_CAMERA_DEBUG__ ?? {};
         const enabledCards = [...document.querySelectorAll(".card-button:not(:disabled)")];
@@ -139,6 +141,7 @@ async function main() {
           handImages: handImages.length,
           handImagesLoaded: handImages.filter((img) => img.complete && img.naturalWidth > 0).length,
           tableImages: tableImages.length,
+          vueltaStrip,
           tableImagesLoaded: tableImages.filter((img) => img.complete && img.naturalWidth > 0).length,
           actingSeat,
           cameraSeatId: cameraDebug.activeSeatId ?? "",
@@ -153,6 +156,7 @@ async function main() {
       observed.maxHandImagesLoaded = Math.max(observed.maxHandImagesLoaded, state.handImagesLoaded);
       observed.maxTableImages = Math.max(observed.maxTableImages, state.tableImages);
       observed.maxTableImagesLoaded = Math.max(observed.maxTableImagesLoaded, state.tableImagesLoaded);
+      if (state.vueltaStrip) observed.trickResolved = true;
       if (state.actingSeat) observed.actingSeats.add(state.actingSeat);
       if (state.cameraSeatId) observed.cameraSeats.add(state.cameraSeatId);
       if (state.cameraTarget) observed.cameraTargets.add(state.cameraTarget);
@@ -178,7 +182,7 @@ async function main() {
 
       actions.push(clicked);
 
-      if (observed.maxHandImages >= 1 && observed.maxTableImages >= 6) break;
+      if (observed.maxHandImages >= 1 && observed.trickResolved) break;
       if (!clicked) break;
       await sleep(420);
     }
@@ -217,7 +221,9 @@ async function main() {
 
     if (observed.maxHandImages < 1) failures.push("no hand card images rendered");
     if (observed.maxHandImagesLoaded < observed.maxHandImages) failures.push("some hand card images did not load");
-    if (observed.maxTableImages < 6) failures.push(`expected 6 table card images, got ${observed.maxTableImages}`);
+    // las cartas de la mesa ahora viven en 3D (canvas): la señal DOM de que
+    // una vuelta se jugó completa es la cinta ".vuelta-strip"
+    if (!observed.trickResolved) failures.push("no trick was resolved (vuelta-strip never appeared)");
     if (observed.maxTableImagesLoaded < observed.maxTableImages) failures.push("some table card images did not load");
     if (observed.actingSeats.size < 3) failures.push(`active turn focus did not rotate enough: ${[...observed.actingSeats].join(", ")}`);
     if (observed.cameraSeats.size < 3) failures.push(`camera active seat did not rotate enough: ${[...observed.cameraSeats].join(", ")}`);

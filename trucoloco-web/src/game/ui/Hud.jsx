@@ -1136,31 +1136,20 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
   }
 
   if (match.phase === "trick-closed") {
+    // las cartas de la vuelta QUEDAN sobre la mesa 3D frente a cada jugador
+    // (como en el truco real) — acá solo una cinta mínima con el resultado.
+    // El panelón del medio con mini-cartas duplicadas murió (pedido de Edu).
     const lastTrick = match.trickHistory[match.trickHistory.length - 1];
     const trickTone = lastTrick?.result === "tie" ? "draw" : lastTrick?.winner === "A" ? "win" : "lose";
-    const nextLeader = getCurrentLeaderName(match);
 
-    return (
-      <footer className="bottom-dock bottom-dock-table-result">
-        <section className={`table-result-panel table-result-panel-${trickTone}`}>
-          <TableShowdown match={match} />
-
-          <div className="table-result-copy">
-            <span className="panel-kicker">Vuelta resuelta</span>
-            <strong>{match.highlight}</strong>
-            <p>Sigue {nextLeader}.</p>
-          </div>
-
-          <button
-            className="action-button action-button-primary next-hand"
-            disabled={!match.canAdvance}
-            onClick={advanceHandler}
-            type="button"
-          >
-            {nextLabel}
-          </button>
-        </section>
-      </footer>
+    return createPortal(
+      <div className={`vuelta-strip vuelta-strip-${trickTone}`}>
+        <strong>{getTableResultCopy(match, lastTrick)}</strong>
+        <button className="canto-chip" onClick={advanceHandler} disabled={!match.canAdvance} type="button">
+          Limpiar mesa
+        </button>
+      </div>,
+      document.body
     );
   }
 
