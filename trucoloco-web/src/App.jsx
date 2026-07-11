@@ -783,6 +783,39 @@ export default function App() {
     };
   }, [isSeatedGuest, match]);
 
+  // PASTILLAS: tomarla te pega a VOS (efecto de pantalla ~22s) y se
+  // anuncia a toda la sala por el canal fx. Ver MESA_VIVA_DESIGN.md.
+  const [pillTrip, setPillTrip] = useState(null);
+  const [pillToast, setPillToast] = useState(null);
+  const pillTimerRef = useRef(null);
+  const pillToastTimerRef = useRef(null);
+
+  const announcePill = useCallback((texto) => {
+    setPillToast(texto);
+    window.clearTimeout(pillToastTimerRef.current);
+    pillToastTimerRef.current = window.setTimeout(() => setPillToast(null), 4200);
+  }, []);
+
+  useEffect(() => {
+    const onPill = (event) => {
+      const color = event.detail?.color;
+      if (!color) return;
+      sfx.ensure();
+      setPillTrip({ color });
+      window.clearTimeout(pillTimerRef.current);
+      pillTimerRef.current = window.setTimeout(() => setPillTrip(null), 22000);
+      announcePill(`💊 Te tomaste la ${color.toUpperCase()}. Aguantá.`);
+      const who = matchRef.current?.selectedCharacter?.name ?? "Alguien";
+      netRoomRef.current?.sendFx?.({ pill: color, who });
+    };
+    window.addEventListener("tl-pill-local", onPill);
+    return () => {
+      window.removeEventListener("tl-pill-local", onPill);
+      window.clearTimeout(pillTimerRef.current);
+      window.clearTimeout(pillToastTimerRef.current);
+    };
+  }, [announcePill]);
+
   // el vinilo es DE LA SALA: si uno pone Dark Side, suena para todos.
   // BarRoom emite/escucha window events; acá los puenteamos por la red (fx).
   useEffect(() => {
@@ -794,9 +827,12 @@ export default function App() {
       if (typeof d?.vinyl === "boolean") {
         window.dispatchEvent(new CustomEvent("tl-vinyl-remote", { detail: { playing: d.vinyl } }));
       }
+      if (typeof d?.pill === "string") {
+        announcePill(`💊 ${d.who ?? "Alguien"} se tomó la ${d.pill.toUpperCase()}`);
+      }
     });
     return () => window.removeEventListener("tl-vinyl-local", onLocalVinyl);
-  }, [netRoom]);
+  }, [netRoom, announcePill]);
 
   // cuando entra alguien a la sala, suena y se siente
   const rosterCountRef = useRef(0);
@@ -1236,6 +1272,8 @@ export default function App() {
           ← Salir al menú
         </button>
       ) : null}
+      {pillTrip ? <div className={`pill-trip pill-trip-${pillTrip.color}`} aria-hidden="true" /> : null}
+      {pillToast ? <div className="pill-toast">{pillToast}</div> : null}
       <div className={stageClassName}>
         <section className="stage-viewport">
           <Canvas

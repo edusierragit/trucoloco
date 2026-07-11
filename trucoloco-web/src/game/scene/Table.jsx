@@ -615,6 +615,52 @@ function TableUnderGlow({ lowPower = false }) {
   );
 }
 
+
+// ─── LAS PASTILLAS DEL PATRÓN ───────────────────────────────────────────────
+// El "revólver" del Trucoloco (ver MESA_VIVA_DESIGN.md): un platito con
+// pastillas de colores. Click = te la tomás: efecto de pantalla para vos,
+// anuncio para toda la sala (viaja por el canal fx, como el vinilo).
+const PILLS = [
+  { color: "roja", hex: "#e2483d", x: -0.09, z: -0.05, rot: 0.6 },
+  { color: "verde", hex: "#4fae5c", x: 0.1, z: -0.08, rot: -0.9 },
+  { color: "azul", hex: "#3f7fd6", x: 0.02, z: 0.09, rot: 1.8 },
+  { color: "amarilla", hex: "#e5c53a", x: -0.12, z: 0.1, rot: -2.4 }
+];
+
+function PillPlate() {
+  const takePill = (event, color) => {
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent("tl-pill-local", { detail: { color } }));
+  };
+
+  return (
+    <group name="Pill_Plate" position={[0.95, 0.345, 1.0]}>
+      <mesh receiveShadow castShadow>
+        <cylinderGeometry args={[0.24, 0.2, 0.035, 22]} />
+        <meshStandardMaterial color="#e8dfc8" roughness={0.35} metalness={0.05} />
+      </mesh>
+      <mesh position={[0, 0.02, 0]}>
+        <cylinderGeometry args={[0.19, 0.19, 0.012, 22]} />
+        <meshStandardMaterial color="#d8ccae" roughness={0.5} />
+      </mesh>
+      {PILLS.map((pill) => (
+        <mesh
+          key={pill.color}
+          position={[pill.x, 0.045, pill.z]}
+          rotation={[Math.PI / 2, 0, pill.rot]}
+          castShadow
+          onClick={(event) => takePill(event, pill.color)}
+          onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+          onPointerOut={() => { document.body.style.cursor = "auto"; }}
+        >
+          <capsuleGeometry args={[0.028, 0.05, 6, 12]} />
+          <meshStandardMaterial color={pill.hex} roughness={0.3} emissive={pill.hex} emissiveIntensity={0.18} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function TableProps({ lowPower = false }) {
   const coinPositions = [
     [1.68, 0.36, 0.82],
@@ -626,6 +672,7 @@ function TableProps({ lowPower = false }) {
 
   return (
     <group name="Table_CriolloProps">
+      <PillPlate />
       <group name="Mate_Prop" position={[-1.72, 0.42, 0.88]} rotation={[0, -0.24, 0]}>
         <mesh castShadow receiveShadow>
           <cylinderGeometry args={[0.13, 0.18, 0.28, 18]} />

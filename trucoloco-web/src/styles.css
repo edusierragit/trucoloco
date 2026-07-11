@@ -5634,3 +5634,84 @@ select {
 .walk-hint-faded:hover {
   opacity: 0.92;
 }
+
+/* ─── LAS PASTILLAS: el viaje de pantalla del que la tomó ────────────────
+   Overlay fullscreen sin bloquear clicks; ~22s con entrada/salida suave. */
+.pill-trip {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  pointer-events: none;
+  animation: pill-fade 22s ease forwards;
+}
+
+@keyframes pill-fade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ROJA: furia — viñeta roja que late y colores corridos */
+.pill-trip-roja {
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(190, 20, 10, 0.55) 100%);
+  backdrop-filter: hue-rotate(0deg) contrast(1.15);
+  animation: pill-fade 22s ease forwards, pill-roja 1.6s ease-in-out infinite;
+}
+@keyframes pill-roja {
+  0%, 100% { backdrop-filter: hue-rotate(-12deg) contrast(1.12) saturate(1.35); }
+  50% { backdrop-filter: hue-rotate(14deg) contrast(1.3) saturate(1.7); }
+}
+
+/* VERDE: mareo — todo se pone blando y respira */
+.pill-trip-verde {
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(30, 120, 50, 0.4) 100%);
+  animation: pill-fade 22s ease forwards, pill-verde 3.2s ease-in-out infinite;
+}
+@keyframes pill-verde {
+  0%, 100% { backdrop-filter: blur(0.5px) saturate(1.1); }
+  50% { backdrop-filter: blur(3.5px) saturate(1.5) hue-rotate(28deg); }
+}
+
+/* AZUL: otra dimensión — flashes invertidos */
+.pill-trip-azul {
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(30, 60, 170, 0.45) 100%);
+  animation: pill-fade 22s ease forwards, pill-azul 4.5s steps(2, jump-none) infinite;
+}
+@keyframes pill-azul {
+  0%, 88%, 100% { backdrop-filter: saturate(1.2) hue-rotate(-30deg); }
+  92% { backdrop-filter: invert(0.85) hue-rotate(160deg); }
+}
+
+/* AMARILLA: euforia — brillo y saturación al mango */
+.pill-trip-amarilla {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(220, 180, 30, 0.35) 100%);
+  animation: pill-fade 22s ease forwards, pill-amarilla 0.9s ease-in-out infinite;
+}
+@keyframes pill-amarilla {
+  0%, 100% { backdrop-filter: saturate(2.1) brightness(1.05); }
+  50% { backdrop-filter: saturate(3.2) brightness(1.22) hue-rotate(10deg); }
+}
+
+/* anuncio de pastilla: toast arriba al centro, tono receta trucha */
+.pill-toast {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 47;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(16, 8, 5, 0.9);
+  border: 1px solid rgba(226, 72, 61, 0.55);
+  color: #ffd9c8;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  animation: pill-toast-in 0.35s ease;
+}
+@keyframes pill-toast-in {
+  from { transform: translateX(-50%) translateY(-14px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
