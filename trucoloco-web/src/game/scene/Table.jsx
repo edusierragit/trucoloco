@@ -1,11 +1,12 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
+import { RoundedBox, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
 import { assetUrl } from "../assetUrl.js";
 import { sfx } from "../audio/sfx";
+import { SceneText as Text } from "./SceneText";
 
 const suitColor = {
   Espada: "#d9d1af",

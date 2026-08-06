@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { RoundedBox, Text } from "@react-three/drei";
+import { RoundedBox } from "@react-three/drei";
 import { CanvasTexture, RepeatWrapping } from "three";
 import { assetUrl } from "../../assetUrl";
+import { SceneText as Text } from "../SceneText";
 
 const BAR = {
   wood: "#2b160d",

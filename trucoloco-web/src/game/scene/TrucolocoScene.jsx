@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Billboard, ContactShadows, Float, RoundedBox, Text } from "@react-three/drei";
+import { Billboard, ContactShadows, Float, RoundedBox } from "@react-three/drei";
 import { PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { HeldHand, Table } from "./Table";
@@ -10,6 +10,7 @@ import { CharacterFigure } from "./CharacterFigure";
 import { characterSkins, tableSeats, teams } from "../data/characters";
 import { BarRoom } from "./world/BarRoom";
 import { WalkablePlayer } from "./world/WalkablePlayer";
+import { SceneText as Text } from "./SceneText";
 
 const BAR_COLORS = {
   wall: "#100b09",

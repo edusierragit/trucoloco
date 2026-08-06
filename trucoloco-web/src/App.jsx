@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
@@ -456,6 +456,35 @@ function getInitialPerformanceProfile() {
   return lowPower
     ? { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false }
     : { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
+}
+
+function SceneLoadingFallback() {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.position.set(0, 3.15, 5.35);
+    camera.lookAt(0, -0.35, 0);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  return (
+    <group name="Scene_LoadingFallback">
+      <ambientLight intensity={0.85} color="#dba66e" />
+      <pointLight position={[0, 3.4, 1.2]} intensity={26} color="#ffbd74" />
+      <mesh position={[0, -0.42, 0]}>
+        <cylinderGeometry args={[2.25, 2.35, 0.22, 48]} />
+        <meshStandardMaterial color="#173a32" roughness={0.92} />
+      </mesh>
+      <mesh position={[0, -0.29, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.86, 2.18, 48]} />
+        <meshBasicMaterial color="#b47a34" />
+      </mesh>
+      <mesh position={[0, 1.55, 0.25]}>
+        <sphereGeometry args={[0.12, 16, 12]} />
+        <meshBasicMaterial color="#ffc877" />
+      </mesh>
+    </group>
+  );
 }
 
 function playConflictHitSound(hitStrength = 0.5, resolved = false) {
@@ -1290,23 +1319,25 @@ export default function App() {
           >
             <color attach="background" args={["#060403"]} />
             <fog attach="fog" args={["#060403", 7.2, 18.5]} />
-            <TrucolocoScene
-              netRoster={roster}
-              onWalkerMove={handleMyMove}
-              remoteWalkers={roster
-                .filter((peer) => !peer.self && remotePos[peer.peerId])
-                .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
-              match={playMatch}
-              cameraView={cameraView}
-              debateAction={debateState}
-              selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
-              performanceMode={performanceProfile.mode}
-              walkHotspot={walkHotspot}
-              walkTouchInput={walkTouchInput}
-              onWalkHotspotChange={setWalkHotspot}
-              onWalkInteract={handleWalkInteract}
-              onWalkAnimationDebugChange={setWalkAnimationDebug}
-            />
+            <Suspense fallback={<SceneLoadingFallback />}>
+              <TrucolocoScene
+                netRoster={roster}
+                onWalkerMove={handleMyMove}
+                remoteWalkers={roster
+                  .filter((peer) => !peer.self && remotePos[peer.peerId])
+                  .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
+                match={playMatch}
+                cameraView={cameraView}
+                debateAction={debateState}
+                selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
+                performanceMode={performanceProfile.mode}
+                walkHotspot={walkHotspot}
+                walkTouchInput={walkTouchInput}
+                onWalkHotspotChange={setWalkHotspot}
+                onWalkInteract={handleWalkInteract}
+                onWalkAnimationDebugChange={setWalkAnimationDebug}
+              />
+            </Suspense>
             {performanceProfile.postprocessing ? (
               <EffectComposer multisampling={0}>
                 {/* [VISUAL] Subtle grade: less bloom, stronger vignette, cleaner nocturnal focus. */}

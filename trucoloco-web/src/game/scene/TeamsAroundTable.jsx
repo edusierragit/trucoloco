@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Billboard, Text } from "@react-three/drei";
+import { Billboard } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
 import { CharacterFigure } from "./CharacterFigure";
+import { SceneText as Text } from "./SceneText";
 
 function getVisibleRosterSeats(match) {
   const playersById = [...teams.A, ...teams.B].reduce((lookup, player) => {
@@ -291,14 +292,16 @@ function CharacterSeat({
           </mesh>
         </group>
       ) : (
-        <CharacterFigure
-          skin={skin}
-          accent={character.accent}
-          outfitMaterialRef={torsoRef}
-          upperRef={upperRef}
-          isActiveLane={isSelectedLane || isCurrentActor}
-          forceProcedural={useSimplifiedModel}
-        />
+        <Suspense fallback={null}>
+          <CharacterFigure
+            skin={skin}
+            accent={character.accent}
+            outfitMaterialRef={torsoRef}
+            upperRef={upperRef}
+            isActiveLane={isSelectedLane || isCurrentActor}
+            forceProcedural={useSimplifiedModel}
+          />
+        </Suspense>
       )}
 
       {netPeer ? (
