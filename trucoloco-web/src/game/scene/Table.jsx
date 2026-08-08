@@ -39,7 +39,7 @@ const TABLE_BRASS = "#c08a3f";
 const FELT_BASE = "#102e20";
 const FELT_DEEP = "#091d14";
 
-function CardImagePlane({ image, width, height, y = 0.036, flip = false }) {
+function CardImagePlaneAsset({ image, width, height, y = 0.036, flip = false }) {
   const texture = useTexture(image);
   
   return (
@@ -51,6 +51,16 @@ function CardImagePlane({ image, width, height, y = 0.036, flip = false }) {
       {/* polygonOffset: a distancia de mesa el depth buffer no separa 2.5mm — sin esto la textura pierde contra la caja crema (z-fighting) */}
       <meshBasicMaterial map={texture} toneMapped={false} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
     </mesh>
+  );
+}
+
+function CardImagePlane(props) {
+  // Las caras entran de forma dinámica durante la mano. Si una textura tarda,
+  // sólo espera esa carta y nunca suspende/reemplaza la sala completa.
+  return (
+    <Suspense fallback={null}>
+      <CardImagePlaneAsset {...props} />
+    </Suspense>
   );
 }
 

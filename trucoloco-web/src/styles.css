@@ -619,6 +619,10 @@ select {
   pointer-events: auto;
 }
 
+.camera-dock-context .camera-dock-actions {
+  grid-template-columns: 1fr;
+}
+
 .debate-live-controls {
   display: grid;
   grid-column: 1 / -1;

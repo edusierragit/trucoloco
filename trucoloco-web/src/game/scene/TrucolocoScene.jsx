@@ -29,20 +29,49 @@ function RenderEnvironment() {
   useEffect(() => {
     const previousEnvironment = scene.environment;
     const previousEnvironmentIntensity = scene.environmentIntensity;
-    const roomEnvironment = new RoomEnvironment();
-    const pmrem = new PMREMGenerator(gl);
-    const environmentMap = pmrem.fromScene(roomEnvironment, 0.035).texture;
+    let roomEnvironment = null;
+    let pmrem = null;
+    let environmentMap = null;
+    let cancelled = false;
+    let idleId = null;
+    let timeoutId = null;
 
-    scene.environment = environmentMap;
-    // [VISUAL] Lower IBL keeps the bar nocturnal and lets practical table lights drive the composition.
-    scene.environmentIntensity = 0.42;
+    const buildEnvironment = () => {
+      if (cancelled) return;
+
+      roomEnvironment = new RoomEnvironment();
+      pmrem = new PMREMGenerator(gl);
+      environmentMap = pmrem.fromScene(roomEnvironment, 0.035).texture;
+
+      if (cancelled) return;
+      scene.environment = environmentMap;
+      // [VISUAL] Lower IBL keeps the bar nocturnal and lets practical table lights drive the composition.
+      scene.environmentIntensity = 0.42;
+    };
+
+    // PMREM is one of the heaviest GPU jobs at startup. Deferring it preserves
+    // the exact same final lighting while letting mobile paint/respond first.
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(buildEnvironment, { timeout: 1500 });
+    } else if (typeof window !== "undefined") {
+      timeoutId = window.setTimeout(buildEnvironment, 500);
+    } else {
+      buildEnvironment();
+    }
 
     return () => {
-      scene.environment = previousEnvironment;
-      scene.environmentIntensity = previousEnvironmentIntensity;
-      environmentMap.dispose();
-      pmrem.dispose();
-      roomEnvironment.dispose();
+      cancelled = true;
+      if (idleId !== null && typeof window !== "undefined" && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (scene.environment === environmentMap) {
+        scene.environment = previousEnvironment;
+        scene.environmentIntensity = previousEnvironmentIntensity;
+      }
+      environmentMap?.dispose();
+      pmrem?.dispose();
+      roomEnvironment?.dispose();
     };
   }, [gl, scene]);
 

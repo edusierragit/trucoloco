@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
@@ -441,35 +441,6 @@ function getInitialPerformanceProfile() {
     return { mode: "low", dpr: [0.7, 0.95], antialias: true, shadows: true, postprocessing: true };
   }
   return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
-}
-
-function SceneLoadingFallback() {
-  const { camera } = useThree();
-
-  useEffect(() => {
-    camera.position.set(0, 3.15, 5.35);
-    camera.lookAt(0, -0.35, 0);
-    camera.updateProjectionMatrix();
-  }, [camera]);
-
-  return (
-    <group name="Scene_LoadingFallback">
-      <ambientLight intensity={0.85} color="#dba66e" />
-      <pointLight position={[0, 3.4, 1.2]} intensity={26} color="#ffbd74" />
-      <mesh position={[0, -0.42, 0]}>
-        <cylinderGeometry args={[2.25, 2.35, 0.22, 48]} />
-        <meshStandardMaterial color="#173a32" roughness={0.92} />
-      </mesh>
-      <mesh position={[0, -0.29, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.86, 2.18, 48]} />
-        <meshBasicMaterial color="#b47a34" />
-      </mesh>
-      <mesh position={[0, 1.55, 0.25]}>
-        <sphereGeometry args={[0.12, 16, 12]} />
-        <meshBasicMaterial color="#ffc877" />
-      </mesh>
-    </group>
-  );
 }
 
 function SceneReadySignal({ onReady }) {
@@ -1329,7 +1300,7 @@ export default function App() {
           >
             <color attach="background" args={["#060403"]} />
             <fog attach="fog" args={["#060403", 7.2, 18.5]} />
-            <Suspense fallback={<SceneLoadingFallback />}>
+            <Suspense fallback={null}>
               <TrucolocoScene
                 netRoster={roster}
                 onWalkerMove={handleMyMove}
@@ -1366,12 +1337,16 @@ export default function App() {
             </div>
           ) : null}
 
-          {identityConfirmed && !match.handStarted && cameraView === "table" ? <div className="camera-dock camera-dock-entry" aria-label="Entrada al bar">
-            <span className="camera-dock-kicker">Identidad lista</span>
+          {identityConfirmed && cameraView !== "ring" ? <div className="camera-dock camera-dock-context" aria-label="Movimiento por el bar">
+            <span className="camera-dock-kicker">{cameraView === "walk" ? "Explorando el bar" : "Movimiento"}</span>
             <div className="camera-dock-actions">
-              <button type="button" className="camera-dock-button camera-dock-button-active" onClick={() => handleCameraViewChange("walk")}>
-                <span>🍺 Entrar al bar</span>
-                <small>WASD / flechas · la puerta te devuelve al menú</small>
+              <button
+                type="button"
+                className="camera-dock-button camera-dock-button-active"
+                onClick={() => handleCameraViewChange(cameraView === "walk" ? (match.handStarted ? "seat" : "table") : "walk")}
+              >
+                <span>{cameraView === "walk" ? "🪑 Volver a la mesa" : "🍺 Caminar por el bar"}</span>
+                <small>{cameraView === "walk" ? "retoma tu lugar sin cambiar de personaje" : "WASD / flechas · identidad bloqueada"}</small>
               </button>
             </div>
           </div> : null}
