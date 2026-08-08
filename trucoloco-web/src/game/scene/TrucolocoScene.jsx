@@ -1505,15 +1505,15 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
   return {
     position: isNarrow
       ? isRoleSelect
-        ? [-0.2, 1.95, 6.05]
+        ? [0, 5.7, 7.85]
         : [0, 4.75, 6.95]
       : isRoleSelect
-        ? [-0.5, 1.85, 5.2]
+        ? [0.35, 5.05, 6.75]
         : [0, 4.05, 5.55],
     // La mesa vive dentro de Room_Runtime (y -1.35). Este target está en WORLD:
     // apuntar a y positiva mostraba sólo techo y una pantalla inicial negra.
-    target: [isRoleSelect ? 0.1 : 0, isRoleSelect ? -0.72 : 0.16, isNarrow ? 0.2 : 0.02],
-    fov: isNarrow ? (isRoleSelect ? 46 : 36) : isRoleSelect ? 42 : 33
+    target: [0, isRoleSelect ? -1.05 : 0.16, isRoleSelect ? -0.15 : isNarrow ? 0.2 : 0.02],
+    fov: isNarrow ? (isRoleSelect ? 50 : 36) : isRoleSelect ? 40 : 33
   };
 }
 

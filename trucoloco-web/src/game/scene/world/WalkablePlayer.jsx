@@ -23,6 +23,9 @@ const WALK_CAMERA_HEIGHT = 2.92;
 const WALK_CAMERA_DISTANCE = 3.88;
 const WALK_CAMERA_SIDE_OFFSET = 0.86;
 const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
+// Entre dos sillas y fuera del radio de colisión de la mesa. El spawn anterior
+// estaba a 2.35m dentro de un keep-out de 3.08m y el primer paso lo devolvía al borde.
+const WALK_SPAWN = new Vector3(1.68, PLAYER_Y, 2.82);
 // v4 invalida overrides guardados con [/] antes del mapa verificado por
 // contact sheets (2026-07-08): esos overrides viejos pisaban el mapa bueno
 const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v4";
@@ -185,9 +188,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const outfitMaterialRef = useRef(null);
   const keysRef = useRef(new Set());
   const yawRef = useRef(0);
-  // spawn adentro del salón: en 3.15 la cámara en tercera persona nacía
-  // dentro del portal de entrada y el jugador veía todo negro
-  const positionRef = useRef(new Vector3(0, PLAYER_Y, 2.35));
+  const positionRef = useRef(WALK_SPAWN.clone());
   const velocityRef = useRef(new Vector3());
   const forwardRef = useRef(new Vector3(0, 0, -1));
   const rightRef = useRef(new Vector3(1, 0, 0));
@@ -257,6 +258,18 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     if (!enabled) {
       onHotspotChange?.(null);
       return undefined;
+    }
+
+    // El click en "Caminar" deja un botón con foco. Soltarlo hace que WASD
+    // llegue al juego de inmediato, sin exigir un click extra sobre el canvas.
+    if (typeof document !== "undefined" && typeof document.activeElement?.blur === "function") {
+      document.activeElement.blur();
+    }
+
+    // Saneá posiciones persistidas por la versión cuyo spawn quedaba dentro
+    // de la mesa; no teletransporta a quien ya estaba caminando correctamente.
+    if (Math.hypot(positionRef.current.x, positionRef.current.z) < TABLE_CLEAR_RADIUS + 0.08) {
+      positionRef.current.copy(WALK_SPAWN);
     }
 
     const handleKeyDown = (event) => {
