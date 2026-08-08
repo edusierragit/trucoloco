@@ -1,4 +1,4 @@
-import { getCombatActionConfig, RING_BOUNDS, RING_START_STATE } from "./combatConstants";
+import { getCombatActionConfig, RING_BOUNDS, RING_START_STATE } from "./combatConstants.js";
 
 export function createDebateState(overrides = {}) {
   return {
@@ -86,7 +86,7 @@ export function getDebateTitle(state) {
   if (state.kind === "empujon") return "Fuerte conectado";
   if (state.kind === "golpe") return "Pina conectada";
   if (state.kind?.startsWith("rival")) return "P2 ataco";
-  if (!state.rivalControlled) return "Esperando P2";
+  if (!state.rivalControlled) return "P1 contra CPU";
   return "Arena libre: pega con click";
 }
 
@@ -99,17 +99,19 @@ export function getDebateGoal(state) {
   }
 
   if (state.resolved) return "La pelea termino. Revancha con Q o volve al antro con Esc.";
-  if ((state.fightIntro ?? 0) > 0) return "P1: WASD + click/Q/E/R/F. P2 local: IJKL + H/U/O/P.";
-  if (!state.rivalControlled) return "PvP local: P1 ya se mueve. P2 entra con IJKL + H/U/O/P.";
+  if ((state.fightIntro ?? 0) > 0) return "WASD mueve. Click/Q pega, E fuerte, R especial, F bloquea y Espacio esquiva.";
+  if (!state.rivalControlled) return "Rival CPU activo: su aviso en el piso te dice cuando bloquear o salir.";
   if (state.playerGuard > 0) return "Estas bloqueando. Solta F o movete para volver a pegar.";
   if ((state.playerDash ?? 0) > 0) return "Esquive activo: reposicionate y entra con click o Q.";
   return "Arena local P1 vs P2: los dos se mueven y pegan en tiempo real.";
 }
 
-export function applyCombatAction(current, actor, kind, weaponContext) {
+export function applyCombatAction(current, actor, kind, weaponContext, options = {}) {
   const isPlayer = actor === "player";
   const playerStarted = isPlayer ? { playerEngaged: true } : {};
-  const rivalStarted = !isPlayer ? { rivalControlled: true, playerEngaged: true } : {};
+  const rivalStarted = !isPlayer
+    ? { rivalControlled: options.rivalControlled ?? true, playerEngaged: true }
+    : {};
   const attacker = isPlayer ? "player" : "rival";
   const defender = isPlayer ? "rival" : "player";
   const attackerPos = getCombatPos(current, attacker);
@@ -215,6 +217,11 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
   const defenderWon = nextAttackerHealth <= 0;
   const kindPrefix = isPlayer ? "" : "rival-";
   const actionKind = `${kindPrefix}${kind}`;
+  const playerStreak = isPlayer && hitLanded
+    ? (current.streak ?? 0) + 1
+    : !isPlayer && hitLanded
+      ? 0
+      : current.streak ?? 0;
 
   return {
     ...nextStateWithDefenderPos,
@@ -236,6 +243,9 @@ export function applyCombatAction(current, actor, kind, weaponContext) {
     lastDamageToPlayer: isPlayer ? counterDamage : damage,
     lastDamageToRival: isPlayer ? damage : counterDamage,
     hitStrength: clamp((damage + counterDamage) / 34, 0, 1),
+    vulnerable: isPlayer && hitLanded ? 0 : current.vulnerable ?? 0,
+    streak: playerStreak,
+    crowdHeat: clamp((current.crowdHeat ?? 0) + (hitLanded ? 1 : -0.35), 0, 3),
     player: Math.min(5, Math.floor((100 - (isPlayer ? nextDefenderHealth : nextAttackerHealth)) / 20)),
     rival: Math.min(5, Math.floor((100 - (isPlayer ? nextAttackerHealth : nextDefenderHealth)) / 20)),
     resolved: attackerWon || defenderWon,
@@ -276,6 +286,9 @@ export function stepArenaCombat(current, keys, dt) {
     rivalDash: Math.max(0, (current.rivalDash ?? 0) - safeDt),
     playerMoving: Math.max(0, (current.playerMoving ?? 0) - safeDt),
     rivalMoving: Math.max(0, (current.rivalMoving ?? 0) - safeDt),
+    rivalThink: Math.max(0, (current.rivalThink ?? 0) - safeDt),
+    rivalWindup: Math.max(0, (current.rivalWindup ?? 0) - safeDt),
+    vulnerable: Math.max(0, (current.vulnerable ?? 0) - safeDt),
     playerStamina: clamp((current.playerStamina ?? 3) + safeDt * ((current.playerGuard ?? 0) > 0 ? 0.45 : 0.82), 0, 3),
     rivalStamina: clamp((current.rivalStamina ?? 3) + safeDt * 0.72, 0, 3),
     lastDamageToPlayer: Math.max(0, (current.lastDamageToPlayer ?? 0) - safeDt * 32),
@@ -318,7 +331,10 @@ export function stepArenaCombat(current, keys, dt) {
     next = {
       ...next,
       rivalControlled: true,
-      playerEngaged: true
+      playerEngaged: true,
+      rivalIntent: "manual",
+      rivalWindup: 0,
+      vulnerable: 0
     };
     if (rivalInputX || rivalInputZ) {
       next = withActorPos(next, "rival", {
@@ -329,8 +345,73 @@ export function stepArenaCombat(current, keys, dt) {
     } else {
       next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
     }
-  } else {
+  } else if (next.rivalControlled) {
     next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
+  } else if (rivalCanMove) {
+    const cpuPlayerPos = getCombatPos(next, "player");
+    const cpuRivalPos = getCombatPos(next, "rival");
+    const towardPlayer = getCombatVector(cpuRivalPos, cpuPlayerPos);
+
+    if (next.rivalIntent === "windup") {
+      next.rivalFacing = getFacing(cpuRivalPos, cpuPlayerPos);
+
+      if ((next.rivalWindup ?? 0) <= 0) {
+        const attackKind = next.rivalAttack === "barrida"
+          ? "remate"
+          : next.rivalAttack === "hombro"
+            ? "empujon"
+            : "golpe";
+        const previousHealth = next.playerHealth ?? 100;
+        const attacked = applyCombatAction(next, "rival", attackKind, undefined, { rivalControlled: false });
+        const landed = (attacked.playerHealth ?? 100) < previousHealth;
+
+        next = {
+          ...attacked,
+          rivalControlled: false,
+          rivalIntent: "recover",
+          rivalAttack: "none",
+          rivalThink: landed ? 0.42 : 0.68,
+          vulnerable: landed ? 0.18 : 0.62,
+          kind: landed ? attacked.kind : "rival-whiff",
+          lastMove: landed
+            ? attacked.lastMove
+            : "El rival erro y quedo pagando. Acercate y castigalo antes de que se recomponga."
+        };
+      }
+    } else if (towardPlayer.distance > 0.68) {
+      const approachSpeed = towardPlayer.distance > 1.1 ? 1.02 : 0.76;
+      next = withActorPos(next, "rival", {
+        x: cpuRivalPos.x + towardPlayer.x * approachSpeed * safeDt,
+        z: cpuRivalPos.z + towardPlayer.z * approachSpeed * safeDt
+      }, cpuPlayerPos);
+      next.rivalIntent = "approach";
+      next.rivalMoving = 0.18;
+    } else if ((next.rivalThink ?? 0) <= 0) {
+      const beat = next.rivalAiBeat ?? 0;
+      const stamina = next.rivalStamina ?? 3;
+      const attackKind = beat % 5 === 4 && stamina >= 2.1
+        ? "remate"
+        : beat % 3 === 2 && stamina >= 1.35
+          ? "empujon"
+          : "golpe";
+      const attackName = attackKind === "remate" ? "barrida" : attackKind === "empujon" ? "hombro" : "carga";
+
+      next.rivalIntent = "windup";
+      next.rivalAttack = attackName;
+      next.rivalTargetLane = laneFromPos(cpuPlayerPos);
+      next.rivalWindup = attackKind === "remate" ? 0.78 : attackKind === "empujon" ? 0.58 : 0.42;
+      next.rivalAiBeat = beat + 1;
+      next.kind = "rival-windup";
+      next.token = (next.token ?? 0) + 1;
+      next.lastMove = attackKind === "remate"
+        ? "El rival carga una barrida. Sali de la linea o bloquea el momento justo."
+        : attackKind === "empujon"
+          ? "Viene con el hombro. Guardia o esquive antes del impacto."
+          : "Te telegrafio la pina: bloquea, esquiva o cortalo de cerca.";
+    } else {
+      next.rivalFacing = getFacing(cpuRivalPos, cpuPlayerPos);
+      if (next.rivalIntent === "recover" && (next.rivalThink ?? 0) <= 0.04) next.rivalIntent = "neutral";
+    }
   }
 
   return next;

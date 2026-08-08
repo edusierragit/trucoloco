@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const APP_URL = process.env.TRUCOLOCO_URL ?? "http://127.0.0.1:5173/?auto=0";
 const DEBUG_PORT = Number(process.env.TRUCOLOCO_CDP_PORT ?? 9223);
+const SCREENSHOT_PATH = process.env.TRUCOLOCO_SCREENSHOT ?? "";
 const EDGE_PATHS = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
@@ -116,6 +117,7 @@ async function main() {
     await sleep(1200);
 
     const actions = [];
+    let screenshotCaptured = false;
     const observed = {
       maxHandImages: 0,
       maxHandImagesLoaded: 0,
@@ -160,6 +162,13 @@ async function main() {
       if (state.actingSeat) observed.actingSeats.add(state.actingSeat);
       if (state.cameraSeatId) observed.cameraSeats.add(state.cameraSeatId);
       if (state.cameraTarget) observed.cameraTargets.add(state.cameraTarget);
+
+      if (SCREENSHOT_PATH && !screenshotCaptured && state.canPlayCards > 0) {
+        await sleep(1200);
+        const screenshot = await client.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+        writeFileSync(SCREENSHOT_PATH, Buffer.from(screenshot.data, "base64"));
+        screenshotCaptured = true;
+      }
 
       const clicked = await evaluate(client, `(() => {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();

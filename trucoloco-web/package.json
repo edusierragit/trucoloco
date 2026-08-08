@@ -10,6 +10,7 @@
     "check:rules": "node scripts/validate-truco-rules.mjs",
     "check:flow": "node scripts/validate-truco-flow.mjs",
     "check:ui": "node scripts/validate-ui-flow.mjs",
+    "check:conflict": "node scripts/validate-conflict-combat.mjs",
     "build": "vite build .",
     "preview": "vite preview"
   },

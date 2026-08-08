@@ -555,7 +555,7 @@ function DebateFighter({ side, action, character }) {
   const rivalWon = action?.resolved && (action?.playerHealth ?? 100) <= 0;
   const hasFallen = isPlayer ? rivalWon : playerWon;
   const damageTaken = isPlayer ? action?.lastDamageToPlayer ?? 0 : action?.lastDamageToRival ?? 0;
-  const rivalManualAttack = action?.kind === "rival-golpe" || action?.kind === "rival-empujon" || action?.kind === "rival-remate";
+  const rivalManualAttack = action?.kind === "rival-golpe" || action?.kind === "rival-empujon" || action?.kind === "rival-remate" || action?.kind === "rival-whiff";
   const isMoving = isPlayer ? (action?.playerMoving ?? 0) > 0 : (action?.rivalMoving ?? 0) > 0;
   const attackPulse = isPlayer ? action?.playerActionPulse ?? 0 : action?.rivalActionPulse ?? 0;
   const isActive = isPlayer
@@ -1437,16 +1437,20 @@ function getCameraPose({ match, isNarrow, cameraView, debateAction }) {
     const len = Math.hypot(sx, sz) || 1;
     const inX = -sx / len;
     const inZ = -sz / len;
-    const eyeX = sx + inX * 0.2;
-    const eyeZ = sz + inZ * 0.2;
-    const eyeY = 0.62; // standing at your spot, chin over the felt
+    const eyeX = sx + inX * 0.06;
+    const eyeZ = sz + inZ * 0.06;
+    const selectedSkin = match.selectedCharacter?.skinId ? characterSkins[match.selectedCharacter.skinId] : null;
+    const characterHeight = selectedSkin?.modelTargetHeight ?? 1.78;
+    // Pelvis local 0.59 + ~40% de altura hasta los ojos + offset del Room.
+    // La cámara anterior (0.62) flotaba muy por encima de todos los sentados.
+    const eyeY = ROOM_OFFSET.y + 0.59 + characterHeight * 0.4 + 0.035;
 
     // static gaze at the table heart — the player looks around by dragging,
     // the camera never wanders on its own (pedido explícito del usuario)
     return {
       position: [eyeX, eyeY, eyeZ],
-      target: [-sx * 0.2, -0.42, -sz * 0.2],
-      fov: isNarrow ? 58 : 50
+      target: [-sx * 0.2, eyeY - 0.08, -sz * 0.2],
+      fov: isNarrow ? 54 : 47
     };
   }
 
@@ -1537,8 +1541,8 @@ export function TrucolocoScene({
       lastX = event.clientX;
       lastY = event.clientY;
       const look = seatLookRef.current;
-      look.yaw = Math.max(-1.6, Math.min(1.6, look.yaw - dx * 0.0042));
-      look.pitch = Math.max(-0.55, Math.min(0.4, look.pitch + dy * 0.003));
+      look.yaw = Math.max(-1.35, Math.min(1.35, look.yaw - dx * 0.0042));
+      look.pitch = Math.max(-0.28, Math.min(0.22, look.pitch + dy * 0.0026));
     };
     const up = () => {
       dragging = false;

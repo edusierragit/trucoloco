@@ -197,6 +197,16 @@ Cada vez que el usuario aclare una regla real, un nombre canonico, un flujo impo
 
 ## Assets y personajes
 
+### Referencias físicas confirmadas (Eduardo, 2026-08-07)
+
+- `Irvyn` representa a Eduardo: `1.86 m`, aproximadamente `75 kg`.
+- `Myke Keta`: aproximadamente `1.86 m`.
+- `Pol`: aproximadamente `1.83 m`.
+- `Cubano`: aproximadamente `1.73 m`.
+- `Marvyn`: `1.72 m`, `67 kg` (confirmado por Tomás Nari, 2026-08-07).
+- `Gazpacho` y `Pochex`: alrededor de `15 cm` menos que Irvyn, referencia operativa `1.71 m`.
+- Estas alturas son proporciones canónicas para normalizar los GLB. No aplicar escalas extra por rol a los personajes ni a sus sillas.
+
 - Los GLB actuales vienen de Tripo y viven como fuente en `C:\Users\eduar\GAMES\trucoloco-info`; la app carga copias desde `trucoloco-web/public/assets/characters`.
 - Tripo exporta acciones como `NlaTrack`, `NlaTrack.001`, etc. No confiar en el nombre: auditar duraciones y probar con el debug `[` / `]`.
 - Convencion practica actual: caminar suele ser el clip de `2.375s`, correr `2.792s`, salto/accion corta `1.292s`, box/accion extra suele rondar `2.542s`.

@@ -49,6 +49,11 @@ mientras el personaje está sentado con mano activa. El rival ve el DORSO.
 ## Estado
 - [x] Canal fx compartido (vinilo ya lo usa) — listo para pastillas
 - [x] Harness de identificación de clips (dump-clips + clipsheet)
-- [ ] Edu: bajar clips sentados de Mixamo y re-exportar GLBs (capa 1)
-- [ ] Claude: modos sit* en el motor + cabeza-viva + cartas en mano (2 y 3)
+- [x] Codex (2026-08-07): mirada real sobre `Head` + `NeckTwist02` en los siete GLB, con estados mirar al jugador / al actor / a la mesa
+- [x] Codex (2026-08-07): orientación de mesa corregida con el offset de frente de los GLB; silla y cuerpo ya no giran juntos para simular la mirada
+- [x] Codex (2026-08-07): pose sentada procedural compartida — pelvis al asiento, piernas flexionadas, pies al piso, torso y brazos hacia el paño
+- [x] Codex (2026-08-07): contacto de mesa normalizado — torso a ~0.28 del aro, pose recogida con variantes por personaje e idle corporal sutil
+- [x] Codex (2026-08-07): escala física canónica y pelvis alineada por hueso; sillas desacopladas de la altura/rol y sin aro intersectando el cuerpo
+- [ ] Edu: bajar clips sentados de Mixamo para reemplazar la pose estática por actuación animada (polish de capa 1, ya no bloquea la silueta sentada)
+- [ ] Modos `sit*` en el motor y cartas rivales ligadas a la mano (capas 1 y 3)
 - [ ] Pastillas + efectos de pantalla (capa 4)

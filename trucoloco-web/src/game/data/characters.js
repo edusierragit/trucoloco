@@ -7,7 +7,7 @@ export const characterSkins = {
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
-    modelTargetHeight: 1.72,
+    modelTargetHeight: 1.86,
     modelPromptKey: "irvyn",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
@@ -28,10 +28,11 @@ export const characterSkins = {
   },
   "marvyn-negociante-glb": {
     modelSrc: assetUrl("assets/characters/marvyn.glb"),
-    modelScale: 1.04,
+    modelScale: 1,
     modelPosition: [0, 0.03, -0.02],
     modelRotation: [0, 0, 0],
-    modelTargetHeight: 1.78,
+    modelTargetHeight: 1.72,
+    referenceWeightKg: 67,
     modelPromptKey: "marvyn",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
@@ -52,10 +53,10 @@ export const characterSkins = {
   },
   "pochex-cartachin-glb": {
     modelSrc: assetUrl("assets/characters/pocho.glb"),
-    modelScale: 0.9,
+    modelScale: 1,
     modelPosition: [0, 0.02, 0.04],
     modelRotation: [0, 0, 0],
-    modelTargetHeight: 1.72,
+    modelTargetHeight: 1.71,
     modelPromptKey: "pochex",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
@@ -79,7 +80,7 @@ export const characterSkins = {
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
-    modelTargetHeight: 1.72,
+    modelTargetHeight: 1.73,
     modelPromptKey: "cubano",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
@@ -103,7 +104,7 @@ export const characterSkins = {
     modelScale: 1,
     modelPosition: [0, 0.02, 0],
     modelRotation: [0, 0, 0],
-    modelTargetHeight: 1.72,
+    modelTargetHeight: 1.83,
     modelPromptKey: "pol",
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
@@ -151,7 +152,7 @@ export const characterSkins = {
       box: 1,
       jump: 1
     },
-    modelTargetHeight: 1.74,
+    modelTargetHeight: 1.71,
     modelPromptKey: "gazpacho",
     walkFacingOffset: -Math.PI / 2,
     outfitColor: "#493228",
@@ -181,7 +182,7 @@ export const characterSkins = {
       box: 1,
       jump: 1
     },
-    modelTargetHeight: 1.74,
+    modelTargetHeight: 1.86,
     modelPromptKey: "myke-keta",
     walkFacingOffset: -Math.PI / 2,
         outfitColor: "#242238",

@@ -1,6 +1,7 @@
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import { Cylinder, RoundedBox, useAnimations, useGLTF } from "@react-three/drei";
-import { Box3, Vector3 } from "three";
+import { Box3, Euler, Quaternion, Vector3 } from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 function isFiniteBox(box) {
@@ -56,6 +57,54 @@ function makeClipsInPlace(animations) {
   });
 }
 
+function createPoseRig(scene) {
+  const names = [
+    "Spine01",
+    "Spine02",
+    "L_Thigh",
+    "L_Calf",
+    "L_Foot",
+    "L_ToeBase",
+    "R_Thigh",
+    "R_Calf",
+    "R_Foot",
+    "R_ToeBase",
+    "L_Upperarm",
+    "L_Forearm",
+    "L_Hand",
+    "R_Upperarm",
+    "R_Forearm",
+    "R_Hand"
+  ];
+  const bones = Object.fromEntries(names.map((name) => [name, scene.getObjectByName(name) ?? null]));
+  const restQuaternions = new Map(
+    Object.values(bones)
+      .filter(Boolean)
+      .map((bone) => [bone, bone.quaternion.clone()])
+  );
+
+  return { bones, restQuaternions };
+}
+
+function restorePoseRig(poseRig) {
+  poseRig.restQuaternions.forEach((quaternion, bone) => {
+    bone.quaternion.copy(quaternion);
+  });
+}
+
+function aimBoneAtDirection(scene, bone, child, direction, scratch) {
+  if (!bone || !child || !bone.parent || child.parent !== bone) return;
+
+  scene.updateMatrixWorld(true);
+  scratch.currentDirection.copy(child.position).normalize().applyQuaternion(bone.quaternion).normalize();
+  scene.getWorldQuaternion(scratch.sceneWorldQuaternion);
+  scratch.desiredWorld.copy(direction).normalize().applyQuaternion(scratch.sceneWorldQuaternion);
+  bone.parent.getWorldQuaternion(scratch.parentWorldQuaternion).invert();
+  scratch.desiredParent.copy(scratch.desiredWorld).applyQuaternion(scratch.parentWorldQuaternion).normalize();
+  scratch.deltaQuaternion.setFromUnitVectors(scratch.currentDirection, scratch.desiredParent);
+  bone.quaternion.premultiply(scratch.deltaQuaternion).normalize();
+}
+
 function CharacterModelAsset({
   src,
   scale = 1,
@@ -66,12 +115,15 @@ function CharacterModelAsset({
   animationClipMap = {},
   animationTimeScaleMap = {},
   animationClipOverride = null,
+  poseMode = null,
+  poseVariant = 0,
+  gazeRef,
   onAnimationNames
 }) {
   const { scene, animations = [] } = useGLTF(src);
   const preparedAnimations = useMemo(() => makeClipsInPlace(animations), [animations]);
   const animationNames = useMemo(() => preparedAnimations.map((clip) => clip.name), [preparedAnimations]);
-  const { clonedScene, offset, normalizedScale } = useMemo(() => {
+  const { clonedScene, offset, normalizedScale, normalizedPelvisY } = useMemo(() => {
     const clone = cloneSkeleton(scene);
     clone.traverse((child) => {
       if (child.isMesh) {
@@ -97,14 +149,54 @@ function CharacterModelAsset({
 
     const scaleFactor = hasFiniteBounds && size.y > 0 ? targetHeight / size.y : 1;
     const centeredOffset = hasFiniteBounds ? [-center.x * scaleFactor, -bounds.min.y * scaleFactor, -center.z * scaleFactor] : [0, 0, 0];
+    const pelvis = clone.getObjectByName("Pelvis");
+    const pelvisPosition = new Vector3();
+    clone.updateMatrixWorld(true);
+    pelvis?.getWorldPosition(pelvisPosition);
+    const pelvisY = pelvis
+      ? pelvisPosition.y * scaleFactor + centeredOffset[1]
+      : targetHeight * 0.53;
 
     return {
       clonedScene: clone,
       offset: centeredOffset,
-      normalizedScale: scaleFactor
+      normalizedScale: scaleFactor,
+      normalizedPelvisY: pelvisY
     };
   }, [scene, targetHeight]);
   const { actions } = useAnimations(preparedAnimations, clonedScene);
+  const poseRig = useMemo(() => createPoseRig(clonedScene), [clonedScene]);
+  const seatedPoseBaseRef = useRef(new Map());
+  const poseScratch = useMemo(
+    () => ({
+      currentDirection: new Vector3(),
+      desiredWorld: new Vector3(),
+      desiredParent: new Vector3(),
+      sceneWorldQuaternion: new Quaternion(),
+      parentWorldQuaternion: new Quaternion(),
+      deltaQuaternion: new Quaternion()
+    }),
+    []
+  );
+  const gazePoseRef = useRef({ yaw: 0, pitch: 0, weight: 0 });
+  const gazeRig = useMemo(() => {
+    const head = clonedScene.getObjectByName("Head") ?? null;
+    const neck = clonedScene.getObjectByName("NeckTwist02") ?? clonedScene.getObjectByName("NeckTwist01") ?? null;
+
+    return {
+      head,
+      neck,
+      headRest: head?.quaternion.clone() ?? null,
+      neckRest: neck?.quaternion.clone() ?? null
+    };
+  }, [clonedScene]);
+  const gazeScratch = useMemo(
+    () => ({
+      euler: new Euler(0, 0, 0, "YXZ"),
+      quaternion: new Quaternion()
+    }),
+    []
+  );
   const actionTimeScale = useMemo(() => {
     if (!animationMode) return 1;
     const mappedScale = animationTimeScaleMap[animationMode];
@@ -138,6 +230,91 @@ function CharacterModelAsset({
     return matched ?? (animationMode === "idle" ? names[0] : names.find((name) => name.toLowerCase().includes("walk")) ?? names[0]);
   }, [actions, animationClipMap, animationClipOverride, animationMode]);
 
+  useLayoutEffect(() => {
+    restorePoseRig(poseRig);
+    clonedScene.updateMatrixWorld(true);
+    if (poseMode !== "seat") return undefined;
+
+    const bone = poseRig.bones;
+    const aim = (boneName, childName, direction) => {
+      aimBoneAtDirection(clonedScene, bone[boneName], bone[childName], direction, poseScratch);
+    };
+
+    // Torso apenas hacia el paño: atento, no encorvado.
+    aim("Spine01", "Spine02", new Vector3(0.08 + poseVariant * 0.018, 1, 0));
+
+    // Pelvis quieta sobre el taburete; muslos hacia la mesa y pantorrillas al piso.
+    aim("L_Thigh", "L_Calf", new Vector3(0.8 + poseVariant * 0.035, -0.58, -0.055));
+    aim("R_Thigh", "R_Calf", new Vector3(0.76 - poseVariant * 0.03, -0.64, 0.055));
+    aim("L_Calf", "L_Foot", new Vector3(-0.04 + poseVariant * 0.025, -1, -0.025));
+    aim("R_Calf", "R_Foot", new Vector3(-0.1 - poseVariant * 0.02, -0.99, 0.025));
+    aim("L_Foot", "L_ToeBase", new Vector3(0.94, -0.08, -0.04));
+    aim("R_Foot", "R_ToeBase", new Vector3(0.94, -0.08, 0.04));
+
+    // Codos cerca del cuerpo y manos sobre el regazo/borde, con asimetría por personaje.
+    aim("L_Upperarm", "L_Forearm", new Vector3(0.06, -1, -0.09 - poseVariant * 0.025));
+    aim("R_Upperarm", "R_Forearm", new Vector3(0.03, -1, 0.08 + poseVariant * 0.02));
+    aim("L_Forearm", "L_Hand", new Vector3(0.5 + poseVariant * 0.04, -0.84, -0.18));
+    aim("R_Forearm", "R_Hand", new Vector3(0.42 - poseVariant * 0.035, -0.88, 0.2));
+    clonedScene.updateMatrixWorld(true);
+    seatedPoseBaseRef.current = new Map(
+      [bone.Spine01, bone.L_Upperarm, bone.R_Upperarm, bone.L_Forearm, bone.R_Forearm]
+        .filter(Boolean)
+        .map((joint) => [joint, joint.quaternion.clone()])
+    );
+
+    return () => {
+      seatedPoseBaseRef.current.clear();
+      restorePoseRig(poseRig);
+      clonedScene.updateMatrixWorld(true);
+    };
+  }, [clonedScene, poseMode, poseRig, poseScratch, poseVariant]);
+
+  useFrame((state, delta) => {
+    if (!gazeRig.head && !gazeRig.neck) return;
+
+    if (poseMode === "seat" && seatedPoseBaseRef.current.size) {
+      const t = state.clock.elapsedTime + poseVariant * 1.7;
+      const breath = Math.sin(t * 0.82) * 0.009;
+      const weightShift = Math.sin(t * 0.37 + 0.8) * 0.006;
+      const applyIdle = (bone, x, y, z) => {
+        const base = seatedPoseBaseRef.current.get(bone);
+        if (!bone || !base) return;
+        bone.quaternion.copy(base);
+        gazeScratch.euler.set(x, y, z, "YXZ");
+        gazeScratch.quaternion.setFromEuler(gazeScratch.euler);
+        bone.quaternion.multiply(gazeScratch.quaternion);
+      };
+
+      applyIdle(poseRig.bones.Spine01, breath, weightShift, weightShift * 0.6);
+      applyIdle(poseRig.bones.L_Upperarm, breath * 0.35, 0, weightShift * 0.45);
+      applyIdle(poseRig.bones.R_Upperarm, breath * 0.28, 0, -weightShift * 0.4);
+      applyIdle(poseRig.bones.L_Forearm, -breath * 0.22, weightShift * 0.24, 0);
+      applyIdle(poseRig.bones.R_Forearm, -breath * 0.18, -weightShift * 0.2, 0);
+    }
+
+    const target = gazeRef?.current;
+    const pose = gazePoseRef.current;
+    const alpha = 1 - Math.exp(-Math.min(delta, 0.1) * 7.5);
+    const targetWeight = target?.weight ?? 0;
+    pose.weight += (targetWeight - pose.weight) * alpha;
+    pose.yaw += (((target?.yaw ?? 0) * pose.weight) - pose.yaw) * alpha;
+    pose.pitch += (((target?.pitch ?? 0) * pose.weight) - pose.pitch) * alpha;
+
+    const applyLook = (bone, restQuaternion, yawShare, pitchShare) => {
+      if (!bone || !restQuaternion) return;
+      // Sin clip activo partimos de la pose importada. Con un clip, useAnimations
+      // actualiza primero el hueso y esta rotacion se mezcla aditivamente encima.
+      if (!actionName) bone.quaternion.copy(restQuaternion);
+      gazeScratch.euler.set(pose.pitch * pitchShare, pose.yaw * yawShare, 0, "YXZ");
+      gazeScratch.quaternion.setFromEuler(gazeScratch.euler);
+      bone.quaternion.multiply(gazeScratch.quaternion);
+    };
+
+    applyLook(gazeRig.neck, gazeRig.neckRest, 0.34, 0.28);
+    applyLook(gazeRig.head, gazeRig.headRest, 0.66, 0.72);
+  });
+
   useEffect(() => {
     if (!animationNames.length) return undefined;
     onAnimationNames?.(animationNames);
@@ -167,8 +344,12 @@ function CharacterModelAsset({
     };
   }, [actionName, actionTimeScale, actions]);
 
+  const posedPosition = poseMode === "seat"
+    ? [position[0], 0.59 - normalizedPelvisY * scale, position[2] - 0.5]
+    : position;
+
   return (
-    <group scale={scale} position={position} rotation={rotation}>
+    <group scale={scale} position={posedPosition} rotation={rotation}>
       <primitive object={clonedScene} scale={normalizedScale} position={offset} dispose={null} />
     </group>
   );
@@ -430,6 +611,10 @@ export function CharacterFigure({
   isActiveLane,
   animationMode = null,
   animationClipOverride = null,
+  facingOffset = 0,
+  poseMode = null,
+  poseVariant = 0,
+  gazeRef,
   onAnimationNames,
   forceProcedural = false
 }) {
@@ -444,12 +629,19 @@ export function CharacterFigure({
           src={skin.modelSrc}
           scale={skin.modelScale ?? 1}
           position={skin.modelPosition ?? [0, 0, 0]}
-          rotation={skin.modelRotation ?? [0, 0, 0]}
+          rotation={[
+            skin.modelRotation?.[0] ?? 0,
+            (skin.modelRotation?.[1] ?? 0) + facingOffset,
+            skin.modelRotation?.[2] ?? 0
+          ]}
           targetHeight={skin.modelTargetHeight ?? 1.78}
           animationMode={animationMode}
           animationClipMap={skin.animationClipMap ?? {}}
           animationTimeScaleMap={skin.animationTimeScaleMap ?? {}}
           animationClipOverride={animationClipOverride}
+          poseMode={poseMode}
+          poseVariant={poseVariant}
+          gazeRef={gazeRef}
           onAnimationNames={onAnimationNames}
         />
       </Suspense>

@@ -113,6 +113,11 @@ export function useConflictCombat({ enabled, onExit, weaponContext }) {
     }));
   }, []);
 
+  const setCombatKey = useCallback((key, pressed) => {
+    if (pressed) ringKeysRef.current.add(key);
+    else ringKeysRef.current.delete(key);
+  }, []);
+
   useEffect(() => {
     if (!enabled) {
       window.cancelAnimationFrame(ringFrameRef.current);
@@ -164,6 +169,7 @@ export function useConflictCombat({ enabled, onExit, weaponContext }) {
     debateState,
     resetDebateState,
     triggerDebateAction,
-    switchDebateMode
+    switchDebateMode,
+    setCombatKey
   };
 }

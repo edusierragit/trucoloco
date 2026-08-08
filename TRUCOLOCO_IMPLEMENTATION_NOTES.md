@@ -1,5 +1,24 @@
 # TRUCOLOCO — IMPLEMENTATION NOTES
 
+## Sesión 2026-08-07 — "Mesa Viva / mirada GLB" (Codex)
+
+- Los siete personajes comparten huesos `Head`, `NeckTwist02`, columna, brazos y manos.
+- `CharacterFigure` mezcla una mirada suavizada directamente sobre cabeza y cuello del clon GLB.
+- En vista silla, el rival del carril mira al jugador; quien actúa mira su jugada; los demás siguen al actor.
+- El actor mantiene cuerpo y silla plantados: ya no se rota todo `CharacterSeat` para fingir un giro de cabeza.
+- Se corrigió el frente de los GLB en mesa usando su `walkFacingOffset`; antes el rival de enfrente aparecía de perfil.
+- Se agregó una pose `seat` procedural compartida basada en direcciones anatómicas del rig: torso, muslos, pantorrillas, pies, brazos y antebrazos.
+- La posición del modelo baja la pelvis y la lleva al centro del taburete. La pose se restaura al salir de mesa y no afecta caminar, preview ni ring.
+- Los seis grupos sentados se normalizan a radio `2.58`: con el offset de cuerpo/silla, el torso queda cerca de radio `3.08`, a unos `0.28` del aro exterior de la mesa.
+- Muslos y antebrazos quedaron más recogidos; una variante determinista evita seis poses idénticas y un idle de baja amplitud mueve columna y brazos sin despegar la pelvis.
+- Las alturas GLB ahora siguen las referencias físicas confirmadas: Irvyn/Myke `1.86`, Pol `1.83`, Cubano `1.73`, Marvyn `1.72` (67 kg), Gazpacho/Pochex `1.71`.
+- Se eliminaron escalas extra por rol y por skin que alteraban personaje y silla. En pose `seat`, `CharacterFigure` calcula la altura normalizada del hueso `Pelvis` y la apoya a `0.59`, sobre el asiento de `0.465`.
+- Se quitó el torus decorativo del taburete que se veía atravesando cintura y muslos.
+- El validador UI acepta `TRUCOLOCO_SCREENSHOT` para guardar una captura durante una mano jugable.
+- Pendiente inmediato: reducir los anuncios 3D gigantes de turno y mejorar la composición de cámara; luego sustituir el idle procedural por clips sentados.
+
+Checks: `check:rules`, `check:flow`, `check:ui` y `build` OK.
+
 ## Sesión 2026-07-02 — "Mesa Liar's Bar" (Claude Fable)
 
 ### Qué se implementó

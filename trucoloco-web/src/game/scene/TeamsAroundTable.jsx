@@ -18,6 +18,14 @@ function getVisibleRosterSeats(match) {
   }));
 }
 
+const SEATED_GROUP_RADIUS = 2.58;
+
+function getSeatedSeatPosition(position) {
+  const radius = Math.hypot(position[0], position[2]) || 1;
+  const scale = Math.min(1, SEATED_GROUP_RADIUS / radius);
+  return [position[0] * scale, position[1], position[2] * scale];
+}
+
 // Individual character — ring pulses based on role and active modifier
 function CharacterSeat({
   seat,
@@ -32,6 +40,7 @@ function CharacterSeat({
   isPlayerSeat,
   isSelectedCharacter,
   isSeatedView,
+  isSeatCamera,
   isAwayFromSeat,
   showFloatingLabel,
   lowPower,
@@ -42,21 +51,25 @@ function CharacterSeat({
   const outerRingRef = useRef(null);
   const torsoRef = useRef(null);
   const upperRef = useRef(null);
+  const gazeRef = useRef({ yaw: 0, pitch: 0, weight: 0 });
   const groupRef = useRef(null);
   const spawnRef = useRef(0);
   const timeRef = useRef(Math.random() * Math.PI * 2); // offset per character
+  const { camera } = useThree();
 
 
   const skin = character.skinId ? characterSkins[character.skinId] : null;
-  const roleScale = skin?.modelSrc
-    ? character.role === "Jugador Estrella" ? 1.04 : character.role === "Negociante" ? 0.96 : 1
-    : character.role === "Jugador Estrella" ? 0.94 : 0.96;
+  // Los GLB ya se normalizan a la altura canónica de cada persona. Escalar por
+  // rol deformaba esas diferencias y, además, cambiaba el tamaño de la silla.
+  const roleScale = skin?.modelSrc ? 1 : character.role === "Jugador Estrella" ? 0.94 : 0.96;
   const chairSeatColor = skin?.chairSeatColor ?? "#2d1d16";
-  const chairBackColor = skin?.chairBackColor ?? "#231813";
   const upperBaseY = skin?.modelSrc ? 1.28 : 1.47;
   const seatYaw = Math.atan2(-seat.position[0], -seat.position[2]);
+  const seatedSeatPosition = isRoleSelect ? seat.position : getSeatedSeatPosition(seat.position);
+  const poseVariant = (([...character.id].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % 5) - 2) / 2;
   const chairPull = isPlayerSeat && isRoleSelect ? -0.2 : isPlayerSeat ? 0.08 : 0;
   const chairScale = isPlayerSeat ? 1.04 : 1;
+  const isLocalFirstPerson = isPlayerSeat && isSeatCamera;
   // los GLB ya están decimados al 30% — nunca degradar a conos: los amigos SON el juego
   const useSimplifiedModel = false;
   void lowPower;
@@ -172,38 +185,58 @@ function CharacterSeat({
       torsoRef.current.emissiveIntensity = emissiveIntensity;
     }
 
-    // ---- Cabezas vivas (Liar's Bar): respiración + micro-giros de cabeza y
-    // vistazos ocasionales a las cartas. Suma de senos lentos desfasados por
-    // personaje (timeRef arranca en random) para que sea orgánico, no robótico.
-    if (upperRef.current) {
-      upperRef.current.position.y = upperBaseY + Math.sin(t * 0.9 + timeRef.current * 0.4) * 0.012;
-      // sway sutil: mira alrededor sin fijar la vista
-      const idleYaw = Math.sin(t * 0.47) * 0.05 + Math.sin(t * 0.19 + 1.3) * 0.028;
-      // vistazo a las cartas: pico suave hacia abajo cada tanto (casi siempre 0)
-      const glance = Math.pow(Math.max(0, Math.sin(t * 0.28 + 0.7)), 6) * 0.13;
-      const idlePitch = Math.sin(t * 0.63) * 0.018 + glance;
-      upperRef.current.rotation.y = idleYaw;
-      upperRef.current.rotation.x = idlePitch;
+    // ---- Cabezas vivas (Liar's Bar): la mirada tiene una intención clara.
+    // El rival de tu carril sostiene contacto visual, quien juega mira la mesa
+    // y el resto sigue al actor. Los senos sólo agregan micro-saccades.
+    const gaze = gazeRef.current;
+    const isHumanSeat = isPlayerSeat || Boolean(netPeer);
+    let gazeTarget = null;
+    if (!isHumanSeat && !isRoleSelect) {
+      if (isCurrentActor && !handClosed) {
+        gazeTarget = [0, 0.48, 0];
+      } else if (isSeatCamera && isSelectedLane) {
+        gazeTarget = [camera.position.x, camera.position.y + 1.35, camera.position.z - 0.25];
+      } else if (actingSeatPos) {
+        gazeTarget = [actingSeatPos[0], 1.58, actingSeatPos[2]];
+      } else {
+        gazeTarget = [0, 0.72, 0];
+      }
     }
 
-    // ---- Everyone glances at whoever is acting — the table feels alive ----
+    if (gazeTarget) {
+      const dx = gazeTarget[0] - seat.position[0];
+      const dz = gazeTarget[2] - seat.position[2];
+      const horizontalDistance = Math.hypot(dx, dz) || 1;
+      let localYaw = Math.atan2(dx, dz) - seatYaw;
+      while (localYaw > Math.PI) localYaw -= Math.PI * 2;
+      while (localYaw < -Math.PI) localYaw += Math.PI * 2;
+      const targetPitch = -Math.atan2(gazeTarget[1] - 1.58, horizontalDistance);
+      const microYaw = Math.sin(t * 0.47) * 0.018 + Math.sin(t * 0.19 + 1.3) * 0.012;
+      const microPitch = Math.sin(t * 0.63) * 0.008;
+      gaze.yaw = Math.max(-0.62, Math.min(0.62, localYaw + microYaw));
+      gaze.pitch = Math.max(-0.3, Math.min(0.24, targetPitch + microPitch));
+      gaze.weight = 1;
+    } else {
+      gaze.yaw = 0;
+      gaze.pitch = 0;
+      gaze.weight = 0;
+    }
+
+    // El fallback procedural usa el mismo controlador; los GLB reciben gazeRef
+    // y aplican la rotación directamente sobre Head + NeckTwist02.
+    if (upperRef.current) {
+      upperRef.current.position.y = upperBaseY + Math.sin(t * 0.9 + timeRef.current * 0.4) * 0.012;
+      const idleYaw = Math.sin(t * 0.47) * 0.05 + Math.sin(t * 0.19 + 1.3) * 0.028;
+      const glance = Math.pow(Math.max(0, Math.sin(t * 0.28 + 0.7)), 6) * 0.13;
+      const idlePitch = Math.sin(t * 0.63) * 0.018 + glance;
+      upperRef.current.rotation.y = idleYaw + gaze.yaw * gaze.weight;
+      upperRef.current.rotation.x = idlePitch + gaze.pitch * gaze.weight;
+    }
+
+    // El cuerpo y la silla quedan plantados. La actuación vive en cabeza/cuello,
+    // evitando el giro de maniquí que antes rotaba todo el conjunto.
     if (groupRef.current) {
-      let lookYaw = seatYaw;
-      // Los jugadores humanos (vos + peers en sala) miran SIEMPRE a la mesa al
-      // sentarse: no giran la cara hacia el que actúa (pedido explícito de Edu).
-      const isHumanSeat = isPlayerSeat || Boolean(netPeer);
-      if (!isHumanSeat && actingSeatPos && !isCurrentActor && !isRoleSelect) {
-        const dx = actingSeatPos[0] - seat.position[0];
-        const dz = actingSeatPos[2] - seat.position[2];
-        if (Math.hypot(dx, dz) > 0.5) {
-          let turn = Math.atan2(dx, dz) - seatYaw;
-          while (turn > Math.PI) turn -= Math.PI * 2;
-          while (turn < -Math.PI) turn += Math.PI * 2;
-          // heads turn, bodies stay planted: cap the twist
-          lookYaw = seatYaw + Math.max(-0.5, Math.min(0.5, turn));
-        }
-      }
-      let yawDelta = lookYaw - groupRef.current.rotation.y;
+      let yawDelta = seatYaw - groupRef.current.rotation.y;
       while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
       while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
       groupRef.current.rotation.y += yawDelta * Math.min(1, delta * 2.4);
@@ -214,10 +247,10 @@ function CharacterSeat({
       groupRef.current.scale.setScalar(roleScale * spawnEase);
 
       // ---- Body language: lean in when acting, hop when you win, sag when you lose ----
-      const len = Math.hypot(seat.position[0], seat.position[2]) || 1;
+      const len = Math.hypot(seatedSeatPosition[0], seatedSeatPosition[2]) || 1;
       const leanAmount = isCurrentActor && !handClosed && !isRoleSelect ? 0.17 : 0;
-      const targetX = seat.position[0] - (seat.position[0] / len) * leanAmount;
-      const targetZ = seat.position[2] - (seat.position[2] / len) * leanAmount;
+      const targetX = seatedSeatPosition[0] - (seatedSeatPosition[0] / len) * leanAmount;
+      const targetZ = seatedSeatPosition[2] - (seatedSeatPosition[2] / len) * leanAmount;
       let targetY = seat.position[1];
       if (handClosed && !isRoleSelect) {
         const won = lastWinner === seat.team;
@@ -236,7 +269,7 @@ function CharacterSeat({
       key={`${seat.team}-${character.id}`}
       ref={groupRef}
       name={`Seat_${character.name}`}
-      position={seat.position}
+      position={seatedSeatPosition}
       rotation={[0, seatYaw, 0]}
       scale={roleScale}
     >
@@ -245,10 +278,6 @@ function CharacterSeat({
         <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.3, 0.32, 0.09, 20]} />
           <meshStandardMaterial color={chairSeatColor} roughness={0.85} />
-        </mesh>
-        <mesh position={[0, 0.465, 0]} castShadow>
-          <torusGeometry args={[0.29, 0.035, 10, 22]} />
-          <meshStandardMaterial color={chairBackColor} roughness={0.8} />
         </mesh>
         <mesh position={[0, 0.2, 0]} castShadow>
           <cylinderGeometry args={[0.045, 0.06, 0.4, 10]} />
@@ -291,13 +320,17 @@ function CharacterSeat({
             <meshStandardMaterial color={character.accent} roughness={0.72} metalness={0.12} />
           </mesh>
         </group>
-      ) : (
+      ) : isLocalFirstPerson ? null : (
         <Suspense fallback={null}>
           <CharacterFigure
             skin={skin}
             accent={character.accent}
             outfitMaterialRef={torsoRef}
             upperRef={upperRef}
+            facingOffset={skin?.walkFacingOffset ?? 0}
+            poseMode={isRoleSelect ? null : "seat"}
+            poseVariant={poseVariant}
+            gazeRef={gazeRef}
             isActiveLane={isSelectedLane || isCurrentActor}
             forceProcedural={useSimplifiedModel}
           />
@@ -363,6 +396,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
   const { size } = useThree();
   const isNarrow = size.width < 640;
   const lowPower = performanceMode === "low";
+  const isSeatCamera = !isRoleSelect && (cameraView === "seat" || cameraView === "table");
 
   const actingSeat = match.handStarted && !match.handClosed
     ? visibleRosterSeats.find((seat) => seat.character?.name === match.nextActorName)
@@ -386,7 +420,9 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
         const isCurrentActor = match.handStarted && !match.handClosed && character.name === match.nextActorName;
         const isAwayFromSeat = cameraView === "walk" && character.id === selectedCharacterId;
         // [VISUAL] Walking mode needs a cleaner cinematic read; floating roster labels clutter the table focus.
-        const showFloatingLabel = cameraView !== "walk" && (isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor);
+        // En primera persona el billboard del avatar local queda pegado al lente
+        // y explota de tamaño. El turno ya se comunica con anillo y mesa.
+        const showFloatingLabel = !isSeatCamera && cameraView !== "walk" && (isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor);
         return (
           <CharacterSeat
             key={seat.key}
@@ -401,11 +437,12 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
             isRoleSelect={isRoleSelect}
             isPlayerSeat={isPlayerSeat}
             isSelectedCharacter={isSelectedCharacter}
-            isSeatedView={isPlayerSeat && cameraView === "seat"}
+            isSeatedView={isPlayerSeat && isSeatCamera}
+            isSeatCamera={isSeatCamera}
             isAwayFromSeat={isAwayFromSeat}
             showFloatingLabel={showFloatingLabel}
             lowPower={lowPower}
-            actingSeatPos={actingSeat && actingSeat.seatId !== seat.seatId ? actingSeat.position : null}
+            actingSeatPos={actingSeat && actingSeat.seatId !== seat.seatId ? getSeatedSeatPosition(actingSeat.position) : null}
             netPeer={netRoster.find((peer) => peer.seatId === seat.seatId && !peer.self) ?? null}
           />
         );

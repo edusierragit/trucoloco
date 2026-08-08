@@ -1,4 +1,4 @@
-import { weapons } from "../data/weapons";
+import { weapons } from "../data/weapons.js";
 
 export const RING_START_STATE = {
   mode: "ring",
@@ -37,7 +37,10 @@ export const RING_START_STATE = {
   rivalIntent: "neutral",
   rivalAttack: "none",
   rivalTargetLane: 0.18,
-  vulnerable: false,
+  rivalThink: 0.5,
+  rivalWindup: 0,
+  rivalAiBeat: 0,
+  vulnerable: 0,
   streak: 0,
   crowdHeat: 0,
   pull: 0,
@@ -47,7 +50,7 @@ export const RING_START_STATE = {
   rivalChamber: 5,
   turn: "player",
   resolved: false,
-  lastMove: "Entraste al ring. WASD mueve, click/Q pega, E fuerte, R especial, Shift esquiva y F bloquea."
+  lastMove: "Entraste al ring. El rival CPU se acerca solo: movete, lee la carga y castigalo."
 };
 
 export const RING_BOUNDS = { x: 1.5, z: 1.12 };

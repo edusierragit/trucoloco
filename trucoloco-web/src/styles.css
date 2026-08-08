@@ -505,15 +505,6 @@ select {
     0 24px 80px rgba(214, 106, 63, 0.18);
 }
 
-.stage-ring-mode .debate-hint:not(.debate-hint-resolved) {
-  pointer-events: none;
-}
-
-.stage-ring-mode .debate-hint:not(.debate-hint-resolved) .debate-actions {
-  display: none;
-  pointer-events: none;
-}
-
 .debate-hint-header {
   display: flex;
   align-items: center;
@@ -626,6 +617,90 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
   gap: 7px;
   pointer-events: auto;
+}
+
+.debate-live-controls {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 9px;
+}
+
+.debate-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 38px);
+  gap: 4px;
+}
+
+.debate-dpad button,
+.debate-strikes button {
+  border: 1px solid rgba(243, 223, 182, 0.18);
+  border-radius: 10px;
+  background: rgba(15, 16, 14, 0.82);
+  color: #f3dfb6;
+  cursor: pointer;
+  font-weight: 900;
+  touch-action: none;
+  user-select: none;
+}
+
+.debate-dpad button:active,
+.debate-strikes button:active {
+  border-color: rgba(99, 213, 197, 0.62);
+  background: rgba(41, 79, 73, 0.9);
+  transform: translateY(1px);
+}
+
+.debate-dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.debate-dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.debate-dpad-down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.debate-dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.debate-strikes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.debate-strikes button {
+  min-height: 35px;
+  padding: 5px 7px;
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.debate-strikes button:first-child {
+  border-color: rgba(229, 168, 62, 0.48);
+  background: linear-gradient(180deg, rgba(229, 168, 62, 0.62), rgba(139, 74, 18, 0.78));
+  color: #130b05;
+}
+
+.debate-strikes button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.debate-strikes kbd {
+  color: inherit;
+  font: inherit;
+  opacity: 0.68;
 }
 
 .debate-actions span {

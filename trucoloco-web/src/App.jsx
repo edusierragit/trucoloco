@@ -646,7 +646,8 @@ export default function App() {
     debateState,
     resetDebateState,
     triggerDebateAction,
-    switchDebateMode
+    switchDebateMode,
+    setCombatKey
   } = useConflictCombat({
     enabled: cameraView === "ring",
     onExit: handleRingExit,
@@ -1508,7 +1509,7 @@ export default function App() {
           {cameraView === "ring" && !isSeatingRitual ? (
             <div className={debateState.resolved ? "debate-hint debate-hint-resolved" : "debate-hint"} aria-live="polite">
               <div className="debate-hint-header">
-                <span>Conflicto</span>
+                <span>Conflicto · {debateState.rivalControlled ? "P2 local" : "CPU"}</span>
                 <strong>
                   {debateState.mode === "ruleta"
                     ? `${debateState.player} - ${debateState.rival}`
@@ -1575,10 +1576,42 @@ export default function App() {
                     <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
                   </>
                 ) : (
-                  null
+                  <div className="debate-live-controls">
+                    <div className="debate-dpad" aria-label="Movimiento de pelea">
+                      {[
+                        ["w", "↑", "debate-dpad-up"],
+                        ["a", "←", "debate-dpad-left"],
+                        ["s", "↓", "debate-dpad-down"],
+                        ["d", "→", "debate-dpad-right"]
+                      ].map(([key, label, className]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={className}
+                          aria-label={`Mover ${key}`}
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            event.currentTarget.setPointerCapture?.(event.pointerId);
+                            setCombatKey(key, true);
+                          }}
+                          onPointerUp={() => setCombatKey(key, false)}
+                          onPointerCancel={() => setCombatKey(key, false)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="debate-strikes" aria-label="Golpes de pelea">
+                      <button type="button" onClick={() => triggerDebateAction("golpe")}>Piña <kbd>Q</kbd></button>
+                      <button type="button" onClick={() => triggerDebateAction("empujon")}>Fuerte <kbd>E</kbd></button>
+                      <button type="button" onClick={() => triggerDebateAction("remate")} disabled={(debateState.playerStamina ?? 0) < 2.1}>Especial <kbd>R</kbd></button>
+                      <button type="button" onClick={() => triggerDebateAction("esquive")}>Esquive</button>
+                      <button type="button" onClick={() => triggerDebateAction("guardia")}>Guardia</button>
+                    </div>
+                  </div>
                 )}
               </div>
-              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : "P1 WASD + click/Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir"}</small>
+              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : debateState.rivalControlled ? "P1 WASD + Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir" : "WASD mover · click/Q piña · E fuerte · R especial · F guardia · Espacio esquiva"}</small>
             </div>
           ) : null}
 
