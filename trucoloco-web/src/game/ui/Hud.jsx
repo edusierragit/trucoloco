@@ -84,49 +84,12 @@ function Header({ match }) {
   );
 }
 
-function RoleSelector({ match, multiplayer }) {
+function RoleSelector({ match, multiplayer, onboarding }) {
   const selectedRoleDef = roleDefinitions[match.selectedRole];
   const selectedCharacter = match.selectedCharacter ?? match.activeLane.human;
   const inSala = Boolean(multiplayer?.active);
-  const salaConnected = Boolean(multiplayer?.connected ?? inSala);
-  const hasSalaSeat = Boolean(multiplayer?.mySeat);
-  const hostCanStartSala = inSala && salaConnected && multiplayer?.isHost && hasSalaSeat && match.canAdvance;
-  const selectedSeatLabel = multiplayer?.mySeat ? `${multiplayer.mySeat.label} · ${multiplayer.mySeat.role}` : "";
-  const primaryActionLabel = inSala && !salaConnected
-    ? "Conectando a sala..."
-    : !inSala
-    ? "Practicar contra la IA"
-    : hasSalaSeat
-      ? multiplayer?.isHost
-        ? "Repartir mano en sala"
-        : "Esperando al anfitrión"
-      : "Reclamar silla para jugar";
-  const primaryActionSub = inSala && !salaConnected
-    ? `Sala ${multiplayer?.roomCode ?? ""} · entrando por link`
-    : !inSala
-    ? `Práctica aislada · sin sala · ${selectedCharacter.name}`
-    : hasSalaSeat
-      ? multiplayer?.isHost
-        ? `Sala ${multiplayer.roomCode} · ${selectedSeatLabel}`
-        : `Sala ${multiplayer.roomCode} · ya tenés silla`
-      : `Sala ${multiplayer?.roomCode ?? ""} · elegí lugar y compartí link`;
-  const startSelectedRole = () => {
-    if (!match.canAdvance) return;
-    match.startHand();
-  };
-  const runPrimaryAction = () => {
-    if (inSala && !salaConnected) return;
-    if (!inSala) {
-      startSelectedRole();
-      return;
-    }
-    if (hasSalaSeat) {
-      multiplayer?.startRoomHand?.();
-      return;
-    }
-    multiplayer?.claimSelectedSeat?.();
-  };
-  const primaryDisabled = inSala && !salaConnected ? true : !inSala ? !match.canAdvance : hasSalaSeat ? !hostCanStartSala : false;
+  const identityConfirmed = Boolean(onboarding?.identityConfirmed);
+  const inviteCode = onboarding?.inviteCode ?? "";
 
   if (match.handStarted) {
     return (
@@ -140,14 +103,25 @@ function RoleSelector({ match, multiplayer }) {
         </div>
         <div className="role-lock-actions">
           <span className="role-spotlight-tag">{selectedRoleDef.powerName}</span>
-          {match.returnToRoleSelect ? (
-            <button
-              className="role-change-button"
-              disabled={inSala && !multiplayer?.isHost}
-              onClick={match.returnToRoleSelect}
-              type="button"
-            >
-              Cambiar rol
+          <span className="identity-locked-badge">Identidad fija</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (identityConfirmed) {
+    return (
+      <section className="role-lock identity-lock">
+        <div>
+          <span className="panel-kicker">Identidad confirmada</span>
+          <strong>{selectedCharacter.name}</strong>
+          <small>{match.selectedRole} · ya podés entrar al bar</small>
+        </div>
+        <div className="role-lock-actions">
+          <span className="identity-locked-badge">🔒 Fijo en el bar</span>
+          {!inSala ? (
+            <button className="role-change-button" onClick={onboarding?.unlockIdentity} type="button">
+              Volver a elegir
             </button>
           ) : null}
         </div>
@@ -186,8 +160,8 @@ function RoleSelector({ match, multiplayer }) {
       </div>
 
       <div className="role-select-hero">
-        <span className="panel-kicker">Paso 2 · Rol y personaje</span>
-        <h2>Elegí rol</h2>
+        <span className="panel-kicker">Paso 1 · Antesala</span>
+        <h2>Elegí tu personaje</h2>
       </div>
 
       <div className="role-card-row">
@@ -247,26 +221,22 @@ function RoleSelector({ match, multiplayer }) {
 
       <article className="role-ready-strip">
         <p className="role-ready-hint">
-          {inSala
-            ? hasSalaSeat
-              ? multiplayer?.isHost
-                ? "Ya tenés silla. Repartí cuando los pibes estén sentados."
-                : "Ya tenés silla. El anfitrión arranca la mano compartida."
-              : "Para jugar con amigos, reclamá tu silla y pasá el link de la sala."
-            : "Para jugar con amigos: creá una sala e invitá (rellenás con bots mientras llegan). Acá abajo solo practicás vs IA."}
+          {inviteCode
+            ? `Te invitaron a la sala ${inviteCode}. Confirmá quién sos y recién ahí vas a aparecer en el bar.`
+            : "Elegí una identidad antes de entrar. En el bar no se cambia personaje ni perspectiva: para hacerlo, volvés a esta antesala."}
         </p>
         {multiplayer?.notice ? <p className="role-ready-notice">{multiplayer.notice}</p> : null}
         <div className="role-ready-actions">
           <button
-            className={inSala ? "role-test-button role-test-button-room" : "role-test-button"}
-            disabled={primaryDisabled}
-            onClick={runPrimaryAction}
+            className="role-test-button role-confirm-button"
+            disabled={!match.canAdvance}
+            onClick={onboarding?.confirmIdentity}
             type="button"
           >
-            <span className="role-test-main">{primaryActionLabel}</span>
-            <span className="role-test-sub">{primaryActionSub}</span>
+            <span className="role-test-main">Confirmar a {selectedCharacter.name}</span>
+            <span className="role-test-sub">{inviteCode ? `Entrar a sala ${inviteCode}` : "Después elegís cómo jugar"}</span>
           </button>
-          {inSala && salaConnected ? (
+          {inSala ? (
             <button className="role-secondary-button" onClick={multiplayer?.leaveSala} type="button">
               Salir de sala
             </button>
@@ -1291,7 +1261,7 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
   );
 }
 
-export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer }) {
+export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer, onboarding }) {
   const [handFocus, setHandFocus] = useState(false);
   const tone = getRoleTone(match);
   const isAwayFromTable = match.handStarted && cameraView === "entry";
@@ -1309,7 +1279,7 @@ export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer 
       <div className="hud-top-stack">
         <AmbientAudio />
       <Header match={match} />
-        <RoleSelector match={match} multiplayer={multiplayer} />
+        <RoleSelector match={match} multiplayer={multiplayer} onboarding={onboarding} />
       </div>
 
       <div className="hud-center">

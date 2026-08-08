@@ -405,9 +405,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
   // en elección de rol solo estás vos frente a la mesa vacía;
   // al repartir "llegan" los demás (antesala del modo online con salas)
   const seatsToShow = isRoleSelect
-    ? visibleRosterSeats.filter(
-        (seat) => seat.team === "A" && seat.character.role === match.selectedRole
-      )
+    ? visibleRosterSeats.filter((seat) => seat.character.id === selectedCharacterId)
     : visibleRosterSeats;
 
   return (

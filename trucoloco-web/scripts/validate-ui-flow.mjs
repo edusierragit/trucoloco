@@ -179,7 +179,7 @@ async function main() {
         }
 
         const buttons = [...document.querySelectorAll("button:not(:disabled)")];
-        const preferred = buttons.find((button) => /Sentarse|repartir|Probar solo|Practicar|JUGAR/i.test(txt(button)))
+        const preferred = buttons.find((button) => /Confirmar|Sentarse|repartir|Jugar solo|Probar solo|Practicar|JUGAR/i.test(txt(button)))
           ?? buttons.find((button) => /Dejar|juega|jugar|Avanz|Limpiar|Siguiente|Anotar/i.test(txt(button)))
           ?? buttons.find((button) => /Mirar cartas/i.test(txt(button)));
 

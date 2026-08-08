@@ -1,13 +1,11 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
 import { tableSeats, teams } from "./game/data/characters";
-import { deck } from "./game/data/cards";
 import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
 import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
@@ -21,19 +19,6 @@ import {
   getRivalAttackName as getConflictRivalAttackName
 } from "./game/conflict/combatState";
 import { useConflictCombat } from "./game/conflict/useConflictCombat";
-
-// las caras de las cartas se precargan apenas hay un respiro: nunca más
-// naipes blancos "cargando" en la mano
-if (typeof window !== "undefined") {
-  const preloadDeck = () => deck.forEach((card) => card.image && useTexture.preload(card.image));
-  if ("requestIdleCallback" in window) window.requestIdleCallback(preloadDeck, { timeout: 4000 });
-  else window.setTimeout(preloadDeck, 1500);
-}
-
-const cameraViews = [
-  { id: "seat", label: "Silla", hint: "1 · sentarte" },
-  { id: "walk", label: "🍺 Entrar al bar", hint: "2 · WASD" }
-];
 
 const playerById = [...teams.A, ...teams.B].reduce((players, player) => {
   players[player.id] = player;
@@ -446,16 +431,16 @@ function createEmptyWalkTouchInput() {
 
 function getInitialPerformanceProfile() {
   if (typeof window === "undefined") {
-    return { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false };
+    return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
   }
 
   const perfOverride = new URLSearchParams(window.location.search).get("perf");
-  // low es el default: el modo high (sombras + bloom + AA) es opt-in con ?perf=high
-  const lowPower = perfOverride !== "high";
-
-  return lowPower
-    ? { mode: "low", dpr: [0.75, 1], antialias: false, shadows: false, postprocessing: false }
-    : { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
+  // La calidad visual es el piso. El perfil liviano queda como override manual
+  // de diagnóstico; desktop y mobile reciben la escena completa por defecto.
+  if (perfOverride === "low") {
+    return { mode: "low", dpr: [0.7, 0.95], antialias: true, shadows: true, postprocessing: true };
+  }
+  return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
 }
 
 function SceneLoadingFallback() {
@@ -485,6 +470,11 @@ function SceneLoadingFallback() {
       </mesh>
     </group>
   );
+}
+
+function SceneReadySignal({ onReady }) {
+  useEffect(() => onReady(), [onReady]);
+  return null;
 }
 
 function playConflictHitSound(hitStrength = 0.5, resolved = false) {
@@ -569,8 +559,15 @@ export default function App() {
   // menú "JUGAR primero": el ▶ JUGAR es protagonista; recién al tocarlo se
   // despliegan las opciones online (crear / entrar / unirse con código)
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
+  const urlSalaCode = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const code = new URLSearchParams(window.location.search).get("sala")?.toUpperCase() ?? "";
+    return code.length === 4 ? code : "";
+  }, []);
   const match = useTrucolocoMatch({ mySeatId: myOnlineSeatId });
   const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
+  const [sceneReady, setSceneReady] = useState(false);
   const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
@@ -593,6 +590,17 @@ export default function App() {
   useEffect(() => {
     matchRef.current = match;
   }, [match]);
+
+  // Precarga únicamente las tres cartas que realmente recibe el jugador.
+  // Antes se pedía el mazo completo al abrir la web y competía con los GLB.
+  useEffect(() => {
+    match.humanHand.forEach((card) => {
+      if (!card.image) return;
+      const image = new Image();
+      image.decoding = "async";
+      image.src = card.image;
+    });
+  }, [match.humanHand]);
 
   useEffect(() => {
     const wasHandStarted = previousHandStartedRef.current;
@@ -620,6 +628,10 @@ export default function App() {
   }, []);
 
   const handleCameraViewChange = useCallback((viewId) => {
+    if (!identityConfirmed && (viewId === "walk" || viewId === "seat" || viewId === "ring")) {
+      setCameraView("table");
+      return;
+    }
     window.clearTimeout(returnToTableTimerRef.current);
     window.clearTimeout(walkNoticeTimerRef.current);
     setIsSeatingRitual(false);
@@ -631,7 +643,7 @@ export default function App() {
       jumpToken: current.jumpToken
     }));
     setCameraView(viewId);
-  }, []);
+  }, [identityConfirmed]);
 
   const handleRingExit = useCallback(() => {
     handleCameraViewChange("walk");
@@ -662,11 +674,15 @@ export default function App() {
 
   const joinSala = useCallback((code, isHost) => {
     netRoomRef.current?.leave();
+    const selectedCharacterId = match.selectedCharacter?.id ?? null;
+    const selectedSeat = tableSeats.find((seat) => seat.playerId === selectedCharacterId) ?? null;
     const profile = {
       playerId: getPlayerId(),
       name: match.selectedCharacter?.name ?? "Pibe",
       role: match.selectedRole,
-      characterId: match.selectedCharacter?.id ?? null
+      characterId: selectedCharacterId,
+      seatId: selectedSeat?.seatId ?? null,
+      seatAt: selectedSeat ? Date.now() : null
     };
     // transporte: RELAY (MQTT/WSS) por defecto — funciona con CGNAT, Brave y
     // sin TURN. ?net=p2p fuerza el WebRTC puro viejo (para pruebas).
@@ -690,16 +706,19 @@ export default function App() {
     }
     netRoomRef.current = room;
     setNetRoom(room);
+    setMyOnlineSeatId(selectedSeat?.seatId ?? null);
+    setIdentityConfirmed(true);
+    setSalaCollapsed(false);
     // la URL ES la sala: refresh te devuelve adentro (ver MULTIPLAYER_DESIGN.md)
     window.history.replaceState(null, "", `${window.location.pathname}?sala=${code}`);
     // EL BAR ES LA SALA: crear o unirte te deja CAMINANDO en el antro con tu
     // personaje (espacio social). La partida es una actividad que se lanza
     // adentro. Si ya hay mano en curso, el invariante de cámara manda.
-    if (!matchRef.current?.handStarted) handleCameraViewChange("walk");
-  }, [match.selectedCharacter, match.selectedRole, handleCameraViewChange]);
+    if (!matchRef.current?.handStarted) setCameraView("walk");
+  }, [match.selectedCharacter, match.selectedRole]);
 
   const [micOn, setMicOn] = useState(false);
-  const [salaCollapsed, setSalaCollapsed] = useState(true);
+  const [salaCollapsed, setSalaCollapsed] = useState(false);
   const [salaPos, setSalaPos] = useState(null); // posición arrastrada del panel
   const [salaNotice, setSalaNotice] = useState("");
   // feedback de conexión: si te quedás solo mucho rato, el relay P2P no
@@ -937,17 +956,19 @@ export default function App() {
   const claimSelectedSeat = useCallback(() => {
     const selectedCharacterId = match.selectedCharacter?.id;
     const exactSeat = tableSeats.find((seat) => seat.playerId === selectedCharacterId);
-    const fallbackSeat = tableSeats.find((seat) => seat.role === match.selectedRole && !getSeatBlockReason(seat.seatId));
-    const seat = exactSeat && !getSeatBlockReason(exactSeat.seatId) ? exactSeat : fallbackSeat;
-    if (!seat) {
-      showSalaNotice("No hay silla libre para ese rol/personaje.");
+    if (!exactSeat) {
+      showSalaNotice("Ese personaje todavía no tiene una silla asignada.");
       return;
     }
-    claimSeat(seat.seatId);
-  }, [claimSeat, getSeatBlockReason, match.selectedCharacter, match.selectedRole, showSalaNotice]);
+    const blockReason = getSeatBlockReason(exactSeat.seatId);
+    if (blockReason) {
+      showSalaNotice(blockReason);
+      return;
+    }
+    claimSeat(exactSeat.seatId);
+  }, [claimSeat, getSeatBlockReason, match.selectedCharacter, showSalaNotice]);
 
   // resolución de conflicto: si dos reclaman la misma silla, gana el más viejo
-  const autoSeatDoneRef = useRef(false);
   useEffect(() => {
     const me = roster.find((peer) => peer.self);
     if (!me?.seatId) return;
@@ -960,40 +981,48 @@ export default function App() {
     if (rival) {
       netRoomRef.current?.updateProfile({ seatId: null, seatAt: null });
       setMyOnlineSeatId(null);
-      // perdiste el desempate: volvé a elegir una silla LIBRE distinta
-      autoSeatDoneRef.current = false;
+      setIdentityConfirmed(false);
+      setCameraView("table");
+      showSalaNotice(`${rival.name} confirmó ese personaje primero. Elegí otro para entrar.`);
+      // La identidad nunca muta silenciosamente: volvés a la antesala.
     }
-  }, [roster]);
+  }, [roster, showSalaNotice]);
 
-  // al entrar a una sala con más gente, tomás automáticamente una silla LIBRE
-  // (distinta) para no aparecer como el mismo personaje que otro
-  useEffect(() => {
-    if (!netRoom) {
-      autoSeatDoneRef.current = false;
+  const confirmIdentity = useCallback(() => {
+    const selectedCharacterId = match.selectedCharacter?.id;
+    const selectedSeat = tableSeats.find((seat) => seat.playerId === selectedCharacterId);
+    if (!selectedSeat) {
+      showSalaNotice("Elegí un personaje antes de entrar.");
       return;
     }
-    const me = roster.find((peer) => peer.self);
-    if (!me || me.seatId || roster.length < 2 || autoSeatDoneRef.current) return;
-    const taken = new Set(roster.filter((peer) => peer.seatId).map((peer) => peer.seatId));
-    const takenCharacters = new Set(roster.filter((peer) => peer.characterId).map((peer) => peer.characterId));
-    const free = tableSeats.find((seat) => !taken.has(seat.seatId) && !takenCharacters.has(seat.playerId));
-    if (free) {
-      autoSeatDoneRef.current = true;
-      claimSeat(free.seatId);
+    const blockReason = netRoomRef.current ? getSeatBlockReason(selectedSeat.seatId) : "";
+    if (blockReason) {
+      showSalaNotice(blockReason);
+      return;
     }
-  }, [roster, netRoom, claimSeat]);
+
+    setIdentityConfirmed(true);
+    if (netRoomRef.current) {
+      claimSeat(selectedSeat.seatId);
+      setCameraView("walk");
+      return;
+    }
+    if (urlSalaCode) joinSala(urlSalaCode, false);
+  }, [claimSeat, getSeatBlockReason, joinSala, match.selectedCharacter, showSalaNotice, urlSalaCode]);
+
+  const unlockIdentity = useCallback(() => {
+    if (netRoomRef.current || matchRef.current?.handStarted) return;
+    setIdentityConfirmed(false);
+    setPlayMenuOpen(false);
+    setCameraView("table");
+  }, []);
 
   const [searchingRandom, setSearchingRandom] = useState(false);
   const searchRef = useRef(null);
   const [backfillOpen, setBackfillOpen] = useState(false);
-  // lobby online: sin bots salvo que el host lo pida — se espera a los humanos
-  const [fillWithBots, setFillWithBots] = useState(false);
   const backfillRef = useRef(null);
   const rosterRef = useRef([]);
   rosterRef.current = roster;
-  const urlSalaCode = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("sala")?.toUpperCase() ?? ""
-    : "";
   const selfPeer = roster.find((peer) => peer.self) ?? null;
   const mySeat = selfPeer?.seatId ? tableSeats.find((seat) => seat.seatId === selfPeer.seatId) ?? null : null;
   const lockedCharacterIds = useMemo(
@@ -1054,10 +1083,12 @@ export default function App() {
   const exitToMenu = useCallback(() => {
     if (netRoomRef.current) {
       leaveSala();
-      return;
+    } else {
+      matchRef.current?.returnToRoleSelect?.();
+      setCameraView("table");
     }
-    matchRef.current?.returnToRoleSelect?.();
-    setCameraView("table");
+    setIdentityConfirmed(false);
+    setPlayMenuOpen(false);
   }, [leaveSala]);
 
   const startRoomHand = useCallback(() => {
@@ -1078,6 +1109,11 @@ export default function App() {
     handleCameraViewChange("seat");
   }, [handleCameraViewChange, match, mySeat, showSalaNotice]);
 
+  const startBotTest = useCallback(() => {
+    match.startHand();
+    setCameraView("seat");
+  }, [match]);
+
   // el perfil viaja solo cuando cambiás de rol o personaje
   useEffect(() => {
     const room = netRoomRef.current;
@@ -1097,19 +1133,8 @@ export default function App() {
     });
   }, [match.selectedRole, match.selectedCharacter, showSalaNotice]);
 
-  // link de invitación: ?sala=XXXX entra directo, sin prompts.
-  // guard por ref: StrictMode corre los efectos dos veces en dev y un doble
-  // joinRoom envenena las suscripciones a los relays
-  const autoJoinedRef = useRef(false);
-  useEffect(() => {
-    if (autoJoinedRef.current) return;
-    autoJoinedRef.current = true;
-    const code = new URLSearchParams(window.location.search).get("sala");
-    if (code && code.length === 4) {
-      joinSala(code.toUpperCase(), false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Un link de invitación abre la antesala. La conexión recién empieza cuando
+  // la persona confirma identidad; nadie aparece en el bar con un avatar azaroso.
 
   // ─── LA MESA JUEGA SOLA ───────────────────────────────────────────────────
   // los turnos de los bots avanzan con cadencia humana: nada de apretar
@@ -1256,7 +1281,8 @@ export default function App() {
     setWalkNotice("");
 
     if (currentMatch.phase === "role-select" && currentMatch.canAdvance) {
-      currentMatch.startHand();
+      if (netRoomRef.current) startRoomHand();
+      else currentMatch.startHand();
       return;
     }
 
@@ -1266,7 +1292,7 @@ export default function App() {
       setCameraView("table");
       setIsSeatingRitual(false);
     }, 950);
-  }, [handleCameraViewChange, resetDebateState]);
+  }, [handleCameraViewChange, resetDebateState, startRoomHand]);
 
   const stageClassName = [
     "stage-shell",
@@ -1277,23 +1303,6 @@ export default function App() {
     cameraView === "table" && !isSeatingRitual ? "stage-table-mode" : "",
     netRoom && !netRoom.isHost && !myOnlineSeatId ? "stage-espectador" : ""
   ].filter(Boolean).join(" ");
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target;
-      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
-      if (isTyping) return;
-
-      if (event.key === "1") handleCameraViewChange("seat");
-      if (event.key === "2") handleCameraViewChange("walk");
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleCameraViewChange]);
 
   return (
     <div className="app-shell">
@@ -1338,6 +1347,7 @@ export default function App() {
                 onWalkInteract={handleWalkInteract}
                 onWalkAnimationDebugChange={setWalkAnimationDebug}
               />
+              <SceneReadySignal onReady={() => setSceneReady(true)} />
             </Suspense>
             {performanceProfile.postprocessing ? (
               <EffectComposer multisampling={0}>
@@ -1348,29 +1358,23 @@ export default function App() {
             ) : null}
           </Canvas>
 
-          <div className="camera-dock" aria-label="Camara y movimiento por el antro">
-            <span className="camera-dock-kicker">Cámara</span>
-            <div className="camera-dock-actions">
-              {cameraViews.map((view) => (
-                <button
-                  key={view.id}
-                  type="button"
-                  className={cameraView === view.id ? "camera-dock-button camera-dock-button-active" : "camera-dock-button"}
-                  aria-pressed={cameraView === view.id}
-                  onClick={() => {
-                    if (view.id === "walk" && !netRoomRef.current) {
-                      joinSala(genRoomCode(), true);
-                      return;
-                    }
-                    handleCameraViewChange(view.id);
-                  }}
-                >
-                  <span>{view.label}</span>
-                  <small>{view.hint}</small>
-                </button>
-              ))}
+          {!sceneReady ? (
+            <div className="scene-loading-ui" role="status" aria-live="polite">
+              <div className="scene-loading-mark">TL</div>
+              <strong>Abriendo el antro</strong>
+              <span>Encendiendo luces · preparando la mesa · cargando personajes</span>
             </div>
-          </div>
+          ) : null}
+
+          {identityConfirmed && !match.handStarted && cameraView === "table" ? <div className="camera-dock camera-dock-entry" aria-label="Entrada al bar">
+            <span className="camera-dock-kicker">Identidad lista</span>
+            <div className="camera-dock-actions">
+              <button type="button" className="camera-dock-button camera-dock-button-active" onClick={() => handleCameraViewChange("walk")}>
+                <span>🍺 Entrar al bar</span>
+                <small>WASD / flechas · la puerta te devuelve al menú</small>
+              </button>
+            </div>
+          </div> : null}
 
           {cameraView === "walk" && !isSeatingRitual ? (
             <>
@@ -1646,8 +1650,14 @@ export default function App() {
             match={playMatch}
             cameraView={cameraView}
             onReturnToTable={() => handleCameraViewChange("table")}
+            onboarding={{
+              identityConfirmed,
+              inviteCode: netRoom ? "" : urlSalaCode,
+              confirmIdentity,
+              unlockIdentity
+            }}
             multiplayer={{
-              active: Boolean(netRoom || urlSalaCode),
+              active: Boolean(netRoom),
               connected: Boolean(netRoom),
               isHost: Boolean(netRoom?.isHost),
               roomCode: netRoom?.code ?? urlSalaCode,
@@ -1707,32 +1717,21 @@ export default function App() {
 
             {salaCollapsed ? null : (
               <>
-                <div className="sala-seats">
-                  {tableSeats.map((seat) => {
-                    const owner = roster.find((peer) => peer.seatId === seat.seatId);
-                    const mine = owner?.self;
-                    const characterOwner = !owner && seat.playerId
-                      ? roster.find((peer) => !peer.self && peer.characterId === seat.playerId)
-                      : null;
-                    const locked = Boolean((owner && !mine) || characterOwner);
-                    const seatClassName = [
-                      "seat-slot",
-                      mine ? "seat-slot-mine" : "",
-                      locked ? "seat-slot-taken seat-slot-locked" : ""
-                    ].filter(Boolean).join(" ");
-                    return (
-                      <button
-                        key={seat.seatId}
-                        className={seatClassName}
-                        disabled={locked}
-                        type="button"
-                        title={characterOwner ? `${playerById[seat.playerId]?.name ?? "Personaje"} ya está en la sala` : `${seat.label} · ${seat.role}`}
-                        onClick={() => (!owner || mine ? claimSeat(mine ? null : seat.seatId) : null)}
-                      >
-                        <small>{seat.team === "A" ? "CASA" : "VISITA"}</small>
-                        <strong>{seat.role === "Jugador Estrella" ? "Estrella" : seat.role}</strong>
-                        <span>{owner ? owner.name : characterOwner ? `${playerById[seat.playerId]?.name ?? "ocupado"} ocupado` : "libre"}</span>
-                      </button>
+                <div className="sala-roster" aria-label="Personas conectadas">
+                  {Array.from({ length: ROOM_LIMIT }, (_, index) => {
+                    const peer = roster[index];
+                    return peer ? (
+                      <div className={peer.self ? "sala-player sala-player-self" : "sala-player"} key={peer.peerId}>
+                        <span>{peer.self ? "VOS" : `P${index + 1}`}</span>
+                        <strong>{peer.name}</strong>
+                        <small>{peer.role ?? "Sin rol"}</small>
+                      </div>
+                    ) : (
+                      <div className="sala-player sala-player-empty" key={`empty-${index}`}>
+                        <span>P{index + 1}</span>
+                        <strong>Esperando…</strong>
+                        <small>Entrará por el link</small>
+                      </div>
                     );
                   })}
                 </div>
@@ -1745,10 +1744,12 @@ export default function App() {
                       {roster.length >= ROOM_LIMIT
                         ? "¡Mesa completa! A jugar."
                         : roster.length >= 2
-                          ? `⏳ Esperando jugadores… ${roster.length}/${ROOM_LIMIT}`
+                          ? `Sala activa · ${roster.length}/${ROOM_LIMIT} personas`
                           : connTimedOut
-                            ? "⚠ No conecta con nadie todavía."
-                            : "🔌 Conectando a la sala…"}
+                            ? "Seguís solo en la sala. Compartí el link."
+                            : netRoom.isHost
+                              ? "Sala creada. Invitá a tus amigos."
+                              : "Entraste a la sala. Esperando al host."}
                     </p>
                     {roster.length < 2 && connTimedOut ? (
                       <div className="sala-conn-help">
@@ -1760,27 +1761,26 @@ export default function App() {
                     ) : null}
                     {netRoom.isHost ? (
                       <>
-                        <label className="sala-toggle">
-                          <input
-                            type="checkbox"
-                            checked={fillWithBots}
-                            onChange={() => setFillWithBots((value) => !value)}
-                          />
-                          <span>Rellenar sillas vacías con bots</span>
-                        </label>
                         <button
                           className="sala-share sala-start"
                           type="button"
-                          disabled={roster.length < ROOM_LIMIT && !fillWithBots}
-                          onClick={() => match.startHand()}
+                          disabled={roster.length < ROOM_LIMIT}
+                          onClick={startRoomHand}
                         >
-                          {roster.length >= ROOM_LIMIT || fillWithBots
-                            ? "▶ Iniciar partida"
-                            : `▶ Iniciar (faltan ${ROOM_LIMIT - roster.length})`}
+                          {roster.length >= ROOM_LIMIT
+                            ? "▶ Iniciar partida con amigos"
+                            : `Esperando ${ROOM_LIMIT - roster.length} personas`}
                         </button>
+                        <details className="sala-test-tools">
+                          <summary>Herramientas de prueba</summary>
+                          <p>Los bots existen sólo para testear el juego.</p>
+                          <button className="sala-btn" type="button" onClick={startRoomHand}>
+                            Iniciar ahora y completar con bots
+                          </button>
+                        </details>
                       </>
                     ) : (
-                      <p className="sala-note">El host arranca cuando estén todos (o rellene con bots).</p>
+                      <p className="sala-note">El anfitrión inicia cuando estén las seis personas.</p>
                     )}
                   </div>
                 ) : null}
@@ -1817,12 +1817,12 @@ export default function App() {
                 ) : null}
 
                 <p className="sala-note">
-                  Reclamá tu silla arriba y pasale el link a los pibes.
+                  Tu personaje ya está fijo. Cada invitado elige el suyo antes de aparecer acá.
                 </p>
               </>
             )}
           </div>
-        ) : (
+        ) : identityConfirmed && !match.handStarted ? (
           <div className={`sala-join-box${match.phase === "role-select" ? "" : " sala-lower"}`}>
             {!playMenuOpen ? (
               <button className="play-cta" type="button" onClick={() => setPlayMenuOpen(true)}>
@@ -1832,7 +1832,7 @@ export default function App() {
             ) : (
               <>
                 <div className="play-menu-head">
-                  <span className="play-menu-title">Jugar online</span>
+                  <span className="play-menu-title">Paso 2 · Cómo jugar</span>
                   <button className="play-menu-back" type="button" onClick={() => setPlayMenuOpen(false)}>
                     ✕
                   </button>
@@ -1874,10 +1874,16 @@ export default function App() {
                     Unirse
                   </button>
                 </div>
+                <details className="sala-test-tools sala-test-tools-solo">
+                  <summary>Prueba técnica</summary>
+                  <button className="canto-chip sala-btn" type="button" onClick={startBotTest}>
+                    Jugar solo con bots
+                  </button>
+                </details>
               </>
             )}
           </div>
-        ),
+        ) : null,
         document.body
       )}
     </div>
