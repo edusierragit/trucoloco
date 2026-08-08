@@ -688,7 +688,6 @@ function TableProps({ lowPower = false }) {
 
   return (
     <group name="Table_CriolloProps">
-      <PillPlate />
       <group name="Mate_Prop" position={[-1.72, 0.42, 0.88]} rotation={[0, -0.24, 0]}>
         <mesh castShadow receiveShadow>
           <cylinderGeometry args={[0.13, 0.18, 0.28, 18]} />
@@ -805,53 +804,41 @@ function TableDangerProps({ lowPower = false }) {
   );
 }
 
-function getTurnMarkerPose(seatId) {
+function getTurnMarkerPose(seatId, radius = 1.72) {
   const orderedSeats = [...tableSeats].sort((a, b) => a.tableOrder - b.tableOrder);
   const seatIndex = Math.max(0, orderedSeats.findIndex((seat) => seat.seatId === seatId));
   const angle = (Math.PI * 2 * seatIndex) / orderedSeats.length;
 
   return {
-    position: [Math.sin(angle) * 1.72, 0.43, Math.cos(angle) * 1.72],
+    position: [Math.sin(angle) * radius, 0.43, Math.cos(angle) * radius],
     rotation: [-Math.PI / 2, 0, -angle]
   };
 }
 
-// quién es MANO esta mano: anillo quieto y sobrio en su lugar de la mesa
+// Ficha física sobria: comunica quién es mano sin otra aura sobre el paño.
 function ManoMarker({ match }) {
   if (!match.manoSeatId || !match.handStarted || match.handClosed) return null;
-  const pose = getTurnMarkerPose(match.manoSeatId);
+  const pose = getTurnMarkerPose(match.manoSeatId, 1.9);
   return (
-    <group name="Mano_Marker" position={[pose.position[0], pose.position[1] - 0.012, pose.position[2]]} rotation={pose.rotation}>
-      <mesh>
-        <ringGeometry args={[0.5, 0.53, 40]} />
-        <meshBasicMaterial color="#d9b36c" transparent opacity={0.4} depthWrite={false} />
+    <group name="Mano_Marker" position={[pose.position[0], pose.position[1], pose.position[2]]}>
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[0.12, 0.12, 0.035, 24]} />
+        <meshStandardMaterial color="#b9853d" roughness={0.42} metalness={0.55} />
       </mesh>
-      <Text position={[0, -0.66, 0.01]} fontSize={0.09} color="#d9b36c" anchorX="center" anchorY="middle" letterSpacing={0.2}>
-        MANO
+      <Text position={[0, 0.021, 0]} rotation={pose.rotation} fontSize={0.07} color="#241509" anchorX="center" anchorY="middle">
+        M
       </Text>
     </group>
   );
 }
 
 function TurnMarker({ match }) {
-  const ringRef = useRef(null);
-  const timeRef = useRef(0);
   const isVisible = match.handStarted && !match.handClosed && match.phase !== "role-select";
   const actingSeatId = match.nextActorSeatId ?? match.currentTurnSeatId;
   const actingSeat = tableSeats.find((seat) => seat.seatId === actingSeatId);
-  const markerPose = getTurnMarkerPose(actingSeatId);
+  const markerPose = getTurnMarkerPose(actingSeatId, 1.64);
   const isOwnTeam = actingSeat?.team === "A";
   const color = isOwnTeam ? "#63d5c5" : "#d05a44";
-  const label = isOwnTeam ? "EQUIPO SUR" : "EQUIPO NORTE";
-
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    if (!ringRef.current) return;
-
-    const pulse = 0.5 + Math.sin(timeRef.current * 2.6) * 0.5;
-    ringRef.current.material.opacity = isVisible ? 0.24 + pulse * 0.18 : 0;
-    ringRef.current.scale.setScalar(1 + pulse * 0.08);
-  });
 
   if (!isVisible) {
     return null;
@@ -859,31 +846,19 @@ function TurnMarker({ match }) {
 
   return (
     <group name="TurnMarker_3D" position={markerPose.position}>
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.34, 0.46, 40]} />
-        <meshBasicMaterial color={color} transparent opacity={0.28} depthWrite={false} />
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[0.105, 0.105, 0.04, 24]} />
+        <meshStandardMaterial color={color} roughness={0.38} metalness={0.42} emissive={color} emissiveIntensity={0.08} />
       </mesh>
       <Text
-        position={[0, 0.035, 0]}
+        position={[0, 0.023, 0]}
         rotation={markerPose.rotation}
-        fontSize={0.09}
-        color={color}
+        fontSize={0.06}
+        color="#160f0b"
         anchorX="center"
         anchorY="middle"
-        letterSpacing={0.08}
       >
-        ACTUA
-      </Text>
-      <Text
-        position={[0, 0.035, 0.18]}
-        rotation={markerPose.rotation}
-        fontSize={0.055}
-        color="#f0ddb4"
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.04}
-      >
-        {match.nextActorName ?? label}
+        T
       </Text>
     </group>
   );
@@ -992,8 +967,6 @@ function HexagonHub({ handClosed, outcomeTone, modId }) {
 
 function ImportedHexBoardAsset() {
   const { scene } = useGLTF(assetUrl("assets/characters/tablero.glb"));
-  const modelRef = useRef(null);
-  const glowRef = useRef(null);
   const { clonedScene, normalizedScale, offset } = useMemo(() => {
     const clone = scene.clone();
 
@@ -1031,30 +1004,9 @@ function ImportedHexBoardAsset() {
     };
   }, [scene]);
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (modelRef.current) {
-      modelRef.current.position.y = Math.sin(t * 1.4) * 0.018;
-      modelRef.current.rotation.y = Math.sin(t * 0.42) * 0.055;
-    }
-    if (glowRef.current) {
-      glowRef.current.material.opacity = 0.18 + Math.sin(t * 2.2) * 0.035;
-      glowRef.current.scale.setScalar(1 + Math.sin(t * 1.7) * 0.035);
-    }
-  });
-
   return (
     <group name="Tablero_Holograma_Asset">
-      <mesh ref={glowRef} position={[0, -0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.88, 72]} />
-        <meshBasicMaterial color="#f0a34f" transparent opacity={0.18} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, -0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.82, 0.96, 96]} />
-        <meshBasicMaterial color="#91e9f6" transparent opacity={0.18} depthWrite={false} />
-      </mesh>
       <primitive
-        ref={modelRef}
         object={clonedScene}
         scale={normalizedScale * 1.12}
         position={offset}
@@ -1136,7 +1088,6 @@ export function Table({ match, performanceMode = "high" }) {
       <FeltInlay modId={modId} lowPower={lowPower} />
       <BrassStuds lowPower={lowPower} />
       <TableProps lowPower={lowPower} />
-      <TableDangerProps lowPower={lowPower} />
 
       <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
 
@@ -1145,11 +1096,9 @@ export function Table({ match, performanceMode = "high" }) {
         <meshStandardMaterial color="#34180d" roughness={0.78} metalness={0.04} />
       </mesh>
 
-      <TensionRing handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
       <TurnMarker match={match} />
       <ManoMarker match={match} />
       <CardTableauGuides active={showActiveTableCards} playedCount={match.tableCards.length} />
-      <LastPlayedMarker tableCards={match.tableCards} />
 
       <ArchivedTrickCards trickHistory={match.trickHistory} showCurrentPair={showCurrentPair} handClosed={match.handClosed} />
 

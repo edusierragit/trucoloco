@@ -758,84 +758,6 @@ function TrucoResponsePanel({ match }) {
   );
 }
 
-const RIVAL_REJECT_LINES = [
-  "Ni en pedo. Emparejá y hablamos.",
-  "¿Me viste cara de gil? Mejorá la oferta.",
-  "Última chance: no me saqués nada."
-];
-
-function AgreementPill({ match }) {
-  const [deltaSelf, setDeltaSelf] = useState(0);
-  const [deltaRival, setDeltaRival] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  const [rivalSays, setRivalSays] = useState(null);
-  const [thinking, setThinking] = useState(false);
-
-  const open =
-    match.selectedRole === "Negociante" &&
-    match.handClosed &&
-    !match.matchWinner &&
-    !match.agreementApplied &&
-    Boolean(match.applyAgreement);
-
-  if (!open) return null;
-
-  const clamp = (value) => Math.max(-2, Math.min(2, value));
-  const fmt = (value) => (value > 0 ? `+${value}` : `${value}`);
-  const rivalName = match.activeLane.rival.name;
-  const outOfChances = attempts >= RIVAL_REJECT_LINES.length;
-
-  // la logica del voto: el rival firma solo si no pierde — no le sacas puntos
-  // y no te das mas de lo que le das a el
-  const rivalAccepts = deltaRival >= 0 && deltaSelf <= deltaRival + 0 && deltaSelf <= 1;
-
-  const propose = () => {
-    if (thinking) return;
-    setThinking(true);
-    setRivalSays(`${rivalName} lo piensa…`);
-    window.setTimeout(() => {
-      setThinking(false);
-      if (rivalAccepts) {
-        match.applyAgreement(deltaSelf, deltaRival);
-      } else {
-        setRivalSays(`${rivalName}: —${RIVAL_REJECT_LINES[Math.min(attempts, RIVAL_REJECT_LINES.length - 1)]}`);
-        setAttempts((value) => value + 1);
-      }
-    }, 750);
-  };
-
-  return createPortal(
-    <div className="agreement-pill">
-      <div className="agreement-title">ACUERDO DE NEGOCIANTES</div>
-      <div className="agreement-body">
-        <div className="agreement-side">
-          <span>Vos</span>
-          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v - 1))} type="button">−</button>
-          <strong>{fmt(deltaSelf)}</strong>
-          <button className="agreement-step" onClick={() => setDeltaSelf((v) => clamp(v + 1))} type="button">+</button>
-        </div>
-        <div className="agreement-side">
-          <span>{rivalName}</span>
-          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v - 1))} type="button">−</button>
-          <strong>{fmt(deltaRival)}</strong>
-          <button className="agreement-step" onClick={() => setDeltaRival((v) => clamp(v + 1))} type="button">+</button>
-        </div>
-        {outOfChances ? (
-          <button className="canto-chip canto-chip-advance" onClick={() => match.applyAgreement(0, 0)} type="button">
-            Cobro automático
-          </button>
-        ) : (
-          <button className="canto-chip canto-chip-gold" disabled={thinking} onClick={propose} type="button">
-            {thinking ? "…" : "Proponer"}
-          </button>
-        )}
-      </div>
-      {rivalSays ? <div className="agreement-says">{rivalSays}</div> : null}
-    </div>,
-    document.body
-  );
-}
-
 function WeaponButton({ weapon, disabled, onUse }) {
   return (
     <button
@@ -1059,7 +981,6 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
 
     return (
       <>
-        <AgreementPill match={match} />
         {createPortal(
           <footer className="bottom-dock bottom-dock-result result-dock-right">
             <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
@@ -1091,11 +1012,11 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
 
           <button
             className="action-button action-button-primary next-hand"
-            disabled={!match.canAdvance || (match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied)}
+            disabled={!match.canAdvance}
             onClick={advanceHandler}
             type="button"
           >
-            {match.selectedRole === "Negociante" && !match.matchWinner && !match.agreementApplied ? "Falta el acuerdo" : nextLabel}
+            {nextLabel}
           </button>
         </section>
           </footer>,

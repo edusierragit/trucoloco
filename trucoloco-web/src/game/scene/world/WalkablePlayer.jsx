@@ -25,7 +25,7 @@ const WALK_CAMERA_SIDE_OFFSET = 0.86;
 const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFSET.y + 0.05, ROOM_WORLD_OFFSET.z);
 // Entre dos sillas y fuera del radio de colisión de la mesa. El spawn anterior
 // estaba a 2.35m dentro de un keep-out de 3.08m y el primer paso lo devolvía al borde.
-const WALK_SPAWN = new Vector3(1.68, PLAYER_Y, 2.82);
+const WALK_SPAWN = new Vector3(1.95, PLAYER_Y, 3.05);
 // v4 invalida overrides guardados con [/] antes del mapa verificado por
 // contact sheets (2026-07-08): esos overrides viejos pisaban el mapa bueno
 const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v4";
@@ -51,10 +51,13 @@ function keepOutOfTable(position) {
   position.z *= push;
 }
 
-function getNearestHotspot(position) {
+function getNearestHotspot(position, activeHotspot = null) {
   return WALK_HOTSPOTS.find((hotspot) => {
     const distance = Math.hypot(position.x - hotspot.x, position.z - hotspot.z);
-    return distance <= hotspot.radius;
+    // Un pequeño margen de salida evita que el cartel alterne cuando el
+    // personaje queda exactamente sobre el borde de una zona interactiva.
+    const exitMargin = activeHotspot === hotspot.id ? 0.18 : 0;
+    return distance <= hotspot.radius + exitMargin;
   })?.id ?? null;
 }
 
@@ -433,7 +436,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
       groupRef.current.rotation.y += deltaYaw * (1 - Math.exp(-Math.min(delta, 0.08) * 12));
     }
 
-    const nextHotspot = getNearestHotspot(positionRef.current);
+    const nextHotspot = getNearestHotspot(positionRef.current, hotspotRef.current);
     if (pendingHotspotRef.current !== nextHotspot) {
       pendingHotspotRef.current = nextHotspot;
       hotspotSinceRef.current = timeRef.current;
@@ -446,7 +449,6 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     }
 
     groupRef.current.position.copy(positionRef.current);
-    onMove?.(positionRef.current.x, positionRef.current.z, groupRef.current.rotation.y, moving, motionModeRef.current);
 
     const swing = moving ? Math.sin(timeRef.current * (sprinting ? 12 : 8)) : 0;
     const jumpProgress = actionModeRef.current === "jump" && timeRef.current < actionUntilRef.current
@@ -491,6 +493,21 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     if (camera.fov !== 47) {
       camera.fov += (47 - camera.fov) * 0.12;
       camera.updateProjectionMatrix();
+    }
+
+    // La sincronización P2P es best-effort: nunca puede cortar el movimiento,
+    // la animación o la cámara local si el relay todavía no tiene pares.
+    try {
+      const pendingMove = onMove?.(
+        positionRef.current.x,
+        positionRef.current.z,
+        groupRef.current.rotation.y,
+        moving,
+        motionModeRef.current
+      );
+      pendingMove?.catch?.(() => {});
+    } catch {
+      // El siguiente frame sigue funcionando y reintentará al ritmo normal.
     }
   });
 

@@ -733,7 +733,12 @@ export default function App() {
     if (now - lastPosSentRef.current < (moving ? 50 : 400)) return;
     lastPosSentRef.current = now;
     // el MODO viaja tambien: el otro ve tu salto/punch/correr de verdad
-    room.sendPos({ x, z, yaw, mode: mode ?? (moving ? "walk" : "idle") });
+    try {
+      const pendingSend = room.sendPos({ x, z, yaw, mode: mode ?? (moving ? "walk" : "idle") });
+      pendingSend?.catch?.(() => {});
+    } catch {
+      // Caminar localmente no depende de que el relay P2P tenga pares listos.
+    }
   }, []);
 
   // host: cada cambio de la mesa viaja como snapshot a los guests

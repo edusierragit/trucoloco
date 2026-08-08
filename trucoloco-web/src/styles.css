@@ -4996,7 +4996,44 @@ select {
 }
 
 .result-dock-right .hand-result-panel {
-  border-radius: 16px;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-areas:
+    "copy action"
+    "meta action";
+  gap: 10px 14px;
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.result-dock-right {
+  right: 18px;
+  bottom: 18px;
+  width: min(520px, calc(100vw - 36px));
+}
+
+.result-dock-right .hand-result-copy strong {
+  font-size: clamp(1.12rem, 1.6vw, 1.48rem);
+}
+
+.result-dock-right .hand-result-copy p {
+  margin-top: 5px;
+  font-size: 0.88rem;
+}
+
+.result-dock-right .role-switch-row {
+  grid-area: meta;
+  margin: 2px 0 0;
+  gap: 5px;
+}
+
+.result-dock-right .canto-chip-role {
+  padding: 5px 9px;
+  font-size: 0.7rem;
+}
+
+.result-dock-right .hand-result-panel .next-hand {
+  min-width: 150px;
+  min-height: 64px;
 }
 
 /* el acuerdo se corre a la izquierda del cuadro cuando conviven */
@@ -5712,6 +5749,27 @@ select {
 }
 .walk-hint-faded:hover {
   opacity: 0.92;
+}
+
+@media (max-width: 640px) {
+  .result-dock-right {
+    right: 10px;
+    bottom: 10px;
+    width: calc(100vw - 20px);
+  }
+
+  .result-dock-right .hand-result-panel {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "meta"
+      "action";
+  }
+
+  .result-dock-right .hand-result-panel .next-hand {
+    width: 100%;
+    min-height: 54px;
+  }
 }
 
 /* ─── flujo coherente + interacción de app, no documento seleccionable ───── */

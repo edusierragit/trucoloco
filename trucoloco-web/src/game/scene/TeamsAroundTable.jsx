@@ -251,12 +251,7 @@ function CharacterSeat({
       const leanAmount = isCurrentActor && !handClosed && !isRoleSelect ? 0.17 : 0;
       const targetX = seatedSeatPosition[0] - (seatedSeatPosition[0] / len) * leanAmount;
       const targetZ = seatedSeatPosition[2] - (seatedSeatPosition[2] / len) * leanAmount;
-      let targetY = seat.position[1];
-      if (handClosed && !isRoleSelect) {
-        const won = lastWinner === seat.team;
-        if (won && outcomeTone !== "draw") targetY += Math.abs(Math.sin(t * 5.2)) * 0.11;
-        else if (!won && outcomeTone !== "draw") targetY -= 0.06;
-      }
+      const targetY = seat.position[1];
       const moveAlpha = Math.min(1, delta * 3.2);
       groupRef.current.position.x += (targetX - groupRef.current.position.x) * moveAlpha;
       groupRef.current.position.z += (targetZ - groupRef.current.position.z) * moveAlpha;
@@ -292,26 +287,6 @@ function CharacterSeat({
           <meshStandardMaterial color="#b47a34" roughness={0.4} metalness={0.6} />
         </mesh>
       </group>
-
-      {isPlayerSeat ? (
-        <group name={`SeatState_${character.name}`}>
-          <mesh position={[0, 0.025, -0.03]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.6, 0.7, 36]} />
-            <meshBasicMaterial color={isSeatedView ? "#91e9f6" : "#d9b36c"} transparent opacity={isSeatedView ? 0.32 : 0.16} depthWrite={false} />
-          </mesh>
-          <Text
-            position={[0, 0.13, -0.82]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.078}
-            color={isSeatedView ? "#91e9f6" : "#d9b36c"}
-            anchorX="center"
-            anchorY="middle"
-            letterSpacing={0.08}
-          >
-            {isSeatedView ? "SENTADO" : "TU SILLA"}
-          </Text>
-        </group>
-      ) : null}
 
       {isAwayFromSeat ? (
         <group name={`SeatAway_${character.name}`}>
@@ -373,17 +348,6 @@ function CharacterSeat({
         </Billboard>
       ) : null}
 
-      {/* Base ring */}
-      <mesh name={`Ring_${character.name}`} ref={ringRef} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.32, 0.44, 28]} />
-        <meshBasicMaterial color={character.accent} transparent opacity={0.44} />
-      </mesh>
-
-      {/* Outer ring — only visible during special states */}
-      <mesh ref={outerRingRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.46, 0.54, 28]} />
-        <meshBasicMaterial color={character.accent} transparent opacity={0} depthWrite={false} />
-      </mesh>
     </group>
   );
 }
@@ -420,7 +384,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
         // [VISUAL] Walking mode needs a cleaner cinematic read; floating roster labels clutter the table focus.
         // En primera persona el billboard del avatar local queda pegado al lente
         // y explota de tamaño. El turno ya se comunica con anillo y mesa.
-        const showFloatingLabel = !isSeatCamera && cameraView !== "walk" && (isNarrow ? isCurrentActor : isRoleSelect || isCurrentActor);
+        const showFloatingLabel = isRoleSelect && !isSeatCamera && cameraView !== "walk";
         return (
           <CharacterSeat
             key={seat.key}
