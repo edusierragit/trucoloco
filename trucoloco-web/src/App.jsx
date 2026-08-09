@@ -542,14 +542,6 @@ export default function App() {
   const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
   const [walkHotspot, setWalkHotspot] = useState(null);
-  // el cartel de caminar se desvanece si no cambia: dejaba de ser info y
-  // pasaba a ser mueble ("queda estatico y molesta")
-  const [walkHintFaded, setWalkHintFaded] = useState(false);
-  useEffect(() => {
-    setWalkHintFaded(false);
-    const timer = window.setTimeout(() => setWalkHintFaded(true), 4500);
-    return () => window.clearTimeout(timer);
-  }, [walkHotspot, cameraView]);
   const [walkNotice, setWalkNotice] = useState("");
   const [walkAnimationDebug, setWalkAnimationDebug] = useState(null);
   const [walkTouchInput, setWalkTouchInput] = useState(() => createEmptyWalkTouchInput());
@@ -978,6 +970,7 @@ export default function App() {
     }
 
     setIdentityConfirmed(true);
+    setPlayMenuOpen(true);
     if (netRoomRef.current) {
       claimSeat(selectedSeat.seatId);
       setCameraView("walk");
@@ -1342,24 +1335,33 @@ export default function App() {
             </div>
           ) : null}
 
-          {identityConfirmed && cameraView !== "ring" ? <div className="camera-dock camera-dock-context" aria-label="Movimiento por el bar">
-            <span className="camera-dock-kicker">{cameraView === "walk" ? "Explorando el bar" : "Movimiento"}</span>
+          {identityConfirmed && (netRoom || match.handStarted) && cameraView !== "walk" && cameraView !== "ring" ? <div className="camera-dock camera-dock-context" aria-label="Movimiento por el bar">
+            <span className="camera-dock-kicker">Movimiento</span>
             <div className="camera-dock-actions">
               <button
                 type="button"
                 className="camera-dock-button camera-dock-button-active"
-                onClick={() => handleCameraViewChange(cameraView === "walk" ? (match.handStarted ? "seat" : "table") : "walk")}
+                onClick={() => handleCameraViewChange("walk")}
               >
-                <span>{cameraView === "walk" ? "🪑 Volver a la mesa" : "🍺 Caminar por el bar"}</span>
-                <small>{cameraView === "walk" ? "retoma tu lugar sin cambiar de personaje" : "WASD / flechas · identidad bloqueada"}</small>
+                <span>🍺 Caminar por el bar</span>
+                <small>WASD / flechas</small>
               </button>
             </div>
           </div> : null}
 
           {cameraView === "walk" && !isSeatingRitual ? (
             <>
-              <div className={`${walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"}${walkHintFaded ? " walk-hint-faded" : ""}`} aria-live="polite">
-                <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Entrada" : "Caminar"}</span>
+              <div className={walkHotspot ? "walk-hint walk-hint-action" : "walk-hint"} aria-live="polite">
+                <div className="walk-hint-head">
+                  <span>{walkHotspot === "bar" ? "Barra" : walkHotspot === "door" ? "Entrada" : "Explorando el bar"}</span>
+                  <button
+                    className="walk-hint-exit"
+                    type="button"
+                    onClick={() => handleCameraViewChange(match.handStarted ? "seat" : "table")}
+                  >
+                    Volver a la mesa
+                  </button>
+                </div>
                 <strong>
                   {walkHotspot === "table"
                     ? "F · Sentarse en mesa"
@@ -1369,7 +1371,7 @@ export default function App() {
                         ? "F · Mirar barra"
                         : walkHotspot === "ring"
                           ? "F · Entrar a pelear"
-                        : "WASD / Flechas"}
+                        : "WASD / Flechas · Q/E giran"}
                 </strong>
                 <span className="walk-hint-character">
                   {match.selectedCharacter?.name ?? match.activeLane.human.name}
@@ -1386,7 +1388,7 @@ export default function App() {
                           ? "Botellas, humo y promesas de truco"
                         : walkHotspot === "ring"
                           ? "Entrás a una sala aparte: golpes y cero jurisprudencia"
-                          : "WASD para moverte · Q/E giran la cámara · Shift corre")}
+                          : "Avanzá por el pasillo · Shift corre")}
                 </small>
               </div>
 
@@ -1802,19 +1804,24 @@ export default function App() {
               </>
             )}
           </div>
-        ) : identityConfirmed && !match.handStarted ? (
+        ) : identityConfirmed && !match.handStarted && cameraView !== "walk" ? (
           <div className={`sala-join-box${match.phase === "role-select" ? "" : " sala-lower"}`}>
             {!playMenuOpen ? (
-              <button className="play-cta" type="button" onClick={() => setPlayMenuOpen(true)}>
-                <span className="play-cta-main">▶ JUGAR</span>
-                <span className="play-cta-sub">Con amigos, online</span>
-              </button>
+              <>
+                <button className="play-cta" type="button" onClick={() => setPlayMenuOpen(true)}>
+                  <span className="play-cta-main">▶ JUGAR</span>
+                  <span className="play-cta-sub">Con amigos, online</span>
+                </button>
+                <button className="identity-change-button" type="button" onClick={unlockIdentity}>
+                  ← Cambiar personaje
+                </button>
+              </>
             ) : (
               <>
                 <div className="play-menu-head">
                   <span className="play-menu-title">Paso 2 · Cómo jugar</span>
-                  <button className="play-menu-back" type="button" onClick={() => setPlayMenuOpen(false)}>
-                    ✕
+                  <button className="identity-change-button identity-change-button-inline" type="button" onClick={unlockIdentity}>
+                    ← Personaje
                   </button>
                 </div>
                 <button className="canto-chip canto-chip-advance" type="button" onClick={() => joinSala(genRoomCode(), true)}>

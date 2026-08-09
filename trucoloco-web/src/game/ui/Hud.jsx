@@ -988,28 +988,6 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
             <strong>{resultTitle}</strong>
             <p>{resultCopy}</p>
           </div>
-
-
-          {match.canSwitchRole && !match.matchWinner ? (
-            <div className="role-switch-row">
-              <span className="role-switch-label">Rol para la próxima</span>
-              {match.roleOptions.map((role) => (
-                <button
-                  key={role}
-                  className={
-                    role === match.selectedRole
-                      ? "canto-chip canto-chip-role canto-chip-role-active"
-                      : "canto-chip canto-chip-role"
-                  }
-                  onClick={() => match.selectRole(role)}
-                  type="button"
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
           <button
             className="action-button action-button-primary next-hand"
             disabled={!match.canAdvance}

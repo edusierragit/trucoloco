@@ -311,7 +311,38 @@ select {
     rgba(5, 6, 5, 0.72);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(14px) saturate(1.08);
-  pointer-events: none;
+  pointer-events: auto;
+}
+
+.walk-hint-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.walk-hint-exit,
+.identity-change-button {
+  border: 1px solid rgba(240, 221, 180, 0.22);
+  border-radius: 999px;
+  background: rgba(7, 8, 7, 0.72);
+  color: rgba(240, 221, 180, 0.88);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.walk-hint-exit {
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.walk-hint-exit:hover,
+.identity-change-button:hover {
+  border-color: rgba(99, 213, 197, 0.48);
+  color: #bdf2ea;
 }
 
 .walk-hint span {
@@ -4997,9 +5028,7 @@ select {
 
 .result-dock-right .hand-result-panel {
   grid-template-columns: minmax(0, 1fr) 150px;
-  grid-template-areas:
-    "copy action"
-    "meta action";
+  grid-template-areas: "copy action";
   gap: 10px 14px;
   padding: 14px;
   border-radius: 18px;
@@ -5018,17 +5047,6 @@ select {
 .result-dock-right .hand-result-copy p {
   margin-top: 5px;
   font-size: 0.88rem;
-}
-
-.result-dock-right .role-switch-row {
-  grid-area: meta;
-  margin: 2px 0 0;
-  gap: 5px;
-}
-
-.result-dock-right .canto-chip-role {
-  padding: 5px 9px;
-  font-size: 0.7rem;
 }
 
 .result-dock-right .hand-result-panel .next-hand {
@@ -5740,15 +5758,19 @@ select {
   cursor: grabbing;
 }
 
-/* el cartel de caminar respira: si no cambia, se apaga solo */
+/* El paseo tiene un único cartel estable: nada titila ni compite con otro dock. */
 .walk-hint {
-  transition: opacity 0.6s ease;
+  transition: border-color 160ms ease, background 160ms ease;
 }
-.walk-hint-faded {
-  opacity: 0.14;
+
+.identity-change-button {
+  min-height: 34px;
+  padding: 7px 12px;
 }
-.walk-hint-faded:hover {
-  opacity: 0.92;
+
+.identity-change-button-inline {
+  min-height: 30px;
+  padding: 5px 10px;
 }
 
 @media (max-width: 640px) {
@@ -5762,7 +5784,6 @@ select {
     grid-template-columns: 1fr;
     grid-template-areas:
       "copy"
-      "meta"
       "action";
   }
 
