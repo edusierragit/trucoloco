@@ -28,6 +28,30 @@ const WALK_TABLE_FOCUS_TARGET = new Vector3(ROOM_WORLD_OFFSET.x, ROOM_WORLD_OFFS
 const WALK_SPAWN = new Vector3(-1.2, PLAYER_Y, 3.35);
 const WALK_SPAWN_YAW = -Math.PI / 2;
 const WALK_SPAWN_MODEL_YAW = Math.PI / 2;
+const CONTROL_KEY_BY_CODE = {
+  KeyW: "w",
+  KeyA: "a",
+  KeyS: "s",
+  KeyD: "d",
+  KeyQ: "q",
+  KeyE: "e",
+  KeyF: "f",
+  KeyJ: "j",
+  ArrowUp: "arrowup",
+  ArrowDown: "arrowdown",
+  ArrowLeft: "arrowleft",
+  ArrowRight: "arrowright",
+  ShiftLeft: "shift",
+  ShiftRight: "shift",
+  Space: " ",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Digit0: "0"
+};
+const MOVEMENT_KEYS = new Set([
+  "w", "a", "s", "d", "q", "e",
+  "arrowup", "arrowdown", "arrowleft", "arrowright", "shift"
+]);
 // v4 invalida overrides guardados con [/] antes del mapa verificado por
 // contact sheets (2026-07-08): esos overrides viejos pisaban el mapa bueno
 const TRIPO_CALIBRATION_STORAGE_KEY = "trucoloco:tripo-animation-overrides:v4";
@@ -42,6 +66,10 @@ const WALK_HOTSPOTS = [
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getControlKey(event) {
+  return CONTROL_KEY_BY_CODE[event.code] ?? event.key?.toLowerCase?.() ?? "";
 }
 
 function keepOutOfTable(position) {
@@ -195,6 +223,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const yawRef = useRef(WALK_SPAWN_YAW);
   const positionRef = useRef(WALK_SPAWN.clone());
   const velocityRef = useRef(new Vector3());
+  const targetVelocityRef = useRef(new Vector3());
   const forwardRef = useRef(new Vector3(0, 0, -1));
   const rightRef = useRef(new Vector3(1, 0, 0));
   const moveRef = useRef(new Vector3());
@@ -214,6 +243,9 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
   const lastJumpTokenRef = useRef(0);
   const actionModeRef = useRef("box");
   const jumpStartedAtRef = useRef(-1);
+  const onHotspotChangeRef = useRef(onHotspotChange);
+  const onInteractRef = useRef(onInteract);
+  const onMoveRef = useRef(onMove);
   const [motionMode, setMotionMode] = useState("idle");
   const [clipOverrides, setClipOverrides] = useState({});
   const [animationNames, setAnimationNames] = useState([]);
@@ -245,6 +277,13 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     virtualInputRef.current = virtualInput ?? { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 };
   }, [virtualInput]);
 
+  // El lobby y el HUD actualizan callbacks sin que eso deba reiniciar WASD.
+  useEffect(() => {
+    onHotspotChangeRef.current = onHotspotChange;
+    onInteractRef.current = onInteract;
+    onMoveRef.current = onMove;
+  }, [onHotspotChange, onInteract, onMove]);
+
   // zoom con la rueda mientras caminás: acerca/aleja la cámara de tercera
   // persona (rueda arriba = acercar). Sentado no lleva zoom: solo giro lateral.
   useEffect(() => {
@@ -261,15 +300,26 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
   useEffect(() => {
     if (!enabled) {
-      onHotspotChange?.(null);
+      onHotspotChangeRef.current?.(null);
       return undefined;
     }
 
-    // El click en "Caminar" deja un botón con foco. Soltarlo hace que WASD
-    // llegue al juego de inmediato, sin exigir un click extra sobre el canvas.
+    keysRef.current.clear();
+
+    // Crear/unirse puede dejar el foco en un input o botón. El canvas recibe
+    // foco al entrar al paseo para que WASD funcione en el primer intento.
+    const canvas = gl.domElement;
+    canvas.tabIndex = 0;
     if (typeof document !== "undefined" && typeof document.activeElement?.blur === "function") {
       document.activeElement.blur();
     }
+    const focusFrame = window.requestAnimationFrame(() => {
+      try {
+        canvas.focus({ preventScroll: true });
+      } catch {
+        canvas.focus();
+      }
+    });
 
     // Saneá posiciones persistidas por la versión cuyo spawn quedaba dentro
     // de la mesa; no teletransporta a quien ya estaba caminando correctamente.
@@ -282,15 +332,18 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
       const target = event.target;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
 
-      const key = event.key.toLowerCase();
+      const key = getControlKey(event);
+      if (MOVEMENT_KEYS.has(key)) event.preventDefault();
+
       if (key === "f" && hotspotRef.current) {
         event.preventDefault();
-        onInteract?.(hotspotRef.current);
+        if (!event.repeat) onInteractRef.current?.(hotspotRef.current);
         return;
       }
 
       if (key === "j") {
         event.preventDefault();
+        if (event.repeat) return;
         actionUntilRef.current = timeRef.current + 0.85;
         actionModeRef.current = "box";
         motionModeRef.current = "box";
@@ -300,6 +353,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
 
       if (key === " " || event.code === "Space") {
         event.preventDefault();
+        if (event.repeat) return;
         jumpStartedAtRef.current = timeRef.current;
         actionUntilRef.current = timeRef.current + JUMP_DURATION;
         actionModeRef.current = "jump";
@@ -350,20 +404,36 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     };
 
     const handleKeyUp = (event) => {
-      keysRef.current.delete(event.key.toLowerCase());
+      keysRef.current.delete(getControlKey(event));
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    const clearInput = () => {
+      keysRef.current.clear();
+      targetVelocityRef.current.set(0, 0, 0);
+      velocityRef.current.set(0, 0, 0);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) clearInput();
+    };
+
+    // Capture impide que un panel superpuesto consuma WASD antes del juego.
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
+    window.addEventListener("blur", clearInput);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      keysRef.current.clear();
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
+      window.removeEventListener("blur", clearInput);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInput();
       hotspotRef.current = null;
-      onHotspotChange?.(null);
+      onHotspotChangeRef.current?.(null);
     };
-  }, [character?.id, enabled, onHotspotChange, onInteract]);
+  }, [character?.id, enabled, gl]);
 
   useFrame((_, delta) => {
     if (!enabled || !groupRef.current) return;
@@ -397,19 +467,9 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
       -1,
       1
     );
-    const moving = inputX !== 0 || inputZ !== 0;
+    const hasMovementInput = inputX !== 0 || inputZ !== 0;
     const sprinting = keys.has("shift") || Boolean(virtual.sprint);
     const speed = sprinting ? RUN_SPEED : WALK_SPEED;
-    const nextMotionMode = timeRef.current < actionUntilRef.current
-      ? actionModeRef.current
-      : moving
-        ? sprinting ? "run" : "walk"
-        : "idle";
-
-    if (motionModeRef.current !== nextMotionMode) {
-      motionModeRef.current = nextMotionMode;
-      setMotionMode(nextMotionMode);
-    }
 
     const rotateInput = clamp((keys.has("e") ? 1 : 0) - (keys.has("q") ? 1 : 0) + (virtual.rotate ?? 0), -1, 1);
 
@@ -425,10 +485,25 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     moveRef.current.addScaledVector(rightRef.current, inputX);
     moveRef.current.addScaledVector(forwardRef.current, -inputZ);
 
-    velocityRef.current.copy(moveRef.current);
-    if (velocityRef.current.lengthSq() > 0) {
-      velocityRef.current.normalize().multiplyScalar(speed * Math.min(delta, 0.05));
-      positionRef.current.add(velocityRef.current);
+    const frameDelta = Math.min(delta, 0.05);
+    targetVelocityRef.current.copy(moveRef.current);
+    if (targetVelocityRef.current.lengthSq() > 0) {
+      targetVelocityRef.current.normalize().multiplyScalar(speed);
+    }
+
+    // Respuesta rápida pero continua: evita saltos al repetir keydown y hace
+    // que soltar la tecla frene sin cortar la cámara de golpe.
+    velocityRef.current.lerp(
+      targetVelocityRef.current,
+      1 - Math.exp(-frameDelta * (hasMovementInput ? 20 : 16))
+    );
+    if (!hasMovementInput && velocityRef.current.lengthSq() < 0.0004) {
+      velocityRef.current.set(0, 0, 0);
+    }
+
+    const moving = velocityRef.current.lengthSq() > 0.0004;
+    if (moving) {
+      positionRef.current.addScaledVector(velocityRef.current, frameDelta);
       positionRef.current.x = clamp(positionRef.current.x, ROOM_BOUNDS.minX, ROOM_BOUNDS.maxX);
       positionRef.current.z = clamp(positionRef.current.z, ROOM_BOUNDS.minZ, ROOM_BOUNDS.maxZ);
       keepOutOfTable(positionRef.current);
@@ -436,6 +511,17 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
       const targetYaw = Math.atan2(velocityRef.current.x, velocityRef.current.z);
       const deltaYaw = Math.atan2(Math.sin(targetYaw - groupRef.current.rotation.y), Math.cos(targetYaw - groupRef.current.rotation.y));
       groupRef.current.rotation.y += deltaYaw * (1 - Math.exp(-Math.min(delta, 0.08) * 12));
+    }
+
+    const nextMotionMode = timeRef.current < actionUntilRef.current
+      ? actionModeRef.current
+      : moving
+        ? sprinting && hasMovementInput ? "run" : "walk"
+        : "idle";
+
+    if (motionModeRef.current !== nextMotionMode) {
+      motionModeRef.current = nextMotionMode;
+      setMotionMode(nextMotionMode);
     }
 
     const nextHotspot = getNearestHotspot(positionRef.current, hotspotRef.current);
@@ -447,7 +533,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     // (antes titilaba como loco al caminar por los bordes de las zonas)
     if (hotspotRef.current !== nextHotspot && timeRef.current - hotspotSinceRef.current > 0.25) {
       hotspotRef.current = nextHotspot;
-      onHotspotChange?.(nextHotspot);
+      onHotspotChangeRef.current?.(nextHotspot);
     }
 
     groupRef.current.position.copy(positionRef.current);
@@ -500,7 +586,7 @@ export function WalkablePlayer({ enabled, character, virtualInput, onHotspotChan
     // La sincronización P2P es best-effort: nunca puede cortar el movimiento,
     // la animación o la cámara local si el relay todavía no tiene pares.
     try {
-      const pendingMove = onMove?.(
+      const pendingMove = onMoveRef.current?.(
         positionRef.current.x,
         positionRef.current.z,
         groupRef.current.rotation.y,
