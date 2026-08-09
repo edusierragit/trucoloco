@@ -37,14 +37,14 @@ export const characterSkins = {
     walkFacingOffset: -Math.PI / 2,
     animationClipMap: {
       idle: "NlaTrack.006",
-      walk: "NlaTrack.003",
-      run: "NlaTrack.003",
+      walk: "NlaTrack",
+      run: "NlaTrack",
       box: "NlaTrack.002",
       jump: "NlaTrack.005"
     },
     animationTimeScaleMap: {
-      walk: 1.05,
-      run: 1.6,
+      walk: 0.76,
+      run: 1.35,
       box: 1,
       jump: 1
     },
