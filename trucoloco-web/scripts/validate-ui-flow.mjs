@@ -129,6 +129,27 @@ async function main() {
       cameraTargets: new Set()
     };
 
+    const portalEntry = await evaluate(client, `(() => {
+      const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
+      const playTab = [...document.querySelectorAll(".portal-nav-item")].find((button) => txt(button) === "Jugar");
+      if (!playTab) return false;
+      playTab.click();
+      return true;
+    })()`);
+
+    if (portalEntry) {
+      actions.push("Portal: Jugar");
+      await sleep(720);
+      const launched = await evaluate(client, `(() => {
+        const button = document.querySelector(".portal-choice-card-hot");
+        if (!button) return false;
+        button.click();
+        return true;
+      })()`);
+      if (launched) actions.push("Portal: Trucoloco");
+      await sleep(1200);
+    }
+
     for (let step = 0; step < 24; step += 1) {
       const state = await evaluate(client, `(() => {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();

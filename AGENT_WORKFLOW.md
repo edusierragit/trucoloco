@@ -2,6 +2,9 @@
 
 ## Direccion activa
 
+- Rama de trabajo obligatoria: `Nari`.
+- Antes de editar, verificar que `Nari` parta de `main` (y de `origin/main` cuando exista).
+- No implementar cambios de este proyecto directamente sobre `main`.
 - Camino principal actual: `trucoloco-web/`
 - Camino secundario / legado: `TrucolocoUnity/`
 - Motivo del pivot:

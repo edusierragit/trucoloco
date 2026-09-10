@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import "@fontsource/oswald/latin-400.css";
-import "@fontsource/oswald/latin-700.css";
+import PortalApp from "./portal/PortalApp";
+import "@fontsource/medula-one/latin-400.css";
 import "./styles.css";
+import "./portal/portal.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    <PortalApp />
   </React.StrictMode>
 );

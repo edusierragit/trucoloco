@@ -523,7 +523,7 @@ function resolveCorkRoulettePull(current) {
   };
 }
 
-export default function App() {
+export default function App({ onExitToPortal, portalNavigationRequest } = {}) {
   // tu silla online define tu PERSPECTIVA del match (deriveView de Codex):
   // reclamás B-estrella y el motor te muestra ESA mano, no la del equipo A
   const [myOnlineSeatId, setMyOnlineSeatId] = useState(null);
@@ -1049,7 +1049,7 @@ export default function App() {
   }, []);
 
   // salir de una partida SOLA (o del bar) sin refrescar: vuelve al menú
-  const exitToMenu = useCallback(() => {
+  const exitToMenu = useCallback((destination = "home") => {
     if (netRoomRef.current) {
       leaveSala();
     } else {
@@ -1058,7 +1058,12 @@ export default function App() {
     }
     setIdentityConfirmed(false);
     setPlayMenuOpen(false);
-  }, [leaveSala]);
+    onExitToPortal?.(typeof destination === "string" ? destination : "home");
+  }, [leaveSala, onExitToPortal]);
+
+  useEffect(() => {
+    if (portalNavigationRequest) exitToMenu(portalNavigationRequest.destination);
+  }, [exitToMenu, portalNavigationRequest]);
 
   const startRoomHand = useCallback(() => {
     const room = netRoomRef.current;
@@ -1275,8 +1280,13 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {onExitToPortal && !match.handStarted && !netRoom ? (
+        <button className="portal-game-back" type="button" onClick={() => exitToMenu("home")}>
+          ← Portal
+        </button>
+      ) : null}
       {match.handStarted && cameraView !== "ring" ? (
-        <button className="exit-to-menu" type="button" onClick={exitToMenu} title="Salir de la partida sin refrescar">
+        <button className="exit-to-menu" type="button" onClick={() => exitToMenu("home")} title="Salir de la partida sin refrescar">
           ← Salir al menú
         </button>
       ) : null}

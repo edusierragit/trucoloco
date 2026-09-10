@@ -11,7 +11,7 @@ export const MATCH_CONFIG = {
 export const GAME_MODES = {
   comun: {
     id: "comun",
-    label: "Truco Común",
+    label: "Truco Tradicional",
     tagline: "El truco de siempre, sin trampas raras. Envido, truco y orgullo."
   },
   trucoloco: {
