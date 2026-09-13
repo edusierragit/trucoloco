@@ -49,6 +49,22 @@ function AmbientAudio() {
   return null;
 }
 
+function SoundControl() {
+  const [muted, setMuted] = useState(() => sfx.isMuted());
+  const toggle = () => {
+    const nextMuted = !muted;
+    sfx.setMuted(nextMuted);
+    if (!nextMuted) {
+      sfx.ensure();
+      sfx.ambient();
+      sfx.tick();
+    }
+    setMuted(nextMuted);
+  };
+
+  return <button className="game-sound-toggle" type="button" aria-pressed={!muted} onClick={toggle}>{muted ? "Sonido: no" : "Sonido: sí"}</button>;
+}
+
 function Header({ match }) {
   const subtitle = match.phase === "role-select"
     ? "Elegí rol."
@@ -534,15 +550,15 @@ function getSuitClass(card) {
   return `suit-${(card?.suit ?? "neutral").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
-function TableCard({ card, label, order }) {
+function TableCard({ card, label, order, isWinner = false }) {
   const delta = card.powerDelta ?? 0;
   const modifierCopy = delta ? (delta > 0 ? "Potenciada" : "Debilitada") : null;
   const hasCardImage = Boolean(card.image);
 
   return (
     <article
-      className={`table-card table-card-${card.side?.toLowerCase() ?? "neutral"} ${hasCardImage ? "table-card-image" : ""} ${getSuitClass(card)}`}
-      style={{ "--card-accent": card.tone }}
+      className={`table-card table-card-${card.side?.toLowerCase() ?? "neutral"} ${hasCardImage ? "table-card-image" : ""} ${getSuitClass(card)} ${isWinner ? "table-card-winner" : ""}`}
+      style={{ "--card-accent": card.tone, "--card-delay": `${(order - 1) * 36}ms` }}
     >
       <span className="table-card-order">{order}</span>
       {hasCardImage ? (
@@ -579,7 +595,7 @@ function TableShowdown({ match }) {
 
       <div className="table-card-row table-card-row-six">
         {match.tableCards.map((card, index) => (
-          <TableCard key={`${card.seatId}-${card.handIndex}`} card={card} label={card.owner} order={index + 1} />
+          <TableCard key={`${card.seatId}-${card.handIndex}`} card={card} label={card.owner} order={index + 1} isWinner={Boolean(lastTrick?.winnerSeatId && card.seatId === lastTrick.winnerSeatId)} />
         ))}
       </div>
     </section>
@@ -1175,6 +1191,7 @@ export function Hud({ match, cameraView = "table", onReturnToTable, multiplayer,
 
   return (
     <div className={hudClassName}>
+      <SoundControl />
       <div className="hud-top-stack">
         <AmbientAudio />
       <Header match={match} />

@@ -1,6 +1,6 @@
 # HANDOFF — Trucoloco
 
-Última revisión: 10 de septiembre de 2026.
+Última revisión: 13 de septiembre de 2026.
 
 ## Ubicación del proyecto
 
@@ -23,7 +23,8 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - La URL de desarrollo prevista es `http://127.0.0.1:4173/`.
 - El servidor local estaba funcionando en `http://127.0.0.1:4173/` al cerrar esta etapa.
 - Rama de trabajo: `Nari`.
-- La entrega completa del portal, sus recursos y los últimos ajustes fue autorizada para commit y push a `origin/Nari` el 10 de septiembre de 2026.
+- La entrega anterior del portal fue guardada en el commit `5bfd486` y subida a `origin/Nari`.
+- Hay una nueva etapa local todavía sin commit: transiciones, tienda, ranking, sonido y respuesta visual del juego.
 - No hacer `reset`, `checkout` ni limpieza de archivos sin revisar primero el estado de Git.
 
 ## Estructura y archivos importantes
@@ -76,9 +77,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 - Selector entre `Truco tradicional` y `Trucoloco`.
 - Texto de Trucoloco decidido: `El clásico, dos mazos extra y cero cordura.`
-- Acciones posteriores: jugar con bot, jugar online, ranking y torneo.
-- Solo `Jugar con un bot` abre actualmente el juego; online, ranking y torneo son vistas/acciones deshabilitadas de “próximamente”.
-- Hay una maqueta simple de llave clasificatoria.
+- Acciones posteriores: jugar con bot, jugar online, torneo y ranking.
+- `Jugar con un bot` y `Jugar online` abren actualmente el mismo juego local; la conexión real por internet sigue pendiente.
+- Torneo muestra una llave clasificatoria interactiva de demostración.
+- Ranking conserva seis lugares individuales y seis por equipos, pero está vacío hasta que existan partidas reales: muestra guiones y una invitación a estrenar la tabla.
 - El juego 3D existente incluye mesa, bar/antro, personajes, cámaras, modo caminar, controles táctiles, selección de rol/personaje, cantos básicos y sistemas experimentales de conflicto.
 
 ### Anotador
@@ -86,7 +88,7 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - Selector de partida a 15 o 30 puntos.
 - Controles `+` y `−` para Nosotros y Ellos.
 - El puntaje no baja de 0 ni supera el objetivo.
-- Mensajes finales `¡Ganamos!` y `¡Ganaron!`.
+- Mensajes finales `¡ Ganamos !` y `¡ Ganaron !`, con aire interior junto a ambos signos.
 - Botones `Nueva partida` y `Cambiar partida`.
 
 ### Tienda
@@ -95,7 +97,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - Mazo español incluido, Mazo Trazos y Mazo Gazpacho con composiciones visuales de tres cartas.
 - Productos de muestra: Lentes del Hexágono, skins de personajes y Fichines.
 - Marcadores de precio `$ --` y estado `Próximamente`.
-- Animación de giro al pasar el cursor sobre previsualizaciones.
+- Todos los productos comparten iluminación cálida, material verde, borde crema/dorado y profundidad.
+- Cada producto responde por separado al movimiento del mouse con inclinación e iluminación suaves.
+- Cada tarjeta abre un detalle ampliado con fondo oscuro, descripción, acabados y precio provisional.
+- Los lentes y skins usan nuevas imágenes con más volumen; los fichines conservan la composición tridimensional existente.
 - La compra no es funcional; la sección lo aclara explícitamente.
 
 ### Reglas
@@ -122,8 +127,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - Flecha sola para volver, sin texto adicional.
 - Mantener la barra principal como vía consistente para volver a la raíz de cada sección.
 - El portal es 2D para legibilidad; el juego conserva Three.js para mesa, atmósfera, personajes y exploración.
-- En la tienda, las cartas se muestran abiertas en abanico y los productos giran al hacer hover.
+- En la tienda, el mazo español se muestra apilado; Trazos y Gazpacho conservan el abanico. Los productos usan inclinación leve y no un giro continuo.
 - Las cartas de reglas se muestran completas y se acompañan con título y descripción fuera de la imagen.
+- Las transiciones siguen un lenguaje común: avance, regreso, cambio de sección, variante cálida para Truco tradicional y variante mística para Trucoloco.
+- El menú fijo y el conjunto de marca permanecen estables mientras cambia el contenido principal.
 
 ## Decisiones tomadas durante la conversación
 
@@ -135,12 +142,12 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - En Jugar, mostrar `Elegí el modo.`
 - Mantener `Anotador`, no cambiarlo por `Contador`.
 - En una partida activa, el título debe ser `Partida a 15 puntos` o `Partida a 30 puntos`, sin repetir `Anotador`.
-- Para Nosotros usar `¡Ganamos!`; para Ellos usar `¡Ganaron!`.
+- Para Nosotros usar `¡ Ganamos !`; para Ellos usar `¡ Ganaron !`.
 - En Tienda usar `Equipá tu mesa.`
 - Productos de tienda elegidos: mazos, lentes, skins de roles y fichines.
 - El acceso/perfil es solo una demostración por ahora y exige conceptualmente ser mayor de 18 años.
 - Los futuros modos de juego contemplan bot, online, ranking y torneo.
-- Los rankings futuros deberían separar individual/equipos y tradicional/Trucoloco.
+- Los rankings futuros deben separar individual/equipos y tradicional/Trucoloco. Hasta conectar resultados reales, no inventar nombres ni puntos.
 - El torneo propuesto es al mejor de tres con inscripción del equipo por su Negociador.
 - Chat/micrófono durante partidas online queda como decisión futura; no implementarlo todavía.
 - El tamaño general de las letras del portal se aumentó un punto visual y se igualaron tamaños entre elementos equivalentes.
@@ -156,34 +163,49 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 ## Cambios realizados recientemente
 
+- Se creó un sistema unificado de transiciones para Inicio, Jugar, Anotador, Tienda, Reglas y la entrada o salida del juego.
+- Los avances entran con profundidad y desplazamiento suave; las vueltas invierten el movimiento; los cambios de sección usan una transición lateral contenida.
+- Truco tradicional conserva una variante cálida y Trucoloco una variante mística con más profundidad visual.
+- Se evita duplicar las animaciones anteriores mientras una transición de pantalla está activa.
+- El sistema respeta la preferencia del usuario de reducir movimiento y usa un cambio inmediato cuando el navegador no admite la transición avanzada.
 - Se aumentó ligeramente el tamaño de todas las letras del portal, incluido el eslogan, el 6.0, el acceso, el menú, los títulos, los botones y los contenidos.
 - Se corrigió la alineación de Inicio, Anotador y Reglas respecto de sus símbolos.
 - Se reemplazó la flecha recta de regreso por una flecha curva y fina, centrada dentro del botón.
 - Los cuatro botones de Jugar ahora se despliegan con movimiento progresivo.
 - Torneo aparece antes de Ranking y usa un símbolo triangular de juego.
-- Ranking muestra dos listas de ejemplo: individual y por equipos, con seis posiciones. Trucoloco incluye roles y Truco tradicional los oculta.
+- Ranking muestra dos listas vacías, individual y por equipos, con seis posiciones. Trucoloco reserva el lugar del rol y Truco tradicional no lo usa.
 - Torneo despliega la Clasificatoria solamente al pulsarlo. Equipo 1 y Equipo 2 aceptan nombre, OK y Cancelar. El juego se abre después de que ambos equipos confirman.
 - Jugar con un bot y Jugar online abren el juego con una transición más cuidada.
 - Reglas despliega el contenido con un movimiento ascendente y progresivo.
 - El Mazo español se muestra como un mazo completo inclinado y gira manteniendo la cara hacia arriba. Los otros dos mazos conservan su presentación anterior hasta aprobar esta prueba.
 - Los lentes y las prendas giran de manera individual al pasar sobre cada ejemplo.
 - Se creó `public/assets/shop/fichines-premium.png`, una imagen con más volumen para reemplazar los fichines planos.
-- La construcción final, las reglas, el recorrido del juego y el conflicto fueron comprobados correctamente el 10 de septiembre de 2026.
+- Se añadieron `public/assets/shop/lentes-hexagono-premium.png` y `public/assets/shop/skins-premium.png` con iluminación y volumen coherentes.
+- Se unificó la presentación de los seis productos y se añadió una vista ampliada que se puede cerrar con botón, fondo o tecla Escape.
+- La entrada al Truco tradicional usa cartas que cruzan la pantalla; Trucoloco usa humo y destellos. Ambas muestran marca, enfrentamiento, mensaje breve y cuenta regresiva.
+- Se agregó control para activar o silenciar el sonido tanto en el portal como dentro del juego.
+- Los botones ganaron brillo dorado sutil, profundidad al pulsar y respuesta del símbolo.
+- Los fondos tienen textura leve, luz cálida, bordes oscuros y partículas reservadas para Jugar.
+- En el juego se reforzó visualmente el turno, la llegada de cartas, la carta ganadora, Truco/Envido, las armas y el resultado de la mano. También hay un leve acercamiento de cámara en decisiones importantes.
+- La antesala existente sigue mostrando modo, personajes y roles antes de entrar a la mesa; la transición nueva prepara ese ingreso sin duplicar esa elección.
+- Se revisó el portal y la antesala del juego en escritorio y en un ancho móvil de 390 px. No hubo desbordamiento horizontal.
+- `npm.cmd run build` terminó correctamente el 13 de septiembre de 2026. Solo permanece el aviso conocido por el tamaño del paquete del juego 3D.
+- La consola no mostró errores actuales de React. Aparecen avisos externos de Trystero por límite temporal del relay `relay.damus.io`; no bloquean el juego local.
 
 ## Problemas y pendientes
 
 ### Críticos de control de versiones
 
-- El portal actual no está committeado en el repositorio real.
-- La rama `Nari` sigue apuntando al mismo commit que `main` y `origin/main` (`2adabe0`).
-- Antes de continuar: revisar `git status`, validar y crear un commit en `Nari`.
-- El usuario autorizó el commit y el push de esta entrega a `origin/Nari` el 10 de septiembre de 2026.
+- La entrega anterior está en el commit `5bfd486` y fue subida a `origin/Nari`.
+- La rama activa es `Nari`.
+- Al cerrar esta revisión quedan sin commit `HANDOFF.md`, `src/portal/PortalApp.jsx`, `src/portal/portal.css`, `src/game/audio/sfx.js`, `src/game/ui/Hud.jsx`, `src/styles.css` y las dos imágenes nuevas de tienda.
+- No crear commit ni hacer push de esta nueva etapa hasta que el usuario confirme que está terminada.
 - Trabajar siempre dentro de `C:\Users\Tomas\Desktop\T\Trucoloco\proyecto`.
 
 ### Portal
 
 - La alineación de `Inicio`, `Anotador` y `Reglas` fue corregida; conservarla salvo nueva indicación visual del usuario.
-- Revisar toda la tipografía en tamaños desktop y mobile para asegurar que el espaciado no sea excesivo.
+- La revisión a 390 px fue correcta; todavía conviene probar en un teléfono físico para confirmar rendimiento táctil y tamaño real percibido.
 - Confirmar que el logo, el eslogan y `6.0` sigan centrados como un único conjunto en distintos anchos.
 - Validar el basto de referencia en desktop y mobile.
 - Revisar accesibilidad: foco de teclado, contraste, etiquetas y reducción de movimiento.
@@ -191,10 +213,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 ### Tienda
 
-- Las imágenes/precios son demostrativos; faltan catálogo, checkout, moneda y backend.
+- Las imágenes/precios son demostrativos; faltan catálogo, compra, moneda y servidor de datos.
 - Revisar la fidelidad del Mazo Gazpacho y decidir si se conservan o limpian marcas/nombres incorporados dentro de las imágenes originales.
 - Confirmar visualmente que el abanico del Mazo español usa cartas tradicionales y que Mazo Trazos usa el lenguaje vectorial.
-- La rotación actual es una ilusión CSS, no un modelo 3D real.
+- La profundidad actual es una ilusión visual hecha con estilos, no un modelo 3D real.
 
 ### Reglas y contenido
 
@@ -209,7 +231,7 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - Crear perfiles reales requerirá autenticación, base de datos, política de privacidad, validación de edad y recuperación de cuenta.
 - Jugar online, rankings y torneos no están implementados.
 - El botón Jugar online abre hoy el juego local existente, pero todavía no conecta personas por internet.
-- El Ranking usa nombres y puntos de muestra; no guarda resultados reales.
+- El Ranking ya no usa nombres ni puntos inventados; sigue sin guardar resultados reales y debe permanecer vacío hasta conectar partidas.
 - La Clasificatoria funciona como demostración dentro de una sola computadora; todavía no coordina dos equipos conectados.
 - Definir arquitectura de salas, persistencia de ranking, equipos, matchmaking y moderación.
 - Decidir el sistema de comunicación online: texto, voz libre o voz habilitada por turnos.
@@ -218,9 +240,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 ### Validación técnica
 
-- El servidor respondió correctamente en `http://127.0.0.1:4173/` al cerrar esta etapa.
-- `npm run build`, `check:rules`, `check:flow` y `check:conflict` terminaron correctamente el 10 de septiembre de 2026.
-- `check:ui` tuvo limitaciones previas al iniciar Edge/CDP; el flujo fue revisado manualmente.
+- El servidor respondió correctamente en `http://127.0.0.1:4173/` y la página quedó abierta en Inicio al cerrar esta etapa.
+- `npm run build`, `check:rules`, `check:flow` y `check:conflict` terminaron correctamente el 13 de septiembre de 2026.
+- El flujo nuevo fue revisado manualmente en el navegador integrado, tanto en escritorio como a 390 px.
+- Trystero puede mostrar avisos por límite temporal de un relay público. Es un servicio externo y no impide las pruebas locales.
 - El build produce un warning conocido por el tamaño del bundle de Three.js/R3F.
 
 ## Instrucciones para ejecutar el website
@@ -257,14 +280,12 @@ No ejecutar el build solo para mirar el sitio; el comando de desarrollo es sufic
 
 ## Próximos pasos recomendados
 
-1. Abrir una tarea de Codex directamente en `C:\Users\Tomas\Desktop\T\Trucoloco\proyecto` y confirmar que la rama activa sea `Nari`.
-2. Revisar `git status` y preservar todos los cambios sin commit.
-3. Levantar el servidor en `127.0.0.1:4173` y recorrer Inicio, Jugar, Anotador, Tienda y Reglas en desktop y mobile.
-4. Confirmar los últimos ajustes pequeños de alineación de Inicio/Reglas y no introducir cambios adicionales sin nueva indicación del usuario.
-5. Ejecutar las validaciones de reglas, flujo, conflicto y build.
-6. Crear un commit local en `Nari` cuando el usuario lo pida; no hacer push sin permiso explícito.
-7. Comparar las galerías y reglas contra los PDF originales y resolver correspondencias/nombres faltantes.
-8. Continuar luego con perfiles reales, online, rankings y torneos como etapas separadas.
+1. Dejar que el usuario recorra las transiciones, la tienda y la entrada al juego, y anotar ajustes visuales concretos.
+2. Probar la versión en un teléfono físico, especialmente sonidos, desplazamiento de tienda y controles del juego.
+3. Crear un commit local en `Nari` y hacer push solamente cuando el usuario confirme que esta etapa terminó.
+4. En una etapa separada, conectar resultados reales al Ranking y mantener los lugares vacíos mientras no existan partidas.
+5. Comparar las galerías y reglas contra los PDF originales y resolver correspondencias/nombres faltantes.
+6. Continuar luego con perfiles reales, online y torneos conectados como etapas separadas.
 
 ## Reglas de colaboración y continuidad
 

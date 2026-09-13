@@ -4,6 +4,7 @@ class Sfx {
   constructor() {
     this.ac = null;
     this.master = null;
+    this.muted = false;
   }
 
   ensure() {
@@ -14,11 +15,23 @@ class Sfx {
     try {
       this.ac = new AudioContext();
       this.master = this.ac.createGain();
-      this.master.gain.value = 0.5;
+      this.master.gain.value = this.muted ? 0 : 0.5;
       this.master.connect(this.ac.destination);
     } catch {
       this.ac = null;
     }
+  }
+
+  isMuted() {
+    return this.muted;
+  }
+
+  setMuted(muted) {
+    this.muted = Boolean(muted);
+    if (!this.master || !this.ac) return;
+    const now = this.ac.currentTime;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5, now, 0.03);
   }
 
   blip(freq, dur, type, gain, slide = 0, delay = 0) {

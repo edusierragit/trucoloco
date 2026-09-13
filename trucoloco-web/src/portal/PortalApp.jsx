@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { sfx } from "../game/audio/sfx";
 
 const GameApp = lazy(() => import("../App"));
 
@@ -10,23 +12,7 @@ const NAV_ITEMS = [
   { id: "rules", label: "Reglas", icon: "rules" }
 ];
 
-const INDIVIDUAL_RANKING = [
-  ["Alma Ríos", "Negociante", 1840],
-  ["Toto Ferreyra", "Jugador Estrella", 1710],
-  ["Lola Benítez", "Cartachin", 1655],
-  ["Nico Sosa", "Negociante", 1520],
-  ["Mora Paz", "Jugador Estrella", 1485],
-  ["Bauti Luna", "Cartachin", 1390]
-];
-
-const TEAM_RANKING = [
-  ["Los Anchos", ["Alma · Negociante", "Toto · Jugador Estrella", "Lola · Cartachin"], 5220],
-  ["La Revancha", ["Nico · Negociante", "Mora · Jugador Estrella", "Bauti · Cartachin"], 4890],
-  ["Mesa Brava", ["Cata · Negociante", "Joaco · Jugador Estrella", "Lucho · Cartachin"], 4610],
-  ["Flor y Truco", ["Mili · Negociante", "Teo · Jugador Estrella", "Paz · Cartachin"], 4380],
-  ["Los del Fondo", ["Ivo · Negociante", "Uma · Jugador Estrella", "Fran · Cartachin"], 4120],
-  ["Sin Miedo", ["Sol · Negociante", "Dante · Jugador Estrella", "Romi · Cartachin"], 3975]
-];
+const EMPTY_RANKING = Array.from({ length: 6 }, (_, index) => index + 1);
 
 const RANK_LADDER = [
   ["Ancho de espadas · El Macho", [[1, "espadas"]]],
@@ -129,6 +115,27 @@ const COMPLETE_TRUCOLOCO_QUIZ = [
   ...buildDeckQuiz(WEAPON_CARD_NAMES, WEAPON_DESCRIPTIONS, "Mazo de Armas")
 ];
 
+function runPortalTransition(update, { direction = "forward", tone = "portal" } = {}) {
+  const root = document.documentElement;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  root.dataset.portalDirection = direction;
+  root.dataset.portalTone = tone;
+
+  const clearTransitionState = () => {
+    delete root.dataset.portalDirection;
+    delete root.dataset.portalTone;
+  };
+
+  if (!document.startViewTransition || reducedMotion) {
+    update();
+    clearTransitionState();
+    return;
+  }
+
+  const transition = document.startViewTransition(update);
+  transition.finished.finally(clearTransitionState);
+}
+
 function PortalIcon({ name }) {
   if (name === "home") return <><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10.5V20h13v-9.5" /></>;
   if (name === "play") return <path d="m7 4 12 8-12 8Z" />;
@@ -165,16 +172,17 @@ function PortalNav({ activeSection, onNavigate, game = false }) {
 function RankingPanel({ mode }) {
   const showRoles = mode === "trucoloco";
   return (
-    <div className="portal-ranking-panel portal-reveal-panel" aria-label="Ranking de muestra">
-      <div className="portal-panel-heading"><span>Ranking</span><small>Top 6 · datos de muestra</small></div>
+    <div className="portal-ranking-panel portal-reveal-panel portal-ranking-empty" aria-label="Ranking todavía vacío">
+      <div className="portal-panel-heading"><span>Ranking</span><small>Top 6 · esperando la primera partida</small></div>
+      <div className="portal-ranking-callout"><strong>La gloria todavía está vacante.</strong><span>Jugá la primera partida y estrená la tabla.</span></div>
       <div className="portal-ranking-columns">
         <section>
           <h2>Individual</h2>
-          <ol>{INDIVIDUAL_RANKING.map(([name, role, points]) => <li key={name}><b>{name}</b>{showRoles ? <span>{role}</span> : null}<strong>{points} pts.</strong></li>)}</ol>
+          <ol>{EMPTY_RANKING.map((position) => <li className="portal-ranking-slot" key={`individual-${position}`}><b>—</b><span>{showRoles ? "Sin jugador · sin rol" : "Sin jugador"}</span><strong>— pts.</strong></li>)}</ol>
         </section>
         <section>
           <h2>Por equipos</h2>
-          <ol>{TEAM_RANKING.map(([team, players, points]) => <li key={team}><b>{team}</b><span>{players.map((player) => showRoles ? player : player.split(" · ")[0]).join(" · ")}</span><strong>{points} pts.</strong></li>)}</ol>
+          <ol>{EMPTY_RANKING.map((position) => <li className="portal-ranking-slot" key={`team-${position}`}><b>—</b><span>{showRoles ? "Sin equipo · roles vacantes" : "Sin equipo"}</span><strong>— pts.</strong></li>)}</ol>
         </section>
       </div>
     </div>
@@ -196,17 +204,21 @@ function PlaySection({ onLaunch }) {
   }, [launchingMode, onLaunch]);
 
   const openMode = (mode) => {
-    setSelectedMode(mode);
-    setOpenPanel(null);
-    setTeamNames(["", ""]);
-    setTeamsReady([false, false]);
+    runPortalTransition(() => {
+      setSelectedMode(mode);
+      setOpenPanel(null);
+      setTeamNames(["", ""]);
+      setTeamsReady([false, false]);
+    }, { direction: "forward", tone: mode });
   };
 
   const closeMode = () => {
-    setSelectedMode(null);
-    setOpenPanel(null);
-    setTeamNames(["", ""]);
-    setTeamsReady([false, false]);
+    runPortalTransition(() => {
+      setSelectedMode(null);
+      setOpenPanel(null);
+      setTeamNames(["", ""]);
+      setTeamsReady([false, false]);
+    }, { direction: "back", tone: selectedMode || "portal" });
   };
 
   const confirmTeam = (teamIndex) => {
@@ -232,7 +244,7 @@ function PlaySection({ onLaunch }) {
 
   if (selectedMode) {
     return (
-      <section className="portal-section portal-play-selected" aria-labelledby="portal-play-title">
+      <section className={`portal-section portal-play-selected portal-mode-${selectedMode}`} aria-labelledby="portal-play-title">
         <button className="portal-back-button" type="button" aria-label="Volver" title="Volver" onClick={closeMode}><BackArrowIcon /></button>
         <header className="portal-section-head portal-mode-heading">
           <h1 id="portal-play-title">{modeLabel}</h1>
@@ -261,7 +273,19 @@ function PlaySection({ onLaunch }) {
           </div>
         ) : null}
         {openPanel === "ranking" ? <RankingPanel mode={selectedMode} /> : null}
-        {launchingMode ? <div className={`portal-launch-transition portal-launch-${launchingMode}`} aria-live="assertive"><div className="portal-smoke portal-smoke-one" /><div className="portal-smoke portal-smoke-two" /><div className="portal-smoke portal-smoke-three" /><strong>{launchingMode === "trucoloco" ? "Entrando a la locura…" : "Entrando a la mesa…"}</strong></div> : null}
+        {launchingMode ? (
+          <div className={`portal-launch-transition portal-launch-${launchingMode}`} aria-live="assertive">
+            <div className="portal-smoke portal-smoke-one" /><div className="portal-smoke portal-smoke-two" /><div className="portal-smoke portal-smoke-three" />
+            {launchingMode === "comun" ? <div className="portal-launch-cards" aria-hidden="true"><span /><span /><span /></div> : <div className="portal-launch-sparks" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
+            <div className="portal-launch-stage">
+              <BrandMark compact />
+              <small className="portal-launch-mode">{launchingMode === "trucoloco" ? "TRUCOLOCO" : "TRUCO TRADICIONAL"}</small>
+              <strong className="portal-launch-versus">Tu equipo <b>VS</b> La mesa</strong>
+              <p>{launchingMode === "trucoloco" ? "Entrando a la locura…" : "Repartiendo la primera mano…"}</p>
+              <div className="portal-launch-countdown" aria-hidden="true"><b>3</b><b>2</b><b>1</b></div>
+            </div>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -296,7 +320,7 @@ function ScoreSection() {
       <section className="portal-section" aria-labelledby="portal-score-title">
         <header className="portal-section-head portal-balanced-head"><h1 id="portal-score-title">Anotador</h1><p>¿A cuántos puntos juegan?</p></header>
         <div className="portal-choice-grid portal-choice-grid-two">
-          {[15, 30].map((value) => <button className="portal-choice-card portal-score-target" type="button" key={value} onClick={() => setTarget(value)}><span>A</span><strong>{value}</strong><small>puntos</small></button>)}
+          {[15, 30].map((value) => <button className="portal-choice-card portal-score-target" type="button" key={value} onClick={() => runPortalTransition(() => setTarget(value), { tone: "score" })}><span>A</span><strong>{value}</strong><small>puntos</small></button>)}
         </div>
       </section>
     );
@@ -306,12 +330,12 @@ function ScoreSection() {
     <section className="portal-section" aria-labelledby="portal-score-title">
       <header className="portal-section-head portal-score-head">
         <h1 id="portal-score-title">Partida a {target} puntos</h1>
-        <button className="portal-text-button" type="button" onClick={() => { setTarget(null); setScores({ us: 0, them: 0 }); }}>Cambiar partida</button>
+        <button className="portal-text-button" type="button" onClick={() => runPortalTransition(() => { setTarget(null); setScores({ us: 0, them: 0 }); }, { direction: "back", tone: "score" })}>Cambiar partida</button>
       </header>
       <div className="portal-scoreboard">
         {[["us", "Nosotros"], ["them", "Ellos"]].map(([side, label]) => (
           <div className="portal-score-side" key={side}>
-            <span>{label}</span><strong>{scores[side] >= target ? (side === "us" ? "¡Ganamos!" : "¡Ganaron!") : scores[side]}</strong>
+            <span>{label}</span><strong>{scores[side] >= target ? (side === "us" ? "¡ Ganamos !" : "¡ Ganaron !") : scores[side]}</strong>
             <div><button type="button" aria-label={`Restar a ${label}`} onClick={() => adjust(side, -1)}>−</button><button type="button" aria-label={`Sumar a ${label}`} onClick={() => adjust(side, 1)}>+</button></div>
           </div>
         ))}
@@ -339,37 +363,85 @@ function DeckFan({ type }) {
 
 function ShopExtraVisual({ type }) {
   if (type === "lentes") {
-    return <div className="portal-extra-visual portal-glasses-preview" aria-hidden="true"><span className="portal-extra-item">◇—◇</span><span className="portal-extra-item">○—○</span><span className="portal-extra-item">⬡—⬡</span></div>;
+    return <div className="portal-extra-visual portal-sprite-preview portal-glasses-preview" aria-label="Tres modelos de lentes del Hexágono">{[0, 1, 2].map((index) => <span className="portal-extra-item" style={{ "--sprite-index": index }} key={index}><img src="/assets/shop/lentes-hexagono-premium.png" alt="" /></span>)}</div>;
   }
   if (type === "skins") {
-    return (
-      <div className="portal-extra-visual portal-skins-preview" aria-label="Smoking de Negociante, ropa de golf y traje de Cartachin">
-        <span className="portal-extra-item" title="Negociante"><svg viewBox="0 0 64 88"><path d="M22 9 8 20l5 58h38l5-58L42 9l-10 9Z" /><path d="m22 9 10 9 10-9M25 19l7 10 7-10M32 29v49" /><circle cx="27" cy="38" r="1" /><circle cx="27" cy="48" r="1" /></svg></span>
-        <span className="portal-extra-item" title="Jugador Estrella"><svg viewBox="0 0 64 88"><path d="M20 11 8 23l7 18 7-8v45h24V33l7 8 3-18-12-12-12 8Z" /><path d="M20 11c2 8 22 8 24 0M22 52h24M49 12l7-8" /></svg></span>
-        <span className="portal-extra-item" title="Cartachin"><svg viewBox="0 0 64 88"><path d="M20 9 7 22l10 17 5-7-5 46h30l-5-46 5 7 10-17L44 9 32 19Z" /><path d="m20 9 12 10L44 9M18 48h28M17 55h30M13 52h38" /></svg></span>
-      </div>
-    );
+    return <div className="portal-extra-visual portal-sprite-preview portal-skins-preview" aria-label="Smoking de Negociante, ropa de golf y traje de Cartachin">{[0, 1, 2].map((index) => <span className="portal-extra-item" style={{ "--sprite-index": index }} key={index}><img src="/assets/shop/skins-premium.png" alt="" /></span>)}</div>;
   }
   return <div className="portal-extra-visual portal-chips-preview" aria-label="Montón de fichines verdes y dorados"><img src="/assets/shop/fichines-premium.png" alt="Montón de fichines verdes y dorados en relieve" /></div>;
 }
 
+function PremiumShopCard({ product, onSelect }) {
+  const [status, name, copy, price, type] = product;
+  const moveProduct = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - .5;
+    const y = (event.clientY - bounds.top) / bounds.height - .5;
+    event.currentTarget.style.setProperty("--tilt-x", `${(-y * 7).toFixed(2)}deg`);
+    event.currentTarget.style.setProperty("--tilt-y", `${(x * 9).toFixed(2)}deg`);
+    event.currentTarget.style.setProperty("--light-x", `${((x + .5) * 100).toFixed(0)}%`);
+  };
+  const resetProduct = (event) => {
+    event.currentTarget.style.removeProperty("--tilt-x");
+    event.currentTarget.style.removeProperty("--tilt-y");
+    event.currentTarget.style.removeProperty("--light-x");
+  };
+
+  return (
+    <button className="portal-shop-card" type="button" onClick={() => onSelect(product)} onPointerMove={moveProduct} onPointerLeave={resetProduct}>
+      <span className="portal-shop-status">{status}</span>
+      <strong>{name}</strong>
+      <div className="portal-product-stage">{["espanol", "trazos", "gazpacho"].includes(type) ? <DeckFan type={type} /> : <ShopExtraVisual type={type} />}</div>
+      <p>{copy}</p>
+      <b>{price || "Incluido"}</b>
+      <em>Ver detalle</em>
+    </button>
+  );
+}
+
 function ShopSection() {
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const decks = [
     ["Incluido", "Mazo español", "La baraja de toda la vida.", null, "espanol"],
     ["Próximamente", "Mazo Trazos", "El truco de siempre, dibujado con otra elegancia.", "$ --", "trazos"],
     ["Próximamente", "Mazo Gazpacho", "Una edición especial del mejor Jugador Estrella de Trucoloco.", "$ --", "gazpacho"]
   ];
   const extras = [
-    ["Lentes del Hexágono", "Modelos absurdos para llevar el caos al siguiente nivel.", "$ --", "lentes"],
-    ["Skins de personajes", "Smoking de Negociante, golfista estrella y traje de Cartachin.", "$ --", "skins"],
-    ["Fichines", "Fichas para favores.", "$ --", "fichines"]
+    ["Próximamente", "Lentes del Hexágono", "Modelos absurdos para llevar el caos al siguiente nivel.", "$ --", "lentes"],
+    ["Próximamente", "Skins de personajes", "Smoking de Negociante, golfista estrella y traje de Cartachin.", "$ --", "skins"],
+    ["Próximamente", "Fichines", "Fichas para favores.", "$ --", "fichines"]
   ];
+  const products = [...decks, ...extras];
+
+  useEffect(() => {
+    if (!selectedProduct) return undefined;
+    const close = (event) => { if (event.key === "Escape") setSelectedProduct(null); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [selectedProduct]);
+
   return (
     <section className="portal-section" aria-labelledby="portal-shop-title">
       <header className="portal-section-head portal-shop-head portal-balanced-head"><h1 id="portal-shop-title">Tienda</h1><p>Equipá tu mesa.</p></header>
-      <div className="portal-shop-grid">{decks.map(([status, name, copy, price, type]) => <article className="portal-shop-card" key={name}><strong>{name} <small>({status})</small></strong><DeckFan type={type} /><p>{copy}</p>{price ? <b>{price}</b> : null}</article>)}</div>
-      <div className="portal-shop-grid portal-shop-grid-extras">{extras.map(([name, copy, price, type]) => <article className="portal-shop-card" key={name}><strong>{name} <small>(Próximamente)</small></strong><ShopExtraVisual type={type} /><p>{copy}</p><b>{price}</b></article>)}</div>
+      <p className="portal-shop-intro">Una colección todavía en preparación, presentada como piezas de mesa y no como simples dibujos.</p>
+      <div className="portal-shop-grid">{products.map((product) => <PremiumShopCard product={product} onSelect={setSelectedProduct} key={product[1]} />)}</div>
       <div className="portal-coming-soon"><strong>Todavía no se puede comprar nada acá.</strong><span>Esta sección es una vista previa de la tienda.</span></div>
+      {selectedProduct ? createPortal((
+        <div className="portal-product-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
+          <article className="portal-product-modal" role="dialog" aria-modal="true" aria-labelledby="portal-product-title">
+            <button className="portal-product-close" type="button" aria-label="Cerrar detalle" onClick={() => setSelectedProduct(null)}>×</button>
+            <div className="portal-product-modal-visual">{["espanol", "trazos", "gazpacho"].includes(selectedProduct[4]) ? <DeckFan type={selectedProduct[4]} /> : <ShopExtraVisual type={selectedProduct[4]} />}</div>
+            <div className="portal-product-modal-copy">
+              <span>{selectedProduct[0]}</span>
+              <h2 id="portal-product-title">{selectedProduct[1]}</h2>
+              <p>{selectedProduct[2]}</p>
+              <div className="portal-product-finishes"><i>Verde noche</i><i>Crema</i><i>Dorado</i></div>
+              <strong>{selectedProduct[3] || "Incluido"}</strong>
+              <small>Vista previa. Las compras se habilitarán más adelante.</small>
+            </div>
+          </article>
+        </div>
+      ), document.body) : null}
     </section>
   );
 }
@@ -515,8 +587,8 @@ function RulesSection() {
       <section className="portal-section" aria-labelledby="portal-rules-title">
         <header className="portal-section-head portal-balanced-head"><h1 id="portal-rules-title">Reglas</h1><p>Elegí qué querés consultar.</p></header>
         <div className="portal-choice-grid portal-choice-grid-two">
-          <button className="portal-choice-card" type="button" onClick={() => setTopic("comun")}><strong>Truco tradicional</strong><small>Reglas del juego, valores de las cartas, envido y truco.</small></button>
-          <button className="portal-choice-card portal-choice-card-hot" type="button" onClick={() => setTopic("trucoloco")}><strong>Trucoloco</strong><small>Reglas de mesa, roles, mazos y sanciones.</small></button>
+          <button className="portal-choice-card" type="button" onClick={() => runPortalTransition(() => setTopic("comun"), { tone: "comun" })}><strong>Truco tradicional</strong><small>Reglas del juego, valores de las cartas, envido y truco.</small></button>
+          <button className="portal-choice-card portal-choice-card-hot" type="button" onClick={() => runPortalTransition(() => setTopic("trucoloco"), { tone: "trucoloco" })}><strong>Trucoloco</strong><small>Reglas de mesa, roles, mazos y sanciones.</small></button>
         </div>
       </section>
     );
@@ -524,7 +596,7 @@ function RulesSection() {
 
   return (
     <section className="portal-section portal-rules-long portal-rules-detail" aria-labelledby="portal-rules-title">
-      <button className="portal-back-button" type="button" aria-label="Volver" title="Volver" onClick={() => setTopic(null)}><BackArrowIcon /></button>
+      <button className="portal-back-button" type="button" aria-label="Volver" title="Volver" onClick={() => runPortalTransition(() => setTopic(null), { direction: "back", tone: topic })}><BackArrowIcon /></button>
       <header className="portal-section-head"><h1 id="portal-rules-title">{topic === "comun" ? "Truco tradicional" : "Trucoloco"}</h1><p>{topic === "comun" ? "Baraja española" : "Baraja española & barajas especiales"}</p></header>
       {topic === "comun" ? <TraditionalRules /> : <TrucolocoRules />}
     </section>
@@ -537,7 +609,24 @@ export default function PortalApp() {
   const [sectionResetKey, setSectionResetKey] = useState(0);
   const [navigationRequest, setNavigationRequest] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => !sfx.isMuted());
   const isHome = activeSection === "home";
+
+  const toggleSound = () => {
+    const nextEnabled = !soundEnabled;
+    sfx.setMuted(!nextEnabled);
+    if (nextEnabled) {
+      sfx.ensure();
+      sfx.tick();
+    }
+    setSoundEnabled(nextEnabled);
+  };
+
+  const playButtonSound = (event) => {
+    if (!soundEnabled || !event.target.closest("button")) return;
+    sfx.ensure();
+    sfx.tick();
+  };
 
   useEffect(() => {
     document.documentElement.classList.toggle("portal-document", !gameOpen);
@@ -547,21 +636,25 @@ export default function PortalApp() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [activeSection, sectionResetKey]);
 
   const launchGame = (mode) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("modo", mode);
-    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-    setGameOpen(true);
+    runPortalTransition(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("modo", mode);
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      setGameOpen(true);
+    }, { direction: "forward", tone: mode });
   };
 
   const returnToPortal = (destination = "home") => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("modo");
-    url.searchParams.delete("sala");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-    setGameOpen(false);
-    setActiveSection(destination);
-    setSectionResetKey((key) => key + 1);
-    setNavigationRequest(null);
+    runPortalTransition(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("modo");
+      url.searchParams.delete("sala");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      setGameOpen(false);
+      setActiveSection(destination);
+      setSectionResetKey((key) => key + 1);
+      setNavigationRequest(null);
+    }, { direction: "back", tone: destination });
   };
 
   const navigate = (destination) => {
@@ -569,13 +662,15 @@ export default function PortalApp() {
       setNavigationRequest({ destination, token: Date.now() });
       return;
     }
-    setActiveSection(destination);
-    setSectionResetKey((key) => key + 1);
+    runPortalTransition(() => {
+      setActiveSection(destination);
+      setSectionResetKey((key) => key + 1);
+    }, { direction: destination === "home" ? "back" : "section", tone: destination });
   };
 
   if (gameOpen) {
     return (
-      <div className="portal-game-frame">
+      <div className="portal-game-frame" onPointerDownCapture={playButtonSound}>
         <PortalNav activeSection="play" onNavigate={navigate} game />
         <div className="portal-game-stage">
           <Suspense fallback={<div className="portal-game-loading"><BrandMark /><span>Abriendo el antro…</span></div>}>
@@ -587,12 +682,13 @@ export default function PortalApp() {
   }
 
   return (
-    <div className={isHome ? "portal-shell portal-shell-home" : "portal-shell portal-shell-section"}>
+    <div className={isHome ? "portal-shell portal-shell-home" : `portal-shell portal-shell-section portal-shell-${activeSection}`} onPointerDownCapture={playButtonSound}>
       <div className="portal-suit portal-suit-sword" aria-hidden="true"><img src="/assets/brand/trucoloco-sword-hd.png" alt="" /></div>
       <div className="portal-suit portal-suit-coin" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" /><circle cx="50" cy="50" r="29" /></svg></div>
       <div className="portal-suit portal-suit-cup" aria-hidden="true"><svg viewBox="0 0 100 120"><path d="M18 14h64c-2 28-13 43-32 43S20 42 18 14Z" /><path d="M50 57v35M31 103h38" /></svg></div>
       <div className="portal-suit portal-suit-club" aria-hidden="true"><img src="/assets/shop/basto-reference.png" alt="" /></div>
       {isHome ? <button className="portal-login-button" type="button" onClick={() => setAuthOpen(true)}>Iniciar sesión</button> : null}
+      <button className="portal-sound-toggle" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>{soundEnabled ? "Sonido: sí" : "Sonido: no"}</button>
       <header className="portal-brand-stage">
         <div className="portal-brand-lockup">
           <BrandMark compact={!isHome} />

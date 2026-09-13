@@ -6141,3 +6141,125 @@ label {
 .app-shell :where(p, span, small, strong, h1, h2, h3, h4, button, label, li) {
   letter-spacing: 0.065em !important;
 }
+
+/* Respuesta premium de la mesa: turno, cartas, cantos y resultado. */
+.game-sound-toggle {
+  position: fixed;
+  top: 58px;
+  right: 18px;
+  z-index: 58;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid rgba(222,183,105,.34);
+  border-radius: 999px;
+  color: rgba(246,224,181,.8);
+  background: rgba(10,19,15,.76);
+  box-shadow: 0 10px 22px rgba(0,0,0,.3);
+  backdrop-filter: blur(9px);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .68rem;
+  letter-spacing: .1em !important;
+  text-transform: uppercase;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.game-sound-toggle:hover { transform: translateY(-2px); border-color: rgba(229,193,115,.7); box-shadow: 0 13px 27px rgba(0,0,0,.36), 0 0 20px rgba(220,180,94,.09); }
+.game-sound-toggle:active { transform: translateY(1px) scale(.98); }
+.game-sound-toggle[aria-pressed="true"] { color: #eac77a; border-color: rgba(227,189,107,.58); }
+
+.table-card {
+  animation: premium-card-land .46s cubic-bezier(.18,.82,.24,1) both;
+  animation-delay: var(--card-delay, 0ms);
+  transform-origin: 50% 120%;
+}
+.table-card-winner {
+  z-index: 4;
+  border-color: rgba(242,207,120,.92) !important;
+  box-shadow: 0 0 0 2px rgba(241,201,104,.2), 0 0 28px rgba(239,190,71,.58), 0 18px 28px rgba(0,0,0,.42) !important;
+  animation: premium-winner-card 1.1s cubic-bezier(.18,.82,.24,1) both, premium-winner-glow 1.7s ease-in-out 1.1s infinite;
+}
+@keyframes premium-card-land {
+  from { opacity: 0; transform: translate3d(0,70px,0) rotate(8deg) scale(.84); filter: blur(5px); }
+  68% { opacity: 1; transform: translate3d(0,-5px,0) rotate(-1deg) scale(1.02); filter: none; }
+  to { transform: none; }
+}
+@keyframes premium-winner-card { from { transform: scale(.96); filter: brightness(.78); } 55% { transform: translateY(-9px) scale(1.08); filter: brightness(1.26); } to { transform: translateY(-5px) scale(1.04); filter: none; } }
+@keyframes premium-winner-glow { 50% { box-shadow: 0 0 0 3px rgba(241,201,104,.28), 0 0 42px rgba(239,190,71,.72), 0 20px 30px rgba(0,0,0,.45); } }
+
+.hud-can-play .hand-panel-play,
+.hud-can-play .action-focus {
+  border-color: rgba(232,196,112,.75);
+  box-shadow: 0 0 0 1px rgba(236,199,112,.16), 0 18px 40px rgba(0,0,0,.34), 0 0 30px rgba(220,177,84,.16);
+}
+.hud-can-play .hand-panel-play::before {
+  content: "Tu turno";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  z-index: 3;
+  padding: 4px 10px;
+  border: 1px solid rgba(235,199,113,.52);
+  border-radius: 999px;
+  color: #efd18b;
+  background: rgba(10,29,23,.94);
+  font-size: .62rem;
+  letter-spacing: .16em !important;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  animation: premium-turn-breathe 1.8s ease-in-out infinite;
+}
+@keyframes premium-turn-breathe { 50% { box-shadow: 0 0 19px rgba(229,184,86,.32); } }
+
+.bottom-dock-truco,
+.envido-panel {
+  isolation: isolate;
+  border-color: rgba(235,193,98,.72) !important;
+  box-shadow: 0 22px 54px rgba(0,0,0,.5), 0 0 34px rgba(228,174,63,.18) !important;
+  animation: premium-canto-arrive .5s cubic-bezier(.16,.86,.24,1) both;
+}
+.bottom-dock-truco::before,
+.envido-panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0, rgba(239,194,96,.18), transparent 54%);
+  pointer-events: none;
+}
+.canto-chip-weapon { position: relative; overflow: hidden; }
+.canto-chip-weapon::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,226,150,.42) 50%, transparent 65%);
+  transform: translateX(-100%) rotate(8deg);
+  animation: premium-weapon-flash 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes premium-canto-arrive { from { opacity: 0; transform: translateY(24px) scale(.96); filter: blur(8px); } }
+@keyframes premium-weapon-flash { 55%,100% { transform: translateX(100%) rotate(8deg); } }
+
+.stage-viewport canvas { transition: transform .75s cubic-bezier(.2,.78,.24,1), filter .5s ease; }
+body:has(.bottom-dock-truco) .stage-viewport canvas,
+body:has(.bottom-dock-decision) .stage-viewport canvas { transform: scale(1.014); filter: saturate(1.08) contrast(1.025); }
+.hand-result-panel-win { box-shadow: 0 0 0 1px rgba(217,181,99,.2), 0 22px 55px rgba(0,0,0,.48), 0 0 44px rgba(197,151,53,.2) !important; }
+.hand-result-panel-lose { box-shadow: 0 22px 55px rgba(0,0,0,.5), 0 0 38px rgba(139,43,35,.18) !important; }
+body:has(.hand-result-panel-win) .stage-viewport canvas { filter: brightness(1.08) saturate(1.12); }
+body:has(.hand-result-panel-lose) .stage-viewport canvas { filter: brightness(.83) saturate(.78); }
+
+@media (max-width: 780px) {
+  .game-sound-toggle { top: 52px; right: 8px; min-height: 44px; padding: 7px 10px; }
+  .canto-bar { max-width: calc(100vw - 16px); overflow-x: auto; scrollbar-width: none; }
+  .canto-bar::-webkit-scrollbar { display: none; }
+  .table-card-winner { transform: translateY(-3px) scale(1.025); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-card,
+  .table-card-winner,
+  .hud-can-play .hand-panel-play::before,
+  .bottom-dock-truco,
+  .envido-panel,
+  .canto-chip-weapon::after { animation: none !important; }
+  .stage-viewport canvas { transition: none; }
+}
