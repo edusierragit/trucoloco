@@ -23,8 +23,8 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - La URL de desarrollo prevista es `http://127.0.0.1:4173/`.
 - El servidor local estaba funcionando en `http://127.0.0.1:4173/` al cerrar esta etapa.
 - Rama de trabajo: `Nari`.
-- La entrega anterior del portal fue guardada en el commit `5bfd486` y subida a `origin/Nari`.
-- Hay una nueva etapa local todavía sin commit: transiciones, tienda, ranking, sonido y respuesta visual del juego.
+- La última entrega fue guardada en el commit `52bad0d` y subida a `origin/Nari`.
+- Las transiciones, la tienda, el ranking, el sonido y la respuesta visual del juego ya están guardados en Git.
 - No hacer `reset`, `checkout` ni limpieza de archivos sin revisar primero el estado de Git.
 
 ## Estructura y archivos importantes
@@ -196,10 +196,10 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 ### Críticos de control de versiones
 
-- La entrega anterior está en el commit `5bfd486` y fue subida a `origin/Nari`.
+- La última entrega está en el commit `52bad0d` y fue subida a `origin/Nari`.
 - La rama activa es `Nari`.
-- Al cerrar esta revisión quedan sin commit `HANDOFF.md`, `src/portal/PortalApp.jsx`, `src/portal/portal.css`, `src/game/audio/sfx.js`, `src/game/ui/Hud.jsx`, `src/styles.css` y las dos imágenes nuevas de tienda.
-- No crear commit ni hacer push de esta nueva etapa hasta que el usuario confirme que está terminada.
+- La etapa visual del 13 de septiembre de 2026 quedó confirmada por el usuario, guardada y subida.
+- Al iniciar la próxima sesión, comprobar que `Nari` siga sincronizada con `origin/Nari` antes de modificar archivos.
 - Trabajar siempre dentro de `C:\Users\Tomas\Desktop\T\Trucoloco\proyecto`.
 
 ### Portal
@@ -282,10 +282,9 @@ No ejecutar el build solo para mirar el sitio; el comando de desarrollo es sufic
 
 1. Dejar que el usuario recorra las transiciones, la tienda y la entrada al juego, y anotar ajustes visuales concretos.
 2. Probar la versión en un teléfono físico, especialmente sonidos, desplazamiento de tienda y controles del juego.
-3. Crear un commit local en `Nari` y hacer push solamente cuando el usuario confirme que esta etapa terminó.
-4. En una etapa separada, conectar resultados reales al Ranking y mantener los lugares vacíos mientras no existan partidas.
-5. Comparar las galerías y reglas contra los PDF originales y resolver correspondencias/nombres faltantes.
-6. Continuar luego con perfiles reales, online y torneos conectados como etapas separadas.
+3. En una etapa separada, conectar resultados reales al Ranking y mantener los lugares vacíos mientras no existan partidas.
+4. Comparar las galerías y reglas contra los PDF originales y resolver correspondencias/nombres faltantes.
+5. Continuar luego con perfiles reales, online y torneos conectados como etapas separadas.
 
 ## Reglas de colaboración y continuidad
 
