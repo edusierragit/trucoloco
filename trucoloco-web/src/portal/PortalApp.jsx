@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { sfx } from "../game/audio/sfx";
 
 const GameApp = lazy(() => import("../App"));
+const ShopProduct3D = lazy(() => import("./ShopProduct3D"));
 
 const NAV_ITEMS = [
   { id: "home", label: "Inicio", icon: "home" },
@@ -14,9 +15,25 @@ const NAV_ITEMS = [
 
 const EMPTY_RANKING = Array.from({ length: 6 }, (_, index) => index + 1);
 
+const SHOP_CARD_RANKS = [["ancho", "1"], ["dos", "2"], ["tres", "3"], ["cuatro", "4"], ["cinco", "5"], ["seis", "6"], ["siete", "7"], ["sota", "10"], ["caballo", "11"], ["rey", "12"]];
+const SHOP_CARD_SUITS = [["espada", "espadas"], ["basto", "bastos"], ["oro", "oros"], ["copa", "copas"]];
+const SPANISH_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([fileSuit, suit]) => SHOP_CARD_RANKS.map(([fileRank, rank]) => ({
+  rank,
+  suit,
+  src: `/assets/cards/fronts/${fileRank}-${fileSuit}.svg`
+})));
+const TRAZOS_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([, suit]) => SHOP_CARD_RANKS.map(([, rank]) => ({ rank, suit })));
+const GAZPACHO_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([, suit], suitIndex) => SHOP_CARD_RANKS.map(([, rank], rankIndex) => ({ rank, suit, portrait: (rankIndex + suitIndex) % 3 + 1, crowned: rank === "11" })));
+
+const PRODUCT_VARIANTS = {
+  lentes: ["Esmeralda", "Violeta imperial", "Azul acero", "Rojo criollo", "Negro nocturno", "Champagne"],
+  skins: ["Negociador ejecutivo", "Negociador con chaleco", "Jugador Estrella · básquet", "Jugador Estrella · fútbol", "Cartachín · karate", "Cartachín · samurái"],
+  fichines: ["Verde y crema", "Negro y dorado", "Bordó y bronce"]
+};
+
 const RANK_LADDER = [
   ["Ancho de espadas · El Macho", [[1, "espadas"]]],
-  ["Ancho de bastos · La Bota", [[1, "bastos"]]],
+  ["Ancho de bastos · La Hembra", [[1, "bastos"]]],
   ["7 de espadas · El Manco", [[7, "espadas"]]],
   ["7 de oros · La Culata", [[7, "oros"]]],
   ["Todos los 3", [[3, "espadas"], [3, "copas"], [3, "oros"], [3, "bastos"]]],
@@ -43,7 +60,13 @@ const TRADITIONAL_QUIZ = [
   ["Envido más Envido querido: ¿cuántos puntos se juegan?", ["2", "3", "4"], 2],
   ["Envido más Real Envido querido: ¿cuántos puntos se juegan?", ["4", "5", "6"], 1],
   ["Si hay empate de envido, ¿quién gana?", ["El mano", "Quien repartió", "Se anula"], 0],
-  ["¿Cuándo puede cantarse el envido?", ["En cualquier ronda", "Durante la primera", "Después del Truco"], 1]
+  ["¿Cuándo puede cantarse el envido?", ["En cualquier ronda", "Durante la primera", "Después del Truco"], 1],
+  ["¿Cuántas cartas recibe cada jugador?", ["Dos", "Tres", "Cuatro"], 1],
+  ["¿Quién juega primero una mano?", ["El mano", "Quien repartió", "Quien ganó la partida anterior"], 0],
+  ["¿Cuántas jugadas puede tener una mano?", ["Hasta dos", "Hasta tres", "Siempre cuatro"], 1],
+  ["Si un equipo gana las dos primeras jugadas, ¿qué pasa con la tercera?", ["Vale doble", "Se juega igual", "Ya no se juega"], 2],
+  ["Tenés 6 y 7 del mismo palo. ¿Cuánto envido tenés?", ["13", "27", "33"], 2],
+  ["Si no tenés dos cartas del mismo palo, ¿cómo se calcula el envido?", ["Vale la carta numérica más alta", "Siempre son 20", "Se suman las tres cartas"], 0]
 ];
 
 const TRUCOLOCO_QUIZ = [
@@ -90,12 +113,20 @@ const WEAPON_DESCRIPTIONS = [
   "Explota la carta sobre la que se apoya.", "Explota la carta que se coloca encima.", "Toma cualquier carta no jugada de un mazo o una mano.", "Envenena: un turno sin jugar.", "Permite jugar una carta boca abajo."
 ];
 
-const RANK_EXAMPLES = ["Ancho de espadas", "Ancho de bastos", "7 de espadas", "7 de oros", "3 de copas", "2 de oros", "Ancho de copas", "Rey de bastos", "Caballo de oros", "Sota de espadas", "7 de copas", "6 de bastos", "5 de oros", "4 de copas"];
+const RANK_EXAMPLES = ["Ancho de espadas", "La Hembra (ancho de bastos)", "7 de espadas", "7 de oros", "3 de copas", "2 de oros", "Ancho de copas", "Rey de bastos", "Caballo de oros", "Sota de espadas", "7 de copas", "6 de bastos", "5 de oros", "4 de copas"];
 const RANK_QUIZ = RANK_EXAMPLES.flatMap((higher, higherIndex) => RANK_EXAMPLES.slice(higherIndex + 1).map((lower, offset) => {
   const reversed = (higherIndex + offset) % 2 === 0;
   return [`¿Qué carta es más alta?`, reversed ? [lower, higher] : [higher, lower], reversed ? 1 : 0];
 }));
-const COMPLETE_TRADITIONAL_QUIZ = [...TRADITIONAL_QUIZ, ...RANK_QUIZ];
+function shuffled(items) {
+  return [...items].sort(() => Math.random() - .5);
+}
+
+function buildTraditionalQuiz() {
+  const rules = shuffled(TRADITIONAL_QUIZ);
+  const ranks = shuffled(RANK_QUIZ).slice(0, 7);
+  return rules.flatMap((question, index) => index < ranks.length && index % 2 === 1 ? [question, ranks[index]] : [question]);
+}
 
 function buildDeckQuiz(names, descriptions, deckLabel) {
   return names.flatMap((name, index) => {
@@ -145,7 +176,16 @@ function PortalIcon({ name }) {
 }
 
 function BackArrowIcon() {
-  return <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M23 21c0-7-3.7-10.5-10.8-10.5H5" /><path d="m10 5.5-5 5 5 5" /></svg>;
+  return <svg viewBox="0 0 58 34" aria-hidden="true"><path className="portal-back-tail" d="M54 29C54 15.5 43 8.5 27 8.5H8" /><path className="portal-back-weight" d="M27 8.5H8" /><path className="portal-back-head" d="M17 1.5 7 8.5l10 7" /></svg>;
+}
+
+function SoundIcon({ enabled }) {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M5 13h5l7-6v18l-7-6H5Z" />
+      {enabled ? <><path className="portal-sound-wave portal-sound-wave-one" d="M21 12c2.2 2.3 2.2 5.7 0 8" /><path className="portal-sound-wave" d="M24.5 8.5c4.3 4.4 4.3 10.6 0 15" /></> : <path className="portal-sound-muted-line" d="m21 12 8 8M29 12l-8 8" />}
+    </svg>
+  );
 }
 
 function BrandMark({ compact = false }) {
@@ -192,8 +232,8 @@ function RankingPanel({ mode }) {
 function PlaySection({ onLaunch }) {
   const [selectedMode, setSelectedMode] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
-  const [teamNames, setTeamNames] = useState(["", ""]);
-  const [teamsReady, setTeamsReady] = useState([false, false]);
+  const [teamNames, setTeamNames] = useState(["", "", "", ""]);
+  const [teamsReady, setTeamsReady] = useState([false, false, false, false]);
   const [launchingMode, setLaunchingMode] = useState(null);
   const modeLabel = selectedMode === "comun" ? "Truco tradicional" : "Trucoloco";
 
@@ -207,8 +247,8 @@ function PlaySection({ onLaunch }) {
     runPortalTransition(() => {
       setSelectedMode(mode);
       setOpenPanel(null);
-      setTeamNames(["", ""]);
-      setTeamsReady([false, false]);
+      setTeamNames(["", "", "", ""]);
+      setTeamsReady([false, false, false, false]);
     }, { direction: "forward", tone: mode });
   };
 
@@ -216,8 +256,8 @@ function PlaySection({ onLaunch }) {
     runPortalTransition(() => {
       setSelectedMode(null);
       setOpenPanel(null);
-      setTeamNames(["", ""]);
-      setTeamsReady([false, false]);
+      setTeamNames(["", "", "", ""]);
+      setTeamsReady([false, false, false, false]);
     }, { direction: "back", tone: selectedMode || "portal" });
   };
 
@@ -230,7 +270,6 @@ function PlaySection({ onLaunch }) {
     nextReady[teamIndex] = true;
     setTeamNames(nextNames);
     setTeamsReady(nextReady);
-    if (nextReady.every(Boolean)) setLaunchingMode(selectedMode);
   };
 
   const cancelTeam = (teamIndex) => {
@@ -258,17 +297,40 @@ function PlaySection({ onLaunch }) {
         </div>
         {openPanel === "tournament" ? (
           <div className="portal-tournament-setup portal-reveal-panel" aria-label="Clasificatoria del torneo">
-            <div className="portal-panel-heading"><span>Clasificatoria</span><small>Los dos equipos deben confirmar para entrar.</small></div>
-            <div className="portal-tournament-match">
-              {[0, 1].map((teamIndex) => (
-                <div className={teamsReady[teamIndex] ? "portal-team-entry portal-team-ready" : "portal-team-entry"} key={teamIndex}>
-                  <label htmlFor={`portal-team-${teamIndex}`}>Equipo {teamIndex + 1}</label>
-                  <input id={`portal-team-${teamIndex}`} type="text" value={teamNames[teamIndex]} maxLength={24} disabled={teamsReady[teamIndex]} placeholder="Nombre del equipo" onChange={(event) => setTeamNames((current) => current.map((name, index) => index === teamIndex ? event.target.value : name))} />
-                  <div><button type="button" disabled={!teamNames[teamIndex].trim() || teamsReady[teamIndex]} onClick={() => confirmTeam(teamIndex)}>OK</button><button type="button" disabled={!teamNames[teamIndex] && !teamsReady[teamIndex]} onClick={() => cancelTeam(teamIndex)}>Cancelar</button></div>
-                  <small>{teamsReady[teamIndex] ? "Listo para jugar" : "Esperando confirmación"}</small>
-                </div>
-              ))}
-              <span className="portal-versus">VS</span>
+            <div className="portal-panel-heading"><span>Clasificatoria</span><small>Al mejor de tres.</small></div>
+            <div className="portal-tournament-bracket">
+              <div className="portal-champion-node">
+                <small>Campeones</small>
+                <strong>— — —</strong>
+              </div>
+              <div className="portal-bracket-lines portal-bracket-lines-final" aria-hidden="true"><i /><i /></div>
+              <div className="portal-final-row">
+                <div><strong>Finalista A</strong></div>
+                <div><strong>Finalista B</strong></div>
+              </div>
+              <div className="portal-bracket-lines portal-bracket-lines-semis" aria-hidden="true"><i /><i /><b /><b /></div>
+              <div className="portal-semifinal-grid">
+                {[0, 2].map((firstTeam, semifinalIndex) => (
+                  <section className="portal-semifinal" key={firstTeam}>
+                    <header><strong>Semifinal {semifinalIndex + 1}</strong><small>Mejor de tres</small></header>
+                    <div className="portal-tournament-match">
+                      {[firstTeam, firstTeam + 1].map((teamIndex) => (
+                        <div className={teamsReady[teamIndex] ? "portal-team-entry portal-team-ready" : "portal-team-entry"} key={teamIndex}>
+                          <label htmlFor={`portal-team-${teamIndex}`}>Equipo {teamIndex + 1}</label>
+                          <input id={`portal-team-${teamIndex}`} type="text" value={teamNames[teamIndex]} maxLength={24} disabled={teamsReady[teamIndex]} placeholder="Nombre del equipo" onChange={(event) => setTeamNames((current) => current.map((name, index) => index === teamIndex ? event.target.value : name))} />
+                          <div className="portal-team-actions">
+                            <button type="button" aria-label={`Confirmar equipo ${teamIndex + 1}`} title="Confirmar" disabled={!teamNames[teamIndex].trim() || teamsReady[teamIndex]} onClick={() => confirmTeam(teamIndex)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10" /></svg></button>
+                            <button type="button" aria-label={`Cancelar equipo ${teamIndex + 1}`} title="Cancelar" disabled={!teamNames[teamIndex] && !teamsReady[teamIndex]} onClick={() => cancelTeam(teamIndex)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+                          </div>
+                          <small>{teamsReady[teamIndex] ? "Listos para jugar" : "Esperando confirmación"}</small>
+                        </div>
+                      ))}
+                      <span className="portal-versus">VS</span>
+                    </div>
+                  </section>
+                ))}
+              </div>
+              {teamsReady.every(Boolean) ? <button className="portal-tournament-launch" type="button" onClick={() => setLaunchingMode(selectedMode)}>Jugar clasificatoria</button> : null}
             </div>
           </div>
         ) : null}
@@ -335,7 +397,11 @@ function ScoreSection() {
       <div className="portal-scoreboard">
         {[["us", "Nosotros"], ["them", "Ellos"]].map(([side, label]) => (
           <div className="portal-score-side" key={side}>
-            <span>{label}</span><strong>{scores[side] >= target ? (side === "us" ? "¡ Ganamos !" : "¡ Ganaron !") : scores[side]}</strong>
+            <span>{label}</span>
+            <div className={scores[side] >= target ? "portal-score-value portal-score-winner" : "portal-score-value"}>
+              {scores[side] >= target ? <span className="portal-score-fireworks" aria-hidden="true"><i /><i /><i /></span> : null}
+              <strong>{scores[side] >= target ? (side === "us" ? "¡ Ganamos !" : "¡ Ganaron !") : scores[side]}</strong>
+            </div>
             <div><button type="button" aria-label={`Restar a ${label}`} onClick={() => adjust(side, -1)}>−</button><button type="button" aria-label={`Sumar a ${label}`} onClick={() => adjust(side, 1)}>+</button></div>
           </div>
         ))}
@@ -346,29 +412,45 @@ function ScoreSection() {
 }
 
 function DeckFan({ type }) {
-  if (type === "gazpacho") {
-    return <div className="portal-deck-image portal-product-spin"><img src="/assets/shop/gazpacho-court-fan.png" alt="Tres figuras del Mazo Gazpacho con los rostros de Gazpacho" /></div>;
-  }
-  if (type === "trazos") {
-    return <div className="portal-deck-fan portal-product-spin" aria-label="Tres cartas de ejemplo del Mazo Trazos">{[[7, "oros"], [1, "espadas"], [3, "copas"]].map(([rank, suit], index) => <div className={`portal-fan-card portal-fan-${index + 1} portal-trazos-card`} key={suit}><b>{rank}</b><SuitGlyph suit={suit} /></div>)}</div>;
-  }
+  const label = type === "espanol" ? "Mazo español con el ancho de espadas" : type === "trazos" ? "Mazo Trazos con su uno de espadas" : "Mazo Gazpacho con la carta coronada";
   return (
-    <div className="portal-spanish-deck" aria-label="Mazo español visto desde arriba">
-      <span className="portal-deck-layer portal-deck-layer-three" />
-      <span className="portal-deck-layer portal-deck-layer-two" />
-      <img src="/assets/cards/fronts/ancho-espada.svg" alt="Ancho de espadas sobre el mazo español" />
+    <div className={`portal-deck-stack portal-deck-${type}`} aria-label={label}>
+      <span className="portal-deck-edge portal-deck-edge-three" />
+      <span className="portal-deck-edge portal-deck-edge-two" />
+      <div className="portal-deck-top">
+        {type === "espanol" ? <img src="/assets/cards/fronts/ancho-espada.svg" alt="Uno de espadas" /> : null}
+        {type === "trazos" ? <div className="portal-trazos-face"><b>1</b><img src="/assets/brand/trucoloco-sword-hd.png" alt="" /></div> : null}
+        {type === "gazpacho" ? <GazpachoCardFace card={{ rank: "11", suit: "oros", portrait: 2, crowned: true }} /> : null}
+      </div>
     </div>
   );
 }
 
-function ShopExtraVisual({ type }) {
-  if (type === "lentes") {
-    return <div className="portal-extra-visual portal-sprite-preview portal-glasses-preview" aria-label="Tres modelos de lentes del Hexágono">{[0, 1, 2].map((index) => <span className="portal-extra-item" style={{ "--sprite-index": index }} key={index}><img src="/assets/shop/lentes-hexagono-premium.png" alt="" /></span>)}</div>;
-  }
-  if (type === "skins") {
-    return <div className="portal-extra-visual portal-sprite-preview portal-skins-preview" aria-label="Smoking de Negociante, ropa de golf y traje de Cartachin">{[0, 1, 2].map((index) => <span className="portal-extra-item" style={{ "--sprite-index": index }} key={index}><img src="/assets/shop/skins-premium.png" alt="" /></span>)}</div>;
-  }
-  return <div className="portal-extra-visual portal-chips-preview" aria-label="Montón de fichines verdes y dorados"><img src="/assets/shop/fichines-premium.png" alt="Montón de fichines verdes y dorados en relieve" /></div>;
+function GazpachoCardFace({ card }) {
+  return (
+    <div className="portal-gazpacho-card">
+      <b>{card.rank}</b>
+      <img src={`/assets/shop/gazpacho-${card.portrait}.png`} alt="Gazpacho" />
+      {card.crowned ? <svg className="portal-gazpacho-crown" viewBox="0 0 64 40" aria-hidden="true"><path d="M6 31 2 8l17 11L32 3l13 16L62 8l-4 23Z" /><path d="M7 31h50v6H7Z" /></svg> : null}
+      <small>{card.suit}</small>
+    </div>
+  );
+}
+
+function ShopDeckCard({ type, card }) {
+  if (type === "espanol") return <div className="portal-gallery-card"><img src={card.src} alt={`${card.rank} de ${card.suit}`} /></div>;
+  if (type === "gazpacho") return <div className="portal-gallery-card"><GazpachoCardFace card={card} /></div>;
+  return (
+    <div className="portal-gallery-card portal-gallery-trazos">
+      <b>{card.rank}</b>
+      <SuitGlyph suit={card.suit} />
+      <small>{card.suit}</small>
+    </div>
+  );
+}
+
+function ShopExtraVisual({ type, variant = 0, compact = true }) {
+  return <Suspense fallback={<div className="portal-product-3d-loading" aria-label="Cargando modelo tridimensional" />}><ShopProduct3D type={type} variant={variant} compact={compact} /></Suspense>;
 }
 
 function PremiumShopCard({ product, onSelect }) {
@@ -380,11 +462,13 @@ function PremiumShopCard({ product, onSelect }) {
     event.currentTarget.style.setProperty("--tilt-x", `${(-y * 7).toFixed(2)}deg`);
     event.currentTarget.style.setProperty("--tilt-y", `${(x * 9).toFixed(2)}deg`);
     event.currentTarget.style.setProperty("--light-x", `${((x + .5) * 100).toFixed(0)}%`);
+    event.currentTarget.style.setProperty("--light-y", `${((y + .5) * 100).toFixed(0)}%`);
   };
   const resetProduct = (event) => {
     event.currentTarget.style.removeProperty("--tilt-x");
     event.currentTarget.style.removeProperty("--tilt-y");
     event.currentTarget.style.removeProperty("--light-x");
+    event.currentTarget.style.removeProperty("--light-y");
   };
 
   return (
@@ -401,21 +485,44 @@ function PremiumShopCard({ product, onSelect }) {
 
 function ShopSection() {
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [purchaseMessage, setPurchaseMessage] = useState("");
   const decks = [
     ["Incluido", "Mazo español", "La baraja de toda la vida.", null, "espanol"],
-    ["Próximamente", "Mazo Trazos", "El truco de siempre, dibujado con otra elegancia.", "$ --", "trazos"],
-    ["Próximamente", "Mazo Gazpacho", "Una edición especial del mejor Jugador Estrella de Trucoloco.", "$ --", "gazpacho"]
+    ["Próximamente", "Mazo Trazos", "El truco de siempre, dibujado con otra elegancia.", "$ 1", "trazos"],
+    ["Próximamente", "Mazo Gazpacho", "Una edición especial del mejor Jugador Estrella de Trucoloco.", "$ 2", "gazpacho"]
   ];
   const extras = [
-    ["Próximamente", "Lentes del Hexágono", "Modelos absurdos para llevar el caos al siguiente nivel.", "$ --", "lentes"],
-    ["Próximamente", "Skins de personajes", "Smoking de Negociante, golfista estrella y traje de Cartachin.", "$ --", "skins"],
-    ["Próximamente", "Fichines", "Fichas para favores.", "$ --", "fichines"]
+    ["Próximamente", "Lentes del Hexágono", "Modelos absurdos para llevar el caos al siguiente nivel.", "$ 1", "lentes"],
+    ["Próximamente", "Skins de personajes", "Smoking de Negociante, golfista estrella y traje de Cartachin.", "$ 2", "skins"],
+    ["Próximamente", "Fichines", "Fichas para favores.", "$ 1", "fichines"]
   ];
   const products = [...decks, ...extras];
+  const selectedType = selectedProduct?.[4];
+  const galleryItems = selectedType === "espanol" ? SPANISH_SHOP_CARDS
+    : selectedType === "trazos" ? TRAZOS_SHOP_CARDS
+    : selectedType === "gazpacho" ? GAZPACHO_SHOP_CARDS
+    : PRODUCT_VARIANTS[selectedType] ?? [];
+  const selectedItem = galleryItems[galleryIndex] ?? galleryItems[0];
+
+  const openProduct = (product) => {
+    setGalleryIndex(0);
+    setPurchaseMessage("");
+    setSelectedProduct(product);
+  };
+
+  const moveGallery = (direction) => {
+    setGalleryIndex((current) => (current + direction + galleryItems.length) % galleryItems.length);
+    setPurchaseMessage("");
+  };
 
   useEffect(() => {
     if (!selectedProduct) return undefined;
-    const close = (event) => { if (event.key === "Escape") setSelectedProduct(null); };
+    const close = (event) => {
+      if (event.key === "Escape") setSelectedProduct(null);
+      if (event.key === "ArrowRight") moveGallery(1);
+      if (event.key === "ArrowLeft") moveGallery(-1);
+    };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [selectedProduct]);
@@ -423,21 +530,27 @@ function ShopSection() {
   return (
     <section className="portal-section" aria-labelledby="portal-shop-title">
       <header className="portal-section-head portal-shop-head portal-balanced-head"><h1 id="portal-shop-title">Tienda</h1><p>Equipá tu mesa.</p></header>
-      <p className="portal-shop-intro">Una colección todavía en preparación, presentada como piezas de mesa y no como simples dibujos.</p>
-      <div className="portal-shop-grid">{products.map((product) => <PremiumShopCard product={product} onSelect={setSelectedProduct} key={product[1]} />)}</div>
-      <div className="portal-coming-soon"><strong>Todavía no se puede comprar nada acá.</strong><span>Esta sección es una vista previa de la tienda.</span></div>
+      <div className="portal-shop-grid">{products.map((product) => <PremiumShopCard product={product} onSelect={openProduct} key={product[1]} />)}</div>
       {selectedProduct ? createPortal((
         <div className="portal-product-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
           <article className="portal-product-modal" role="dialog" aria-modal="true" aria-labelledby="portal-product-title">
             <button className="portal-product-close" type="button" aria-label="Cerrar detalle" onClick={() => setSelectedProduct(null)}>×</button>
-            <div className="portal-product-modal-visual">{["espanol", "trazos", "gazpacho"].includes(selectedProduct[4]) ? <DeckFan type={selectedProduct[4]} /> : <ShopExtraVisual type={selectedProduct[4]} />}</div>
+            <div className="portal-product-modal-gallery">
+              <button className="portal-gallery-arrow portal-gallery-arrow-left" type="button" aria-label="Ver opción anterior" onClick={() => moveGallery(-1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7" /></svg></button>
+              <div className="portal-product-modal-visual">
+                {["espanol", "trazos", "gazpacho"].includes(selectedType) ? <ShopDeckCard type={selectedType} card={selectedItem} /> : <ShopExtraVisual type={selectedType} variant={galleryIndex} compact={false} />}
+              </div>
+              <button className="portal-gallery-arrow portal-gallery-arrow-right" type="button" aria-label="Ver opción siguiente" onClick={() => moveGallery(1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7" /></svg></button>
+              <div className="portal-gallery-progress"><strong>{galleryIndex + 1} / {galleryItems.length}</strong><span>{typeof selectedItem === "string" ? selectedItem : `${selectedItem.rank} de ${selectedItem.suit}`}</span></div>
+            </div>
             <div className="portal-product-modal-copy">
-              <span>{selectedProduct[0]}</span>
               <h2 id="portal-product-title">{selectedProduct[1]}</h2>
+              <span className="portal-product-meta">{selectedProduct[0]}</span>
               <p>{selectedProduct[2]}</p>
               <div className="portal-product-finishes"><i>Verde noche</i><i>Crema</i><i>Dorado</i></div>
-              <strong>{selectedProduct[3] || "Incluido"}</strong>
-              <small>Vista previa. Las compras se habilitarán más adelante.</small>
+              {selectedProduct[3] ? <strong>{selectedProduct[3]}</strong> : null}
+              {selectedProduct[3] ? <button className="portal-product-buy" type="button" onClick={() => setPurchaseMessage("Compra en preparación. Esta variante quedó seleccionada.")}>Comprar esta opción</button> : null}
+              {purchaseMessage ? <small>{purchaseMessage}</small> : null}
             </div>
           </article>
         </div>
@@ -470,17 +583,19 @@ function RankLadder() {
 }
 
 function RulesQuiz({ questions }) {
+  const makeQuestions = () => typeof questions === "function" ? questions() : shuffled(questions);
+  const [questionSet, setQuestionSet] = useState(makeQuestions);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
-  const question = questions[index];
+  const question = questionSet[index];
 
   if (!question) {
     return (
       <div className="portal-quiz-result">
         <strong>{score} respuestas correctas</strong>
-        <p>{score === questions.length ? "Perfecto. La mesa ya no tiene secretos." : "Buen intento. Podés volver a practicar cuando quieras."}</p>
-        <button type="button" onClick={() => { setIndex(0); setSelected(null); setScore(0); }}>Reintentar</button>
+        <p>{score === questionSet.length ? "Perfecto. La mesa ya no tiene secretos." : "Buen intento. Podés volver a practicar cuando quieras."}</p>
+        <button type="button" onClick={() => { setQuestionSet(makeQuestions()); setIndex(0); setSelected(null); setScore(0); }}>Reintentar</button>
       </div>
     );
   }
@@ -501,7 +616,7 @@ function RulesQuiz({ questions }) {
           return <button className={`portal-quiz-option${resultClass}`} type="button" key={`${optionIndex}-${option}`} onClick={() => answer(optionIndex)}>{option}</button>;
         })}
       </div>
-      {selected !== null ? <button className="portal-quiz-next" type="button" onClick={() => { setIndex((current) => current + 1); setSelected(null); }}>{index === questions.length - 1 ? "Ver resultado" : "Siguiente"}</button> : null}
+      {selected !== null ? <button className="portal-quiz-next" type="button" onClick={() => { setIndex((current) => current + 1); setSelected(null); }}>{index === questionSet.length - 1 ? "Ver resultado" : "Siguiente"}</button> : null}
     </div>
   );
 }
@@ -540,7 +655,7 @@ function TraditionalRules() {
         <p>Quien gana una jugada abre la siguiente. Si una jugada queda empatada, conserva la ventaja quien ganó la anterior; si la primera queda empatada, gana quien venza en la siguiente.</p>
       </section>
       <section><h2>Valores de las cartas</h2><p>Orden de la carta más alta a la más baja.</p><RankLadder /></section>
-      <section><h2>Práctica</h2><p>Respondé y comprobá si ya podés sentarte a la mesa.</p><RulesQuiz questions={COMPLETE_TRADITIONAL_QUIZ} /></section>
+      <section><h2>Práctica</h2><p>Respondé y comprobá si ya podés sentarte a la mesa.</p><RulesQuiz questions={buildTraditionalQuiz} /></section>
     </div>
   );
 }
@@ -617,7 +732,10 @@ export default function PortalApp() {
     sfx.setMuted(!nextEnabled);
     if (nextEnabled) {
       sfx.ensure();
+      if (!gameOpen) sfx.portalAmbient();
       sfx.tick();
+    } else {
+      sfx.stopPortalAmbient();
     }
     setSoundEnabled(nextEnabled);
   };
@@ -625,6 +743,7 @@ export default function PortalApp() {
   const playButtonSound = (event) => {
     if (!soundEnabled || !event.target.closest("button")) return;
     sfx.ensure();
+    if (!gameOpen) sfx.portalAmbient();
     sfx.tick();
   };
 
@@ -632,6 +751,11 @@ export default function PortalApp() {
     document.documentElement.classList.toggle("portal-document", !gameOpen);
     return () => document.documentElement.classList.remove("portal-document");
   }, [gameOpen]);
+
+  useEffect(() => {
+    if (gameOpen || !soundEnabled) sfx.stopPortalAmbient();
+    return () => { if (gameOpen) sfx.stopPortalAmbient(); };
+  }, [gameOpen, soundEnabled]);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [activeSection, sectionResetKey]);
 
@@ -688,7 +812,7 @@ export default function PortalApp() {
       <div className="portal-suit portal-suit-cup" aria-hidden="true"><svg viewBox="0 0 100 120"><path d="M18 14h64c-2 28-13 43-32 43S20 42 18 14Z" /><path d="M50 57v35M31 103h38" /></svg></div>
       <div className="portal-suit portal-suit-club" aria-hidden="true"><img src="/assets/shop/basto-reference.png" alt="" /></div>
       {isHome ? <button className="portal-login-button" type="button" onClick={() => setAuthOpen(true)}>Iniciar sesión</button> : null}
-      <button className="portal-sound-toggle" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>{soundEnabled ? "Sonido: sí" : "Sonido: no"}</button>
+      <button className="portal-sound-toggle" type="button" aria-label={soundEnabled ? "Silenciar sonido" : "Activar sonido"} title={soundEnabled ? "Silenciar sonido" : "Activar sonido"} aria-pressed={soundEnabled} onClick={toggleSound}><SoundIcon enabled={soundEnabled} /></button>
       <header className="portal-brand-stage">
         <div className="portal-brand-lockup">
           <BrandMark compact={!isHome} />
@@ -706,9 +830,7 @@ export default function PortalApp() {
         <div className="portal-auth-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}>
           <section className="portal-auth-modal" role="dialog" aria-modal="true" aria-labelledby="portal-auth-title">
             <button className="portal-auth-close" type="button" aria-label="Cerrar" onClick={() => setAuthOpen(false)}>×</button>
-            <span>Próximamente</span>
             <h2 id="portal-auth-title">Creá tu perfil</h2>
-            <p>Esta es una muestra del acceso. Las cuentas reales se habilitarán más adelante.</p>
             <form onSubmit={(event) => event.preventDefault()}>
               <label>Nombre<input type="text" placeholder="Tu nombre" /></label>
               <label>Email<input type="email" placeholder="nombre@email.com" /></label>

@@ -948,6 +948,13 @@ function useVinylPlaying() {
 
 function VinylWall() {
   const playing = useVinylPlaying();
+  useEffect(() => {
+    const startRoomMusic = () => {
+      if (!vinylPlaying) setVinylPlaying(true);
+    };
+    window.addEventListener("pointerdown", startRoomMusic, { once: true });
+    return () => window.removeEventListener("pointerdown", startRoomMusic);
+  }, []);
   const [missing, setMissing] = useState(false);
   const spinRefs = useRef([]);
   const discos = [

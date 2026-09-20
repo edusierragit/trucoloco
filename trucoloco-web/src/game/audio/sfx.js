@@ -87,6 +87,32 @@ class Sfx {
     void ac;
   }
 
+  // Ambiente psicodélico original: notas largas, ecos y un pulso grave muy suave.
+  portalAmbient() {
+    if (!this.ac || !this.master || this._portalAmbientOn) return;
+    this._portalAmbientOn = true;
+    const phrase = () => {
+      if (!this._portalAmbientOn) return;
+      const notes = [146.83, 174.61, 220, 261.63, 220, 174.61];
+      notes.forEach((frequency, index) => {
+        const delay = index * 1.08;
+        this.blip(frequency, 1.9, "sine", .018, index % 2 ? 8 : -6, delay);
+        this.blip(frequency * 2, 1.45, "triangle", .006, -14, delay + .58);
+        this.blip(frequency, 1.2, "sine", .004, -5, delay + 1.12);
+      });
+      this.blip(73.42, 6.8, "sine", .012, -3);
+      this.noise(3.4, .006, 520, 2.1);
+      this._portalAmbientTimer = setTimeout(phrase, 8800);
+    };
+    phrase();
+  }
+
+  stopPortalAmbient() {
+    this._portalAmbientOn = false;
+    clearTimeout(this._portalAmbientTimer);
+    this._portalAmbientTimer = null;
+  }
+
   // reparto: tres cartas rapiditas
   deal() {
     this.noise(0.06, 0.2, 2200, 0);
