@@ -1698,3 +1698,151 @@ html:active-view-transition .portal-section { animation: none; }
 @media (max-width: 900px) {
   .portal-bracket-lines-semis { display: none; }
 }
+
+/* Revisión integral — identidad, lectura, torneo, baraja y desplazamiento. */
+:root.portal-document { overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+:root.portal-document body,
+:root.portal-document #root { height: auto; min-height: 100%; overflow: visible; }
+.portal-shell-section { min-height: 100dvh; overflow: clip; overflow-clip-margin: 0; }
+.portal-play-selected,
+.portal-tournament-setup { overflow-anchor: none; }
+
+.portal-shell-section .portal-brand-stage { top: 13px; left: 8px; }
+.portal-shell-section .portal-logo-compact { align-items: flex-end; gap: 4px; }
+.portal-logo-compact img { width: auto; height: 70px; }
+.portal-shell-section .portal-logo-compact > span { margin-bottom: 1px; font-size: .64rem; line-height: 1; }
+
+.portal-play-actions strong { font-size: 1.58rem; letter-spacing: .095em; line-height: 1.08; }
+.portal-play-actions small { font-size: 1.03rem; letter-spacing: .075em; word-spacing: .11em; line-height: 1.55; }
+.portal-choice-card small,
+.portal-shop-card p,
+.portal-rule-document p,
+.portal-team-entry small { letter-spacing: .055em; word-spacing: .09em; }
+
+.portal-suit-coin .portal-coin-inner { stroke-width: 2.1; }
+.portal-suit-coin .portal-coin-rays { stroke-width: 2.2; }
+.portal-suit-club { top: 10%; right: 5%; width: 58px; height: 118px; opacity: .2; transform: rotate(13deg); }
+.portal-suit-club svg path { fill: currentColor; stroke: currentColor; stroke-width: 1.6; }
+
+.portal-back-button {
+  width: 64px;
+  height: 42px;
+  border-color: rgba(224,173,28,.42);
+  background: linear-gradient(145deg, rgba(21,72,56,.86), rgba(5,37,29,.88));
+  box-shadow: inset 0 1px rgba(255,255,255,.05), 0 9px 24px rgba(0,0,0,.16);
+}
+.portal-back-button svg { width: 38px; height: 24px; transform: none; }
+.portal-back-tail,
+.portal-back-head { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.portal-back-button:hover { transform: translateX(-3px); border-color: rgba(224,173,28,.78); box-shadow: inset 0 1px rgba(255,255,255,.07), 0 12px 30px rgba(0,0,0,.22), 0 0 18px rgba(224,173,28,.1); }
+
+.portal-score-side > span { font-size: 1.04rem; letter-spacing: .12em; }
+.portal-score-fireworks i { animation-duration: 5s; }
+.portal-score-fireworks i:nth-child(2) { animation-delay: .35s; }
+.portal-score-fireworks i:nth-child(3) { animation-delay: .7s; }
+@keyframes portal-firework {
+  0% { opacity: 0; scale: .12; }
+  8%, 72% { opacity: 1; }
+  100% { opacity: 0; scale: 1.28; }
+}
+
+.portal-tournament-bracket { width: 100%; }
+.portal-bracket-lines { color: rgba(224,173,28,.66); }
+.portal-bracket-lines::before,
+.portal-bracket-lines::after,
+.portal-bracket-lines i,
+.portal-bracket-lines b { background: currentColor; box-shadow: 0 0 8px rgba(224,173,28,.12); }
+.portal-bracket-lines-final { width: 76%; }
+.portal-bracket-lines-final::after { left: 25%; right: 25%; }
+.portal-bracket-lines-final i:first-child { left: 25%; }
+.portal-bracket-lines-final i:nth-child(2) { right: 25%; }
+.portal-bracket-lines-semis { width: 100%; }
+.portal-bracket-lines-semis::after { left: 12.5%; right: 12.5%; }
+.portal-bracket-lines-semis i:first-child { left: 12.5%; }
+.portal-bracket-lines-semis i:nth-child(2) { right: 12.5%; }
+.portal-bracket-lines-semis b:nth-of-type(1) { left: 37.5%; }
+.portal-bracket-lines-semis b:nth-of-type(2) { right: 37.5%; }
+.portal-finalist-ready { border-color: rgba(103,186,118,.5) !important; }
+.portal-finalist-actions { display: flex; justify-content: center; gap: 7px; margin-top: 7px; }
+.portal-finalist-actions button,
+.portal-match-result button,
+.portal-final-match > div button {
+  padding: 7px 11px;
+  border: 1px solid rgba(224,173,28,.42);
+  border-radius: 999px;
+  background: rgba(224,173,28,.08);
+  color: var(--portal-cream);
+  cursor: pointer;
+  font: inherit;
+  font-size: .76rem;
+}
+.portal-finalist-actions button:disabled { opacity: .5; cursor: default; }
+.portal-match-result { display: grid; gap: 9px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--portal-line); text-align: center; }
+.portal-match-result > small { color: var(--portal-muted); font-size: .78rem; }
+.portal-match-result > div,
+.portal-final-match > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.portal-final-match { display: grid; justify-items: center; gap: 10px; }
+
+.portal-table-rules { display: grid; gap: 22px; max-width: 940px; }
+.portal-table-rules article { padding: 0 0 20px; border-bottom: 1px solid var(--portal-line); }
+.portal-table-rules article:last-child { border-bottom: 0; }
+.portal-table-rules h3 { margin: 0 0 7px; color: var(--portal-gold); font-size: 1.38rem; letter-spacing: .075em; }
+.portal-table-rules p { margin: 0; color: var(--portal-muted); line-height: 1.68; }
+
+.portal-truco-card { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; background: radial-gradient(circle at 50% 42%, #fff9e9, #efe0bc 82%); color: #17130e; }
+.portal-card-corner { position: absolute; z-index: 4; display: grid; width: 28px; justify-items: center; gap: 2px; font-family: Georgia, serif; font-size: 1.15rem; line-height: 1; }
+.portal-card-corner .portal-suit-glyph { width: 14px; height: 20px; }
+.portal-card-corner-top { top: 10px; left: 10px; }
+.portal-card-corner-bottom { right: 10px; bottom: 10px; transform: rotate(180deg); }
+.portal-card-pips { position: absolute; inset: 13% 15%; }
+.portal-card-pips > span { position: absolute; left: var(--pip-x); top: var(--pip-y); width: 28%; height: 24%; transform: translate(-50%, -50%); }
+.portal-card-pips .portal-suit-glyph { width: 100%; height: 100%; color: #19150f; }
+.portal-card-pips .portal-suit-glyph-sword { object-fit: contain; filter: brightness(0); transform: rotate(180deg); }
+.portal-card-pips .portal-suit-glyph-bat { transform: rotate(180deg); }
+.portal-court-figure { position: absolute; inset: 12% 10% 10%; }
+.portal-court-figure > svg { width: 100%; height: 100%; }
+.portal-court-head { fill: #e1b994; stroke: #19150f; stroke-width: 4; }
+.portal-court-body { fill: #285b4a; stroke: #19150f; stroke-width: 5; stroke-linejoin: round; }
+.portal-court-line { fill: none; stroke: #19150f; stroke-width: 7; stroke-linecap: round; }
+.portal-court-hand { fill: #e1b994; stroke: #19150f; stroke-width: 3; }
+.portal-court-crown { fill: #d4a92c; stroke: #19150f; stroke-width: 4; stroke-linejoin: round; }
+.portal-court-horse { fill: #a7784e; stroke: #19150f; stroke-width: 5; stroke-linejoin: round; }
+.portal-court-held { position: absolute; right: 4%; width: 24%; height: 42%; }
+.portal-court-held-up { top: 2%; }
+.portal-court-held-down { bottom: 3%; transform: rotate(180deg); }
+.portal-court-held .portal-suit-glyph { width: 100%; height: 100%; color: #17130e; }
+.portal-court-held .portal-suit-glyph-sword { object-fit: contain; filter: brightness(0); }
+.portal-gallery-trazos::after,
+.portal-trazos-face::after { display: none; }
+.portal-gallery-trazos > .portal-truco-card { position: absolute; }
+
+.portal-mini-card { overflow: hidden; padding: 0; }
+.portal-mini-card > .portal-truco-card-mini { position: absolute; inset: 0; }
+.portal-truco-card-mini .portal-card-corner { width: 12px; font-size: .58rem; }
+.portal-truco-card-mini .portal-card-corner .portal-suit-glyph { width: 7px; height: 9px; }
+.portal-truco-card-mini .portal-card-corner-top { top: 4px; left: 4px; }
+.portal-truco-card-mini .portal-card-corner-bottom { right: 4px; bottom: 4px; }
+.portal-truco-card-mini .portal-card-pips { inset: 15% 13%; }
+.portal-truco-card-mini .portal-court-figure { inset: 16% 6% 8%; }
+
+.portal-gazpacho-card > small { text-transform: none; font-size: .72rem; }
+.portal-gazpacho-figure { position: absolute; inset: 12% 9% 8%; }
+.portal-gazpacho-figure > img { position: absolute; top: 3%; left: 50%; z-index: 3; width: 38%; height: 30%; border: 2px solid #2a2116; border-radius: 50%; object-fit: cover; object-position: 50% 18%; transform: translateX(-50%); }
+.portal-gazpacho-body { position: absolute; right: 20%; bottom: 7%; left: 20%; height: 63%; border: 3px solid #2a2116; border-radius: 44% 44% 18% 18%; background: linear-gradient(135deg, #285b4a, #d1a948); }
+.portal-gazpacho-horse { position: absolute; right: 2%; bottom: 2%; left: 2%; height: 47%; border: 3px solid #2a2116; border-radius: 52% 48% 32% 28%; background: #9b704b; transform: rotate(-3deg); }
+.portal-gazpacho-rank-11 .portal-gazpacho-body { bottom: 34%; height: 43%; }
+.portal-gazpacho-number > .portal-truco-card { position: absolute; }
+
+.portal-product-3d canvas { filter: contrast(1.06) saturate(.86); }
+
+@media (max-width: 760px) {
+  .portal-logo-compact img { width: auto; height: 60px; }
+  .portal-shell-section .portal-logo-compact > span { font-size: .55rem; }
+  .portal-play-actions strong { font-size: 1.43rem; }
+  .portal-play-actions small { font-size: .98rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-score-fireworks i,
+  .portal-score-winner > strong { animation-duration: 1ms; }
+}

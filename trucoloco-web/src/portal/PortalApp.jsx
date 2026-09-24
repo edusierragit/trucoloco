@@ -23,7 +23,22 @@ const SPANISH_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([fileSuit, suit]) => SHOP_CA
   src: `/assets/cards/fronts/${fileRank}-${fileSuit}.svg`
 })));
 const TRAZOS_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([, suit]) => SHOP_CARD_RANKS.map(([, rank]) => ({ rank, suit })));
-const GAZPACHO_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([, suit], suitIndex) => SHOP_CARD_RANKS.map(([, rank], rankIndex) => ({ rank, suit, portrait: (rankIndex + suitIndex) % 3 + 1, crowned: rank === "11" })));
+const GAZPACHO_SHOP_CARDS = SHOP_CARD_SUITS.flatMap(([, suit], suitIndex) => SHOP_CARD_RANKS.map(([, rank], rankIndex) => ({
+  rank,
+  suit,
+  portrait: Number(rank) >= 10 ? (rankIndex + suitIndex) % 3 + 1 : null,
+  crowned: rank === "12"
+})));
+
+const CARD_PIP_LAYOUTS = {
+  1: [[50, 50]],
+  2: [[50, 28], [50, 72]],
+  3: [[50, 24], [50, 50], [50, 76]],
+  4: [[34, 31], [66, 31], [34, 69], [66, 69]],
+  5: [[32, 28], [68, 28], [50, 50], [32, 72], [68, 72]],
+  6: [[32, 24], [68, 24], [32, 50], [68, 50], [32, 76], [68, 76]],
+  7: [[32, 22], [68, 22], [32, 43], [68, 43], [50, 55], [32, 77], [68, 77]]
+};
 
 const PRODUCT_VARIANTS = {
   lentes: ["Esmeralda", "Violeta imperial", "Azul acero", "Rojo criollo", "Negro nocturno", "Champagne"],
@@ -176,7 +191,7 @@ function PortalIcon({ name }) {
 }
 
 function BackArrowIcon() {
-  return <svg viewBox="0 0 58 34" aria-hidden="true"><path className="portal-back-tail" d="M54 29C54 15.5 43 8.5 27 8.5H8" /><path className="portal-back-weight" d="M27 8.5H8" /><path className="portal-back-head" d="M17 1.5 7 8.5l10 7" /></svg>;
+  return <svg viewBox="0 0 48 28" aria-hidden="true"><path className="portal-back-tail" d="M43 14H8" /><path className="portal-back-head" d="m16 5-9 9 9 9" /></svg>;
 }
 
 function SoundIcon({ enabled }) {
@@ -234,6 +249,9 @@ function PlaySection({ onLaunch }) {
   const [openPanel, setOpenPanel] = useState(null);
   const [teamNames, setTeamNames] = useState(["", "", "", ""]);
   const [teamsReady, setTeamsReady] = useState([false, false, false, false]);
+  const [semifinalWinners, setSemifinalWinners] = useState([null, null]);
+  const [finalReady, setFinalReady] = useState([false, false]);
+  const [champion, setChampion] = useState(null);
   const [launchingMode, setLaunchingMode] = useState(null);
   const modeLabel = selectedMode === "comun" ? "Truco tradicional" : "Trucoloco";
 
@@ -249,6 +267,9 @@ function PlaySection({ onLaunch }) {
       setOpenPanel(null);
       setTeamNames(["", "", "", ""]);
       setTeamsReady([false, false, false, false]);
+      setSemifinalWinners([null, null]);
+      setFinalReady([false, false]);
+      setChampion(null);
     }, { direction: "forward", tone: mode });
   };
 
@@ -258,6 +279,9 @@ function PlaySection({ onLaunch }) {
       setOpenPanel(null);
       setTeamNames(["", "", "", ""]);
       setTeamsReady([false, false, false, false]);
+      setSemifinalWinners([null, null]);
+      setFinalReady([false, false]);
+      setChampion(null);
     }, { direction: "back", tone: selectedMode || "portal" });
   };
 
@@ -281,6 +305,24 @@ function PlaySection({ onLaunch }) {
     setTeamsReady(nextReady);
   };
 
+  const registerSemifinalWinner = (semifinalIndex, teamIndex) => {
+    const winner = teamNames[teamIndex].trim();
+    if (!winner) return;
+    setSemifinalWinners((current) => {
+      const next = current.map((name, index) => index === semifinalIndex ? winner : name);
+      if (next[0] && next[0] === next[1]) setChampion(next[0]);
+      return next;
+    });
+    setFinalReady([false, false]);
+  };
+
+  const confirmFinalist = (index) => setFinalReady((current) => current.map((ready, itemIndex) => itemIndex === index ? true : ready));
+  const cancelFinalist = (index) => {
+    const rival = semifinalWinners[index === 0 ? 1 : 0];
+    if (rival) setChampion(rival);
+    setFinalReady((current) => current.map((ready, itemIndex) => itemIndex === index ? false : ready));
+  };
+
   if (selectedMode) {
     return (
       <section className={`portal-section portal-play-selected portal-mode-${selectedMode}`} aria-labelledby="portal-play-title">
@@ -299,14 +341,24 @@ function PlaySection({ onLaunch }) {
           <div className="portal-tournament-setup portal-reveal-panel" aria-label="Clasificatoria del torneo">
             <div className="portal-panel-heading"><span>Clasificatoria</span><small>Al mejor de tres.</small></div>
             <div className="portal-tournament-bracket">
-              <div className="portal-champion-node">
+              <div className={champion ? "portal-champion-node portal-champion-ready" : "portal-champion-node"}>
                 <small>Campeones</small>
-                <strong>— — —</strong>
+                <strong>{champion || "— — —"}</strong>
               </div>
               <div className="portal-bracket-lines portal-bracket-lines-final" aria-hidden="true"><i /><i /></div>
               <div className="portal-final-row">
-                <div><strong>Finalista A</strong></div>
-                <div><strong>Finalista B</strong></div>
+                {[0, 1].map((finalistIndex) => (
+                  <div className={semifinalWinners[finalistIndex] ? "portal-finalist-ready" : ""} key={finalistIndex}>
+                    <small>Finalista {finalistIndex === 0 ? "A" : "B"}</small>
+                    <strong>{semifinalWinners[finalistIndex] || "— — —"}</strong>
+                    {semifinalWinners[finalistIndex] && !champion && semifinalWinners[0] !== semifinalWinners[1] ? (
+                      <div className="portal-finalist-actions">
+                        <button type="button" disabled={finalReady[finalistIndex]} onClick={() => confirmFinalist(finalistIndex)}>OK</button>
+                        <button type="button" onClick={() => cancelFinalist(finalistIndex)}>Cancelar</button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
               </div>
               <div className="portal-bracket-lines portal-bracket-lines-semis" aria-hidden="true"><i /><i /><b /><b /></div>
               <div className="portal-semifinal-grid">
@@ -327,10 +379,23 @@ function PlaySection({ onLaunch }) {
                       ))}
                       <span className="portal-versus">VS</span>
                     </div>
+                    {teamsReady[firstTeam] && teamsReady[firstTeam + 1] && !semifinalWinners[semifinalIndex] ? (
+                      <div className="portal-match-result" aria-label={`Resultado de semifinal ${semifinalIndex + 1}`}>
+                        <small>Cuando termine la partida, registrá quién ganó:</small>
+                        <div>
+                          {[firstTeam, firstTeam + 1].map((teamIndex) => <button type="button" key={teamIndex} onClick={() => registerSemifinalWinner(semifinalIndex, teamIndex)}>Ganó {teamNames[teamIndex]}</button>)}
+                        </div>
+                      </div>
+                    ) : null}
                   </section>
                 ))}
               </div>
-              {teamsReady.every(Boolean) ? <button className="portal-tournament-launch" type="button" onClick={() => setLaunchingMode(selectedMode)}>Jugar clasificatoria</button> : null}
+              {finalReady.every(Boolean) && !champion ? (
+                <div className="portal-final-match">
+                  <button className="portal-tournament-launch" type="button" onClick={() => setLaunchingMode(selectedMode)}>Jugar la final</button>
+                  <div><button type="button" onClick={() => setChampion(semifinalWinners[0])}>Ganó {semifinalWinners[0]}</button><button type="button" onClick={() => setChampion(semifinalWinners[1])}>Ganó {semifinalWinners[1]}</button></div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -419,20 +484,56 @@ function DeckFan({ type }) {
       <span className="portal-deck-edge portal-deck-edge-two" />
       <div className="portal-deck-top">
         {type === "espanol" ? <img src="/assets/cards/fronts/ancho-espada.svg" alt="Uno de espadas" /> : null}
-        {type === "trazos" ? <div className="portal-trazos-face"><b>1</b><img src="/assets/brand/trucoloco-sword-hd.png" alt="" /></div> : null}
-        {type === "gazpacho" ? <GazpachoCardFace card={{ rank: "11", suit: "oros", portrait: 2, crowned: true }} /> : null}
+        {type === "trazos" ? <TrucoCardFace card={{ rank: "1", suit: "espadas" }} /> : null}
+        {type === "gazpacho" ? <GazpachoCardFace card={{ rank: "12", suit: "oros", portrait: 2, crowned: true }} /> : null}
       </div>
     </div>
   );
 }
 
+function TrucoCourtFigure({ rank, suit }) {
+  return (
+    <div className={`portal-court-figure portal-court-${rank}`} aria-hidden="true">
+      <svg viewBox="0 0 180 250">
+        {rank === "11" ? <><path className="portal-court-horse" d="M38 184c4-56 38-81 84-64 27 10 34 42 19 82l-23-2-8-45-38 5-10 42H39Z" /><path className="portal-court-line" d="M61 138c13 8 34 7 49-2M118 200l20 31M62 201l-13 30" /></> : null}
+        <circle className="portal-court-head" cx="90" cy={rank === "11" ? 72 : 62} r="24" />
+        {rank === "12" ? <path className="portal-court-crown" d="m65 43 6-25 19 15 19-15 6 25Z" /> : null}
+        <path className="portal-court-body" d={rank === "11" ? "M67 101Q90 86 113 101l13 67H54Z" : "M57 104Q90 82 123 104l18 103H39Z"} />
+        <path className="portal-court-line" d={rank === "10" ? "M58 116 34 176M121 116l25 51" : "M58 116 32 70M121 116l27-62"} />
+        <circle className="portal-court-hand" cx={rank === "10" ? 34 : 32} cy={rank === "10" ? 176 : 70} r="7" />
+        <circle className="portal-court-hand" cx={rank === "10" ? 146 : 148} cy={rank === "10" ? 167 : 54} r="7" />
+      </svg>
+      <span className={rank === "10" ? "portal-court-held portal-court-held-down" : "portal-court-held portal-court-held-up"}><SuitGlyph suit={suit} /></span>
+    </div>
+  );
+}
+
+function TrucoCardFace({ card, mini = false }) {
+  const numericRank = Number(card.rank);
+  const pips = CARD_PIP_LAYOUTS[numericRank] ?? [];
+  return (
+    <div className={`portal-truco-card portal-truco-${card.suit}${mini ? " portal-truco-card-mini" : ""}`} aria-label={`${card.rank} de ${card.suit}`}>
+      <span className="portal-card-corner portal-card-corner-top"><b>{card.rank}</b><SuitGlyph suit={card.suit} /></span>
+      {numericRank <= 7 ? (
+        <div className="portal-card-pips">{pips.map(([x, y], index) => <span style={{ "--pip-x": `${x}%`, "--pip-y": `${y}%` }} key={`${x}-${y}-${index}`}><SuitGlyph suit={card.suit} /></span>)}</div>
+      ) : <TrucoCourtFigure rank={card.rank} suit={card.suit} />}
+      <span className="portal-card-corner portal-card-corner-bottom"><b>{card.rank}</b><SuitGlyph suit={card.suit} /></span>
+    </div>
+  );
+}
+
 function GazpachoCardFace({ card }) {
+  if (!card.portrait) return <div className="portal-gazpacho-card portal-gazpacho-number"><TrucoCardFace card={card} /></div>;
   return (
     <div className="portal-gazpacho-card">
       <b>{card.rank}</b>
-      <img src={`/assets/shop/gazpacho-${card.portrait}.png`} alt="Gazpacho" />
+      <div className={`portal-gazpacho-figure portal-gazpacho-rank-${card.rank}`}>
+        {card.rank === "11" ? <span className="portal-gazpacho-horse" aria-hidden="true" /> : null}
+        <span className="portal-gazpacho-body" aria-hidden="true" />
+        <img src={`/assets/shop/gazpacho-${card.portrait}.png`} alt="Gazpacho" />
+      </div>
       {card.crowned ? <svg className="portal-gazpacho-crown" viewBox="0 0 64 40" aria-hidden="true"><path d="M6 31 2 8l17 11L32 3l13 16L62 8l-4 23Z" /><path d="M7 31h50v6H7Z" /></svg> : null}
-      <small>{card.suit}</small>
+      <small>{card.rank}</small>
     </div>
   );
 }
@@ -440,13 +541,7 @@ function GazpachoCardFace({ card }) {
 function ShopDeckCard({ type, card }) {
   if (type === "espanol") return <div className="portal-gallery-card"><img src={card.src} alt={`${card.rank} de ${card.suit}`} /></div>;
   if (type === "gazpacho") return <div className="portal-gallery-card"><GazpachoCardFace card={card} /></div>;
-  return (
-    <div className="portal-gallery-card portal-gallery-trazos">
-      <b>{card.rank}</b>
-      <SuitGlyph suit={card.suit} />
-      <small>{card.suit}</small>
-    </div>
-  );
+  return <div className="portal-gallery-card portal-gallery-trazos"><TrucoCardFace card={card} /></div>;
 }
 
 function ShopExtraVisual({ type, variant = 0, compact = true }) {
@@ -560,9 +655,9 @@ function ShopSection() {
 }
 
 function SuitGlyph({ suit }) {
-  if (suit === "oros") return <svg className="portal-suit-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /></svg>;
+  if (suit === "oros") return <svg className="portal-suit-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 2.2v3M12 18.8v3M2.2 12h3M18.8 12h3M5.1 5.1l2.1 2.1M16.8 16.8l2.1 2.1M18.9 5.1l-2.1 2.1M7.2 16.8l-2.1 2.1" /></svg>;
   if (suit === "copas") return <svg className="portal-suit-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14c-1 6-3 9-7 9S6 10 5 4Z" /><path d="M12 13v5M8 20h8" /></svg>;
-  if (suit === "bastos") return <svg className="portal-suit-glyph portal-suit-glyph-bat" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21c-1-1-1-3 0-4L16 3c1-2 4 0 3 2l-8 15c-1 2-3 2-4 1Z" /></svg>;
+  if (suit === "bastos") return <svg className="portal-suit-glyph portal-suit-glyph-bat" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 21.5 8 16 16.2 2.8c.8-1.3 3.6.2 3 1.7L11.8 18Z" /></svg>;
   return <img className="portal-suit-glyph portal-suit-glyph-sword" src="/assets/brand/trucoloco-sword-hd.png" alt="" />;
 }
 
@@ -573,7 +668,7 @@ function RankLadder() {
         <div className="portal-rank-row" key={label}>
           <span className="portal-rank-position">{index + 1}</span>
           <div className="portal-mini-cards">
-            {cards.map(([rank, suit]) => <div className="portal-mini-card" key={`${rank}-${suit}`}><b>{rank}</b><SuitGlyph suit={suit} /></div>)}
+            {cards.map(([rank, suit]) => <div className="portal-mini-card" key={`${rank}-${suit}`}><TrucoCardFace card={{ rank: String(rank), suit }} mini /></div>)}
           </div>
           <strong>{label}</strong>
         </div>
@@ -662,15 +757,12 @@ function TraditionalRules() {
 
 function TrucolocoRules() {
   const tableRules = [
-    ["Reparto", "Tres cartas de truco para cada jugador; después, una carta de armas para cada Cartachin. Por último se revela una carta del Mazo Trucoloco y comienza la mano."],
+    ["Reparto", "Tres cartas de truco para cada jugador, una carta de armas para cada Cartachin, por último se revela una carta del Mazo Trucoloco y comienza la mano."],
     ["Mano no corta", "+1 punto al equipo que logra contacto, -1 al equipo golpeado y +2 al equipo que logra evadir."],
-    ["Tiempo Arena", "El Negociador rival puede activar un reloj de dos minutos cuando alguien tarda. No se puede avisar al propio equipo que el tiempo empezó."],
-    ["Versus", "Se resuelve apenas aparece la carta, como un paréntesis antes de continuar con el envido o el truco. Sus puntos cuentan para el marcador."],
-    ["Torneo Z", "Duelo de Jugadores Estrella al mejor de nueve. No puede terminar empatado."],
-    ["Highlight", "Una jugada maestra permite a quien la genera inventar y desplegar una habilidad."],
+    ["Tiempo Arena", "El Negociador rival puede activar un reloj de dos minutos cuando alguien tarda en jugar su turno. No se puede avisar al propio equipo que el tiempo empezó."],
+    ["Highlight", "El equipo que gana un Trucoloco querido y sus tres rondas recibe un Highlight. Quien lo genera puede inventar y desplegar una habilidad."],
     ["Ley L'Merk", "Los Negociadores deben acordar los puntos y estrecharse la mano antes de anotarlos."],
-    ["El Hexágono", "Tablero con seis compartimientos y gafas. La carta indica si deben usarlas seis, tres o dos personas."],
-    ["Sustancia X", "Da invencibilidad ante las armas durante la mano y habilita una habilidad inventada."],
+    ["El Hexágono", "Tablero con seis compartimientos y gafas que complican la visión y vuelven la mano más imprevisible. Las cartas del Mazo Trucoloco y del Mazo de Armas indican si deben usarlas seis, tres o dos personas."],
     ["Musicalización", "Pink Floyd."]
   ];
   const roles = [
@@ -683,8 +775,8 @@ function TrucolocoRules() {
 
   return (
     <div className="portal-rule-document">
-      <section><p>Trucoloco toma el truco tradicional y agrega dos mazos: el <strong>Mazo Trucoloco</strong>, que altera la mano completa, y el <strong>Mazo de Armas</strong>, que reparte poderes, defensas y trampas. Se juega 3 contra 3 con roles definidos.</p></section>
-      <section><h2>Reglas de mesa</h2><div className="portal-rule-panels">{tableRules.map(([name, copy]) => <article key={name}><h3>{name}</h3><p>{copy}</p></article>)}</div></section>
+      <section><p>Trucoloco toma el truco tradicional y agrega dos mazos: el <strong>Mazo Trucoloco</strong>, que establece el modo de cada mano, y el <strong>Mazo de Armas</strong>, que reparte poderes, defensas y trampas. Se juega 3 contra 3 con roles definidos.</p></section>
+      <section><h2>Reglas de mesa</h2><div className="portal-table-rules">{tableRules.map(([name, copy]) => <article key={name}><h3>{name}</h3><p>{copy}</p></article>)}</div></section>
       <section><h2>Equipos y roles</h2><div className="portal-role-list">{roles.map(([name, copy, skills]) => <article key={name}><h3>{name}</h3><div><p>{copy}</p><strong>{skills}</strong></div></article>)}</div><div className="portal-rule-note"><strong>Fichines de favores</strong><span>Jugadores: 3 fichas. MVP: 4. Una ficha al Barman equivale a un trago; tres fichas al Negociador, a un favor.</span></div></section>
       <section><h2>Súper cantos</h2><p>Solo puede cantarlos el Jugador Estrella de cada equipo.</p><div className="portal-rule-panels"><article><h3>Súper envido</h3><p>Querido: 4 puntos. No querido: 2.</p></article><article><h3>Súper truco</h3><p>Querido: 4 puntos. No querido: 2.</p></article><article><h3>Trucoloco</h3><p>Querido: 8 puntos. No querido: 3. Anulado: 2. Para cobrar ocho hay que ganar las tres jugadas.</p></article></div></section>
       <section><h2>Mazo Trucoloco</h2><p>Lo controla el repartidor. Antes de cada mano se revela una carta y su regla gobierna la ronda.</p><CardGallery deck="trucoloco" names={TRUCOLOCO_CARD_NAMES} descriptions={TRUCOLOCO_DESCRIPTIONS} /></section>
@@ -808,9 +900,9 @@ export default function PortalApp() {
   return (
     <div className={isHome ? "portal-shell portal-shell-home" : `portal-shell portal-shell-section portal-shell-${activeSection}`} onPointerDownCapture={playButtonSound}>
       <div className="portal-suit portal-suit-sword" aria-hidden="true"><img src="/assets/brand/trucoloco-sword-hd.png" alt="" /></div>
-      <div className="portal-suit portal-suit-coin" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" /><circle cx="50" cy="50" r="29" /></svg></div>
+      <div className="portal-suit portal-suit-coin" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" /><circle className="portal-coin-inner" cx="50" cy="50" r="27" /><path className="portal-coin-rays" d="M50 14v9M50 77v9M14 50h9M77 50h9M24.5 24.5l6.4 6.4M69.1 69.1l6.4 6.4M75.5 24.5l-6.4 6.4M30.9 69.1l-6.4 6.4" /></svg></div>
       <div className="portal-suit portal-suit-cup" aria-hidden="true"><svg viewBox="0 0 100 120"><path d="M18 14h64c-2 28-13 43-32 43S20 42 18 14Z" /><path d="M50 57v35M31 103h38" /></svg></div>
-      <div className="portal-suit portal-suit-club" aria-hidden="true"><img src="/assets/shop/basto-reference.png" alt="" /></div>
+      <div className="portal-suit portal-suit-club" aria-hidden="true"><svg viewBox="0 0 100 180"><path d="M26 166 34 132 72 18c4-12 22-6 18 7L53 140Z" /></svg></div>
       {isHome ? <button className="portal-login-button" type="button" onClick={() => setAuthOpen(true)}>Iniciar sesión</button> : null}
       <button className="portal-sound-toggle" type="button" aria-label={soundEnabled ? "Silenciar sonido" : "Activar sonido"} title={soundEnabled ? "Silenciar sonido" : "Activar sonido"} aria-pressed={soundEnabled} onClick={toggleSound}><SoundIcon enabled={soundEnabled} /></button>
       <header className="portal-brand-stage">

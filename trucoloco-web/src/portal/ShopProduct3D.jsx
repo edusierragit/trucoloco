@@ -1,4 +1,5 @@
 import { Canvas, useFrame } from "@react-three/fiber";
+import { ContactShadows } from "@react-three/drei";
 import { useRef, useState } from "react";
 import * as THREE from "three";
 
@@ -46,27 +47,27 @@ function GlassesModel({ variant, hovered }) {
           <group position={[x, 0, 0]} scale={lensScale} key={x}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
               <cylinderGeometry args={[.62, .62, .075, sides]} />
-              <meshPhysicalMaterial color={lens} metalness={.08} roughness={.12} transmission={.38} transparent opacity={.82} thickness={.3} />
+              <meshPhysicalMaterial color={lens} metalness={.03} roughness={.08} transmission={.68} transparent opacity={.78} thickness={.42} ior={1.52} clearcoat={1} clearcoatRoughness={.08} />
             </mesh>
             <mesh>
               <torusGeometry args={[.65, .055, 8, sides]} />
-              <meshStandardMaterial color={metal} metalness={.92} roughness={.2} />
+              <meshPhysicalMaterial color={metal} metalness={.96} roughness={.16} clearcoat={.75} clearcoatRoughness={.12} />
             </mesh>
           </group>
         ))}
         <mesh position={[0, .02, .02]}>
           <boxGeometry args={[.36, .08, .08]} />
-          <meshStandardMaterial color={metal} metalness={.95} roughness={.18} />
+          <meshPhysicalMaterial color={metal} metalness={.97} roughness={.14} clearcoat={.7} />
         </mesh>
         {[-1, 1].map((direction) => (
           <group key={direction}>
             <mesh position={[direction * 1.55, .08, -.17]} rotation={[0, direction * -.46, direction * -.02]}>
               <boxGeometry args={[1.05, .055, .075]} />
-              <meshStandardMaterial color={metal} metalness={.9} roughness={.22} />
+              <meshPhysicalMaterial color={metal} metalness={.94} roughness={.18} clearcoat={.6} />
             </mesh>
             <mesh position={[direction * 1.98, .1, -.48]} rotation={[0, direction * -.62, 0]}>
               <boxGeometry args={[.52, .075, .095]} />
-              <meshStandardMaterial color={lens} metalness={.24} roughness={.3} />
+              <meshPhysicalMaterial color={lens} metalness={.2} roughness={.24} clearcoat={.72} />
             </mesh>
           </group>
         ))}
@@ -86,11 +87,11 @@ function SkinModel({ variant, hovered }) {
       <group position={[0, -.15, 0]} scale={.92}>
         <mesh position={[0, 1.05, 0]} scale={[.92, 1.22, .48]}>
           <boxGeometry args={[1.15, 1.35, .62]} />
-          <meshStandardMaterial color={primary} roughness={.5} metalness={.08} />
+          <meshPhysicalMaterial color={primary} roughness={.72} metalness={.02} sheen={.72} sheenColor={secondary} sheenRoughness={.78} />
         </mesh>
         <mesh position={[0, 1.12, .34]} scale={[.57, .93, .08]}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color={secondary} roughness={.62} />
+          <meshPhysicalMaterial color={secondary} roughness={.82} sheen={.35} sheenColor={primary} />
         </mesh>
         {executive ? <mesh position={[0, 1.35, .42]} scale={[.11, .58, .05]} rotation={[0, 0, variant % 2 ? .05 : 0]}><boxGeometry /><meshStandardMaterial color={variant % 2 ? accent : "#1a211d"} /></mesh> : null}
         {athlete ? <><mesh position={[0, 1.18, .42]}><torusGeometry args={[.26, .045, 8, 28]} /><meshStandardMaterial color={accent} metalness={.65} roughness={.28} /></mesh><mesh position={[0, 1.15, .44]}><planeGeometry args={[.48, .42]} /><meshStandardMaterial color={secondary} /></mesh></> : null}
@@ -125,15 +126,15 @@ function ChipStack({ variant, hovered }) {
           <group ref={(node) => { refs.current[index] = node; }} position={[0, index * .18, 0]} rotation={[0, index * .18, 0]} key={index}>
             <mesh>
               <cylinderGeometry args={[.78, .78, .16, 48]} />
-              <meshStandardMaterial color={index % 2 ? secondary : primary} metalness={.28} roughness={.25} />
+              <meshPhysicalMaterial color={index % 2 ? secondary : primary} metalness={.08} roughness={.34} clearcoat={.92} clearcoatRoughness={.16} />
             </mesh>
             <mesh position={[0, .083, 0]} rotation={[Math.PI / 2, 0, 0]}>
               <torusGeometry args={[.55, .055, 8, 48]} />
-              <meshStandardMaterial color={metal} metalness={.92} roughness={.2} />
+              <meshPhysicalMaterial color={metal} metalness={.82} roughness={.18} clearcoat={.9} />
             </mesh>
             <mesh position={[0, .086, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[.44, 48]} />
-              <meshStandardMaterial color={primary} metalness={.16} roughness={.34} />
+              <meshPhysicalMaterial color={primary} metalness={.06} roughness={.3} clearcoat={.84} />
             </mesh>
           </group>
         ))}
@@ -147,14 +148,15 @@ export default function ShopProduct3D({ type, variant = 0, compact = false }) {
   const label = type === "lentes" ? "Modelo tridimensional de lentes" : type === "skins" ? "Modelo tridimensional de skin" : "Modelo tridimensional de fichines";
   return (
     <div className={compact ? "portal-product-3d portal-product-3d-compact" : "portal-product-3d"} role="img" aria-label={label} onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}>
-      <Canvas dpr={[1, 1.5]} camera={{ position: [0, .15, type === "skins" ? 6.2 : 5], fov: type === "skins" ? 34 : 32 }} gl={{ alpha: true, antialias: true }}>
-        <ambientLight intensity={1.25} />
-        <directionalLight position={[3, 4, 5]} intensity={2.3} color="#ffe1a1" />
-        <directionalLight position={[-4, 1, 2]} intensity={1.2} color="#5ab690" />
-        <spotLight position={[0, -2, 4]} intensity={.7} color="#d6ad58" angle={.6} />
+      <Canvas shadows dpr={[1.35, 2]} camera={{ position: [0, .15, type === "skins" ? 6.2 : 5], fov: type === "skins" ? 34 : 32 }} gl={{ alpha: true, antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
+        <ambientLight intensity={.58} />
+        <directionalLight castShadow position={[3, 5, 5]} intensity={3.1} color="#ffe1a1" shadow-mapSize={[1024, 1024]} />
+        <directionalLight position={[-4, 2, 2]} intensity={1.45} color="#76bfa0" />
+        <spotLight position={[0, -1, 4]} intensity={1.1} color="#d6ad58" angle={.55} penumbra={.7} />
         {type === "lentes" ? <GlassesModel variant={variant} hovered={hovered} /> : null}
         {type === "skins" ? <SkinModel variant={variant} hovered={hovered} /> : null}
         {type === "fichines" ? <ChipStack variant={variant} hovered={hovered} /> : null}
+        <ContactShadows position={[0, -1.75, 0]} opacity={.48} scale={5.2} blur={2.4} far={5} color="#020b08" />
       </Canvas>
     </div>
   );
