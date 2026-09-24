@@ -1,6 +1,24 @@
 # HANDOFF — Trucoloco
 
-Última revisión: 13 de septiembre de 2026.
+Última revisión: 25 de septiembre de 2026.
+
+## Resumen inmediato para el próximo chat
+
+- Continuar en español y trabajar únicamente en `C:\Users\Tomas\Desktop\T\Trucoloco\proyecto`, rama `Nari`.
+- Último commit confirmado y subido: `6e45d29` (`feat: pulir portal torneo anotador y tienda`). `HEAD`, `Nari` y `origin/Nari` quedaron sincronizados.
+- El website quedó compilado, probado y abierto en Inicio en `http://127.0.0.1:4173/`.
+- Las validaciones `build`, `check:rules`, `check:flow`, `check:conflict` y `git diff --check` pasaron. La consola del navegador no mostró errores.
+- El acceso ya no muestra `Próximamente` ni la explicación de que es una muestra.
+- El portal usa una ambientación sintetizada, lenta, mística y psicodélica. Dentro de la sala se usa el audio existente `dark-side.mp3` al comenzar la interacción.
+- El logo compacto conserva juntos espada, palabra Trucoloco y `6.0`; el control de sonido queda debajo de la barra en las secciones.
+- Torneo muestra cuatro equipos, dos semifinales al mejor de tres, Finalista A/B y Campeones. Las líneas doradas quedaron centradas sobre cada `VS`.
+- En el anotador, `Cambiar partida` está centrado debajo del título. Puntajes y mensajes `¡ Ganamos !` / `¡ Ganaron !` están centrados y tienen fuegos artificiales contenidos y más largos.
+- La tienda usa mazos coherentes, modelos procedurales 3D para lentes, skins y fichines, luz que aparece solo con el cursor, carruseles y variantes. El detalle tiene flechas SVG centradas, texto ampliado y cierre con efecto.
+- El mazo español volvió a usar `ancho-espada.svg`, igual que el resto de la baraja. La imagen de referencia anterior fue descartada y eliminada junto con dos imágenes planas ya sin uso.
+- Archivo 3D nuevo: `trucoloco-web/src/portal/ShopProduct3D.jsx`.
+- No hay cambios pendientes conocidos después del último push. Igual ejecutar `git status --short --branch` al comenzar.
+- El usuario seguirá principalmente con cambios hablados y luego profundizará las reglas de Trucoloco.
+- Este archivo contiene más abajo notas históricas que pueden describir versiones anteriores; ante contradicciones, este resumen inmediato y el commit `6e45d29` son la referencia actual.
 
 ## Ubicación del proyecto
 
@@ -23,7 +41,7 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 - La URL de desarrollo prevista es `http://127.0.0.1:4173/`.
 - El servidor local estaba funcionando en `http://127.0.0.1:4173/` al cerrar esta etapa.
 - Rama de trabajo: `Nari`.
-- La última entrega fue guardada en el commit `52bad0d` y subida a `origin/Nari`.
+- La última entrega fue guardada en el commit `6e45d29` y subida a `origin/Nari`.
 - Las transiciones, la tienda, el ranking, el sonido y la respuesta visual del juego ya están guardados en Git.
 - No hacer `reset`, `checkout` ni limpieza de archivos sin revisar primero el estado de Git.
 
@@ -196,7 +214,7 @@ Antes de continuar, abrir Codex directamente sobre la carpeta del repositorio re
 
 ### Críticos de control de versiones
 
-- La última entrega está en el commit `52bad0d` y fue subida a `origin/Nari`.
+- La última entrega está en el commit `6e45d29` y fue subida a `origin/Nari`.
 - La rama activa es `Nari`.
 - La etapa visual del 13 de septiembre de 2026 quedó confirmada por el usuario, guardada y subida.
 - Al iniciar la próxima sesión, comprobar que `Nari` siga sincronizada con `origin/Nari` antes de modificar archivos.
