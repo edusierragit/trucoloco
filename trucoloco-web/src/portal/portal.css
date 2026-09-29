@@ -374,10 +374,9 @@
   overflow: hidden;
   background: #050403;
 }
-.portal-game-stage { position: absolute; inset: 82px 0 0; overflow: hidden; }
+.portal-game-stage { position: absolute; inset: 0; overflow: hidden; }
 .portal-game-stage .app-shell,
 .portal-game-stage .stage-shell { height: 100%; min-height: 100%; }
-.portal-game-stage .portal-game-back { display: none; }
 
 .portal-game-loading {
   min-height: 100dvh;
@@ -394,7 +393,6 @@
   .portal-shell-section .portal-brand-stage { top: 12px; left: 12px; }
   .portal-logo-compact .portal-wordmark strong { display: none; }
   .portal-nav { min-height: 70px; padding: 7px 5px max(8px, env(safe-area-inset-bottom)); }
-  .portal-game-stage { inset: 70px 0 0; }
   .portal-nav-item span { font-size: .9rem; letter-spacing: .07em; }
   .portal-nav-item svg { width: 25px; height: 25px; }
   .portal-content { width: min(100% - 24px, 1100px); padding-top: 102px; }

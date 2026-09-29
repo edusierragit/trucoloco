@@ -814,8 +814,6 @@ export default function PortalApp() {
   const [activeSection, setActiveSection] = useState("home");
   const [gameOpen, setGameOpen] = useState(() => new URLSearchParams(window.location.search).has("sala"));
   const [sectionResetKey, setSectionResetKey] = useState(0);
-  const [navigationRequest, setNavigationRequest] = useState(null);
-  const [authOpen, setAuthOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => !sfx.isMuted());
   const isHome = activeSection === "home";
 
@@ -869,15 +867,10 @@ export default function PortalApp() {
       setGameOpen(false);
       setActiveSection(destination);
       setSectionResetKey((key) => key + 1);
-      setNavigationRequest(null);
     }, { direction: "back", tone: destination });
   };
 
   const navigate = (destination) => {
-    if (gameOpen) {
-      setNavigationRequest({ destination, token: Date.now() });
-      return;
-    }
     runPortalTransition(() => {
       setActiveSection(destination);
       setSectionResetKey((key) => key + 1);
@@ -887,10 +880,9 @@ export default function PortalApp() {
   if (gameOpen) {
     return (
       <div className="portal-game-frame" onPointerDownCapture={playButtonSound}>
-        <PortalNav activeSection="play" onNavigate={navigate} game />
         <div className="portal-game-stage">
           <Suspense fallback={<div className="portal-game-loading"><BrandMark /><span>Abriendo el antro…</span></div>}>
-            <GameApp onExitToPortal={returnToPortal} portalNavigationRequest={navigationRequest} />
+            <GameApp onExitToPortal={returnToPortal} />
           </Suspense>
         </div>
       </div>
@@ -903,7 +895,6 @@ export default function PortalApp() {
       <div className="portal-suit portal-suit-coin" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" /><circle className="portal-coin-inner" cx="50" cy="50" r="27" /><path className="portal-coin-rays" d="M50 14v9M50 77v9M14 50h9M77 50h9M24.5 24.5l6.4 6.4M69.1 69.1l6.4 6.4M75.5 24.5l-6.4 6.4M30.9 69.1l-6.4 6.4" /></svg></div>
       <div className="portal-suit portal-suit-cup" aria-hidden="true"><svg viewBox="0 0 100 120"><path d="M18 14h64c-2 28-13 43-32 43S20 42 18 14Z" /><path d="M50 57v35M31 103h38" /></svg></div>
       <div className="portal-suit portal-suit-club" aria-hidden="true"><svg viewBox="0 0 100 180"><path d="M26 166 34 132 72 18c4-12 22-6 18 7L53 140Z" /></svg></div>
-      {isHome ? <button className="portal-login-button" type="button" onClick={() => setAuthOpen(true)}>Iniciar sesión</button> : null}
       <button className="portal-sound-toggle" type="button" aria-label={soundEnabled ? "Silenciar sonido" : "Activar sonido"} title={soundEnabled ? "Silenciar sonido" : "Activar sonido"} aria-pressed={soundEnabled} onClick={toggleSound}><SoundIcon enabled={soundEnabled} /></button>
       <header className="portal-brand-stage">
         <div className="portal-brand-lockup">
@@ -918,21 +909,6 @@ export default function PortalApp() {
         {activeSection === "rules" ? <RulesSection key={`rules-${sectionResetKey}`} /> : null}
       </main>
       <PortalNav activeSection={activeSection} onNavigate={navigate} />
-      {authOpen ? (
-        <div className="portal-auth-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}>
-          <section className="portal-auth-modal" role="dialog" aria-modal="true" aria-labelledby="portal-auth-title">
-            <button className="portal-auth-close" type="button" aria-label="Cerrar" onClick={() => setAuthOpen(false)}>×</button>
-            <h2 id="portal-auth-title">Creá tu perfil</h2>
-            <form onSubmit={(event) => event.preventDefault()}>
-              <label>Nombre<input type="text" placeholder="Tu nombre" /></label>
-              <label>Email<input type="email" placeholder="nombre@email.com" /></label>
-              <label>Fecha de nacimiento<input type="date" /></label>
-              <small>Solo pueden crear una cuenta las personas mayores de 18 años.</small>
-              <button type="submit" disabled>Crear cuenta</button>
-            </form>
-          </section>
-        </div>
-      ) : null}
     </div>
   );
 }
