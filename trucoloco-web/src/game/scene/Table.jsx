@@ -469,7 +469,9 @@ function getLeadingSeatIds(tableCards) {
   return teams.size === 1 ? new Set(top.map((play) => play.seatId)) : new Set();
 }
 
-function PlayedCardTag({ card, position, leading = false }) {
+const getSeatOrder = (seatId) => tableSeats.find((seat) => seat.seatId === seatId)?.tableOrder ?? 0;
+
+function PlayedCardTag({ card, position, leading = false, lift = 0 }) {
   const groupRef = useRef(null);
   const bornRef = useRef(0);
   const rank = getCardRankNumber(card);
@@ -494,7 +496,7 @@ function PlayedCardTag({ card, position, leading = false }) {
   });
 
   return (
-    <group ref={groupRef} position={[position[0], 0.9, position[2]]} scale={0.0001}>
+    <group ref={groupRef} position={[position[0] * 1.22, 0.9 + lift, position[2] * 1.22]} scale={0.0001}>
       <Billboard follow>
         {leading ? (
           <mesh position={[0, -0.005, -0.012]}>
@@ -1199,7 +1201,17 @@ export function Table({ match, performanceMode = "high" }) {
                   position={pose.position}
                   rotation={pose.rotation}
                 />
-                <PlayedCardTag card={card} position={pose.position} leading={leadingSeatIds.has(card.seatId)} />
+                {/* tu propia carta ya la sabés: su chapa solo taparía la mesa.
+                    Las chapas se corren hacia su dueño y alternan altura por
+                    asiento para que dos vecinos no se pisen en pantalla. */}
+                {card.seatId === match.selectedSeatId ? null : (
+                  <PlayedCardTag
+                    card={card}
+                    position={pose.position}
+                    leading={leadingSeatIds.has(card.seatId)}
+                    lift={(Math.floor(getSeatOrder(card.seatId) / 2) % 2) * 0.24}
+                  />
+                )}
               </group>
             );
           })

@@ -322,6 +322,24 @@
 - ⚠ **Geometría**: `SideRoom_*` (pasillo lateral de Codex) atraviesa la sala
   del conflicto; en modo ring se oculta (`MainRoomShell hideSideRoom`).
 
+## ✅ HECHO (2026-10-19 — Pase supremo, vuelta 4: el portal entra al antro)
+
+- **Portal sin paño verde** (pedido de Edu: "minimalista y profesional"). Todos
+  los verdes de `portal.css` pasaron a marrón/vino con la misma luminosidad
+  (transformación sistemática, no a mano); paleta base en variables:
+  `--portal-bg #120c09`, panel `#1c140f`, filete dorado al 16%, crema
+  `#efe3c8`, dorado opaco `#c99a46`, vino `#6e2420`.
+- Fondo = penumbra con una sola luz cálida; fuera los palos decorativos.
+  Logo en crema (era tinta negra para el paño). Tarjetas planas con filete
+  que se enciende al hover; el ▶ JUGAR es el único brillo de la pantalla.
+- Estados "listo/correcto" del torneo y quiz: de verde a dorado.
+- Tienda: la variante que se ve primero es vino/negro (el verde queda como
+  opción); luz de relleno cálida.
+- 🔴 Rutas absolutas `/assets/...` en el portal (rompían en GitHub Pages) →
+  `assetUrl()`.
+- Mesa: chapitas de cartas jugadas alternan altura por rol y se corren hacia
+  su dueño (ya no se pisan); la de tu propia carta no se muestra.
+
 ## ✅ HECHO (2026-10-19 — Pase supremo, vuelta 1–3, Claude Opus)
 
 Prompt de trabajo en bucle: `prompts/prompt-supremo-autocritica.md`.

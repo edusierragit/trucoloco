@@ -4,27 +4,27 @@ import { useRef, useState } from "react";
 import * as THREE from "three";
 
 const GLASS_PALETTES = [
-  ["#0c5a3d", "#caa85b"],
+  ["#7a241d", "#d59b42"],
   ["#381354", "#d8b16a"],
   ["#142d55", "#d9d9cf"],
-  ["#7a241d", "#d59b42"],
+  ["#0c5a3d", "#caa85b"],
   ["#171815", "#d6bd78"],
   ["#c4aa62", "#eee5cf"]
 ];
 
 const SKIN_PALETTES = [
-  ["#123d30", "#eadfbe", "#caa85b"],
-  ["#18352b", "#d8c7a2", "#9e7a3a"],
   ["#7c1f2a", "#eee2c5", "#cfaa4e"],
+  ["#18352b", "#d8c7a2", "#9e7a3a"],
+  ["#123d30", "#eadfbe", "#caa85b"],
   ["#123f72", "#f0e2bd", "#d3a83e"],
   ["#eee7d3", "#153d31", "#bb913d"],
   ["#171a1c", "#63211d", "#c7a65a"]
 ];
 
 const CHIP_PALETTES = [
-  ["#0d553c", "#eee0bf", "#c89e46"],
+  ["#722c36", "#e7dcc1", "#b77943"],
   ["#121313", "#d4ac55", "#8e6a2d"],
-  ["#722c36", "#e7dcc1", "#b77943"]
+  ["#0d553c", "#eee0bf", "#c89e46"]
 ];
 
 function Turntable({ children, hovered, speed = .32 }) {
@@ -151,12 +151,12 @@ export default function ShopProduct3D({ type, variant = 0, compact = false }) {
       <Canvas shadows dpr={[1.35, 2]} camera={{ position: [0, .15, type === "skins" ? 6.2 : 5], fov: type === "skins" ? 34 : 32 }} gl={{ alpha: true, antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
         <ambientLight intensity={.58} />
         <directionalLight castShadow position={[3, 5, 5]} intensity={3.1} color="#ffe1a1" shadow-mapSize={[1024, 1024]} />
-        <directionalLight position={[-4, 2, 2]} intensity={1.45} color="#76bfa0" />
+        <directionalLight position={[-4, 2, 2]} intensity={1.45} color="#c98f5e" />
         <spotLight position={[0, -1, 4]} intensity={1.1} color="#d6ad58" angle={.55} penumbra={.7} />
         {type === "lentes" ? <GlassesModel variant={variant} hovered={hovered} /> : null}
         {type === "skins" ? <SkinModel variant={variant} hovered={hovered} /> : null}
         {type === "fichines" ? <ChipStack variant={variant} hovered={hovered} /> : null}
-        <ContactShadows position={[0, -1.75, 0]} opacity={.48} scale={5.2} blur={2.4} far={5} color="#020b08" />
+        <ContactShadows position={[0, -1.75, 0]} opacity={.48} scale={5.2} blur={2.4} far={5} color="#080402" />
       </Canvas>
     </div>
   );

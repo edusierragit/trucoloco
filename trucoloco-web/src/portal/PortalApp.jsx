@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { sfx } from "../game/audio/sfx";
+import { assetUrl } from "../game/assetUrl.js";
 
 const GameApp = lazy(() => import("../App"));
 const ShopProduct3D = lazy(() => import("./ShopProduct3D"));
@@ -206,7 +207,7 @@ function SoundIcon({ enabled }) {
 function BrandMark({ compact = false }) {
   return (
     <div className={compact ? "portal-logo portal-logo-compact" : "portal-logo"} aria-label="Trucoloco 6.0">
-      <img src="/assets/brand/trucoloco-logo-hd.png" alt="Trucoloco" />
+      <img src={assetUrl("assets/brand/trucoloco-logo-hd.png")} alt="Trucoloco" />
       <span>6.0</span>
     </div>
   );
@@ -486,7 +487,7 @@ function DeckFan({ type }) {
       <span className="portal-deck-edge portal-deck-edge-three" />
       <span className="portal-deck-edge portal-deck-edge-two" />
       <div className="portal-deck-top">
-        {type === "espanol" ? <img src="/assets/cards/fronts/ancho-espada.svg" alt="Uno de espadas" /> : null}
+        {type === "espanol" ? <img src={assetUrl("assets/cards/fronts/ancho-espada.svg")} alt="Uno de espadas" /> : null}
         {type === "trazos" ? <TrucoCardFace card={{ rank: "1", suit: "espadas" }} /> : null}
         {type === "gazpacho" ? <GazpachoCardFace card={{ rank: "12", suit: "oros", portrait: 2, crowned: true }} /> : null}
       </div>
@@ -661,7 +662,7 @@ function SuitGlyph({ suit }) {
   if (suit === "oros") return <svg className="portal-suit-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 2.2v3M12 18.8v3M2.2 12h3M18.8 12h3M5.1 5.1l2.1 2.1M16.8 16.8l2.1 2.1M18.9 5.1l-2.1 2.1M7.2 16.8l-2.1 2.1" /></svg>;
   if (suit === "copas") return <svg className="portal-suit-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14c-1 6-3 9-7 9S6 10 5 4Z" /><path d="M12 13v5M8 20h8" /></svg>;
   if (suit === "bastos") return <svg className="portal-suit-glyph portal-suit-glyph-bat" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 21.5 8 16 16.2 2.8c.8-1.3 3.6.2 3 1.7L11.8 18Z" /></svg>;
-  return <img className="portal-suit-glyph portal-suit-glyph-sword" src="/assets/brand/trucoloco-sword-hd.png" alt="" />;
+  return <img className="portal-suit-glyph portal-suit-glyph-sword" src={assetUrl("assets/brand/trucoloco-sword-hd.png")} alt="" />;
 }
 
 function RankLadder() {
@@ -900,7 +901,7 @@ export default function PortalApp() {
 
   return (
     <div className={isHome ? "portal-shell portal-shell-home" : `portal-shell portal-shell-section portal-shell-${activeSection}`} onPointerDownCapture={playButtonSound}>
-      <div className="portal-suit portal-suit-sword" aria-hidden="true"><img src="/assets/brand/trucoloco-sword-hd.png" alt="" /></div>
+      <div className="portal-suit portal-suit-sword" aria-hidden="true"><img src={assetUrl("assets/brand/trucoloco-sword-hd.png")} alt="" /></div>
       <div className="portal-suit portal-suit-coin" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" /><circle className="portal-coin-inner" cx="50" cy="50" r="27" /><path className="portal-coin-rays" d="M50 14v9M50 77v9M14 50h9M77 50h9M24.5 24.5l6.4 6.4M69.1 69.1l6.4 6.4M75.5 24.5l-6.4 6.4M30.9 69.1l-6.4 6.4" /></svg></div>
       <div className="portal-suit portal-suit-cup" aria-hidden="true"><svg viewBox="0 0 100 120"><path d="M18 14h64c-2 28-13 43-32 43S20 42 18 14Z" /><path d="M50 57v35M31 103h38" /></svg></div>
       <div className="portal-suit portal-suit-club" aria-hidden="true"><svg viewBox="0 0 100 180"><path d="M26 166 34 132 72 18c4-12 22-6 18 7L53 140Z" /></svg></div>
