@@ -326,6 +326,16 @@ for (const seat of orderedSeats) {
 }
 
 {
+  // sin scoreMode explícito (snapshot viejo, partida nueva) el motor ANOTA SOLO
+  const legacyPending = applyIntent(createCoreState({ scoreMode: undefined, currentTurnSeatId: "A-negociante" }), {
+    seatId: "A-negociante",
+    action: "callTruco"
+  });
+  const legacyRejected = applyIntent(legacyPending, { seatId: "B-negociante", action: "rejectTruco" });
+  assert.equal(legacyRejected.scores.A, 1, "Default score mode is auto: rejected truco pays without manual step.");
+}
+
+{
   let manual = createCoreState({ scoreMode: "manual", currentTurnSeatId: "A-negociante" });
   manual = adjustScoreState(manual, "A", 35);
   assert.deepEqual(manual.scores, { A: 30, B: 0 }, "Manual adjust clamps up to 30.");

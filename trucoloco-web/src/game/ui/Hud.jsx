@@ -62,7 +62,7 @@ function SoundControl() {
     setMuted(nextMuted);
   };
 
-  return <button className="game-sound-toggle" type="button" aria-pressed={!muted} onClick={toggle}>{muted ? "Sonido: no" : "Sonido: sí"}</button>;
+  return <button className="game-sound-toggle" type="button" aria-pressed={!muted} onClick={toggle}><span aria-hidden="true">{muted ? "🔇" : "🔊"}</span><span className="game-sound-label">{muted ? "Sonido: no" : "Sonido: sí"}</span></button>;
 }
 
 function Header({ match }) {
@@ -149,34 +149,36 @@ function RoleSelector({ match, multiplayer, onboarding }) {
 
   return (
     <section className="role-selector role-selector-arcade">
-      <div className="mode-select">
-        <span className="panel-kicker">Modo de juego</span>
-        <div className="mode-card-row">
-          {Object.values(GAME_MODES).map((mode) => {
-            const active = match.gameMode === mode.id;
+      {onboarding?.modeLocked ? null : (
+        <div className="mode-select">
+          <span className="panel-kicker">Modo de juego</span>
+          <div className="mode-card-row">
+            {Object.values(GAME_MODES).map((mode) => {
+              const active = match.gameMode === mode.id;
 
-            return (
-              <button
-                key={mode.id}
-                className={[
-                  "mode-card",
-                  `mode-card-${mode.id}`,
-                  active ? "mode-card-active" : ""
-                ].filter(Boolean).join(" ")}
-                disabled={!canChangeMode && !active}
-                onClick={() => match.setGameMode(mode.id)}
-                type="button"
-              >
-                <strong>{mode.label}</strong>
-                <small>{mode.tagline}</small>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={mode.id}
+                  className={[
+                    "mode-card",
+                    `mode-card-${mode.id}`,
+                    active ? "mode-card-active" : ""
+                  ].filter(Boolean).join(" ")}
+                  disabled={!canChangeMode && !active}
+                  onClick={() => match.setGameMode(mode.id)}
+                  type="button"
+                >
+                  <strong>{mode.label}</strong>
+                  <small>{mode.tagline}</small>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="role-select-hero">
-        <span className="panel-kicker">Paso 1 · Antesala</span>
+        <span className="panel-kicker">{onboarding?.modeLocked ? match.gameModeInfo.label : "Paso 1 · Antesala"}</span>
         <h2>Elegí tu personaje</h2>
       </div>
 
@@ -238,8 +240,8 @@ function RoleSelector({ match, multiplayer, onboarding }) {
       <article className="role-ready-strip">
         <p className="role-ready-hint">
           {inviteCode
-            ? `Te invitaron a la sala ${inviteCode}. Confirmá quién sos y recién ahí vas a aparecer en el bar.`
-            : "Elegí una identidad antes de entrar. En el bar no se cambia personaje ni perspectiva: para hacerlo, volvés a esta antesala."}
+            ? `Te invitaron a la sala ${inviteCode}. Confirmá quién sos y recién ahí aparecés en el bar.`
+            : "Una vez sentado no se cambia de personaje."}
         </p>
         {multiplayer?.notice ? <p className="role-ready-notice">{multiplayer.notice}</p> : null}
         <div className="role-ready-actions">
@@ -250,7 +252,7 @@ function RoleSelector({ match, multiplayer, onboarding }) {
             type="button"
           >
             <span className="role-test-main">Confirmar a {selectedCharacter.name}</span>
-            <span className="role-test-sub">{inviteCode ? `Entrar a sala ${inviteCode}` : "Después elegís cómo jugar"}</span>
+            <span className="role-test-sub">{inviteCode ? `Entrar a sala ${inviteCode}` : onboarding?.playIntent === "bot" ? "Sentarse y repartir" : "Después elegís cómo jugar"}</span>
           </button>
           {inSala ? (
             <button className="role-secondary-button" onClick={multiplayer?.leaveSala} type="button">
@@ -396,6 +398,21 @@ function getTeamName(team, match) {
 
 function getTeamLabel(team) {
   return team === "A" ? "Tu equipo" : "Equipo rival";
+}
+
+// La voz del antro al cerrar: solo frases canónicas del mundo (CLAUDE.md),
+// elegidas por número de mano para que todas las pantallas de la sala coincidan.
+const HAND_FLAVOR = {
+  win: ["¡Highlight!", "¡TRUCOLOCO!", "¡El Utoneo manda!"],
+  lose: ["L'Merk.", "Al mazo hubiera sido mejor.", "¡Cagón el que no vuelve!"],
+  matchWin: ["¡TRUCOLOCO! El antro es nuestro."],
+  matchLose: ["L'Merk. El antro tiene nuevos dueños."]
+};
+
+function getHandFlavor(match, tone) {
+  const key = match.matchWinner ? (tone === "win" ? "matchWin" : "matchLose") : tone;
+  const pool = HAND_FLAVOR[key] ?? HAND_FLAVOR.win;
+  return pool[(match.handNumber ?? 0) % pool.length];
 }
 
 function getSeatNameById(match, seatId) {
@@ -1001,6 +1018,7 @@ function BottomDock({ match, cameraView = "table", handFocus, setHandFocus }) {
           <footer className="bottom-dock bottom-dock-result result-dock-right">
             <section className={`hand-result-panel hand-result-panel-${resultTone}`}>
           <div className="hand-result-copy">
+            <span className="hand-result-flavor">{getHandFlavor(match, resultTone)}</span>
             <strong>{resultTitle}</strong>
             <p>{resultCopy}</p>
           </div>

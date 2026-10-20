@@ -144,6 +144,34 @@ class Sfx {
     seq.forEach((f, i) => this.blip(f, 0.3, "triangle", 0.13, 0, i * 0.12));
   }
 
+  // ── duelo de bardo ──────────────────────────────────────────────────────
+  // martillo que cae en vacío: seco, metálico, y un silencio que pesa
+  dryClick() {
+    this.blip(2400, 0.018, "square", 0.09, -1600);
+    this.noise(0.03, 0.18, 5200);
+    this.blip(140, 0.06, "sine", 0.05, -60, 0.02);
+  }
+
+  // tambor girando: carraca que se frena
+  drumSpin() {
+    for (let i = 0; i < 9; i += 1) this.noise(0.018, 0.12, 4200, i * (0.035 + i * 0.008));
+  }
+
+  // ¡PAF! corcho: pop grave + chispa + tribuna que explota
+  corchazo() {
+    this.blip(120, 0.22, "sine", 0.3, -80);
+    this.noise(0.12, 0.42, 3200);
+    this.blip(1800, 0.1, "triangle", 0.08, 900, 0.02);
+    this.noise(1.1, 0.1, 900, 0.14);
+  }
+
+  // la tribuna del antro: "¡uuuh!" cuando el remate entra
+  crowd(intensity = 1) {
+    this.noise(0.9, 0.07 * intensity, 700);
+    this.blip(220, 0.5, "sawtooth", 0.025 * intensity, 60, 0.05);
+    this.blip(277, 0.5, "sawtooth", 0.02 * intensity, 50, 0.08);
+  }
+
   // cierre de partida
   matchEnd(won) {
     const seq = won ? [392, 494, 587, 784] : [330, 294, 247, 196];

@@ -445,7 +445,8 @@ const shouldRivalRaiseTruco = (rivalHand, currentBet, trickWins) => {
 const getTrucoSlug = (label) => label.toLowerCase().replace(" ", "-");
 const BOT_TRUCO_THINKING_MS = 700;
 
-const normalizeScoreMode = (mode) => (mode === "auto" ? "auto" : "manual");
+// default "auto" (CODEX_TASK_5): el anotador manual es opt-in, nunca el estado inicial
+const normalizeScoreMode = (mode) => (mode === "manual" ? "manual" : "auto");
 const getScoreMode = (state) => normalizeScoreMode(state?.scoreMode);
 
 const buildSuggestedPoints = ({ kind, winner, scoringWinner = winner, points, scores, deltaA = 0, deltaB = 0 }) => ({

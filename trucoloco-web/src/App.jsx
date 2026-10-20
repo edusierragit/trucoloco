@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
-import { ACESFilmicToneMapping, PCFSoftShadowMap, SRGBColorSpace } from "three";
+import { ACESFilmicToneMapping, PCFSoftShadowMap, Raycaster, SRGBColorSpace, Vector2 } from "three";
 import { TrucolocoScene } from "./game/scene/TrucolocoScene";
 import { Hud } from "./game/ui/Hud";
 import { useTrucolocoMatch } from "./game/hooks/useTrucolocoMatch";
@@ -10,437 +10,17 @@ import { sfx } from "./game/audio/sfx";
 import { createPortal } from "react-dom";
 import { createTrucolocoRoom, findOpenSala, genRoomCode, getPlayerId, openSalaBackfill, ROOM_LIMIT } from "./game/net/room";
 import { createRelayRoom } from "./game/net/relayRoom";
-import {
-  getCombatPos as getConflictCombatPos,
-  getCombatVector as getConflictCombatVector,
-  getDebateGoal as getConflictDebateGoal,
-  getDebateTitle as getConflictDebateTitle,
-  getRingRead as getConflictRingRead,
-  getRivalAttackName as getConflictRivalAttackName
-} from "./game/conflict/combatState";
-import { useConflictCombat } from "./game/conflict/useConflictCombat";
+import { DuelOverlay } from "./game/conflict/duel/DuelOverlay";
+import { useFps, useFrameWatchdog, useQuality } from "./game/useQuality";
+import { QUALITY_TIERS } from "./game/perf";
 
 const playerById = [...teams.A, ...teams.B].reduce((players, player) => {
   players[player.id] = player;
   return players;
 }, {});
 
-const RING_START_STATE = {
-  mode: "ring",
-  kind: "idle",
-  token: 0,
-  player: 0,
-  rival: 0,
-  playerHealth: 100,
-  rivalHealth: 100,
-  lastDamageToPlayer: 0,
-  lastDamageToRival: 0,
-  hitStrength: 0,
-  fightIntro: 1.85,
-  playerCooldown: 0,
-  rivalCooldown: 0,
-  playerActionPulse: 0,
-  rivalActionPulse: 0,
-  playerHitStun: 0,
-  rivalHitStun: 0,
-  playerPos: { x: -0.72, z: 0.18 },
-  rivalPos: { x: 0.72, z: -0.18 },
-  playerFacing: 0,
-  rivalFacing: Math.PI,
-  playerDash: 0,
-  rivalDash: 0,
-  playerMoving: 0,
-  rivalMoving: 0,
-  playerEngaged: false,
-  rivalControlled: false,
-  playerLane: -0.18,
-  rivalLane: 0.18,
-  playerStamina: 3,
-  rivalStamina: 3,
-  playerGuard: 0,
-  rivalGuard: 0,
-  rivalIntent: "neutral",
-  rivalAttack: "none",
-  rivalTargetLane: 0.18,
-  vulnerable: false,
-  streak: 0,
-  crowdHeat: 0,
-  pull: 0,
-  playerTrigger: 0,
-  rivalTrigger: 0,
-  playerChamber: 4,
-  rivalChamber: 5,
-  turn: "player",
-  resolved: false,
-  lastMove: "Entraste al ring. WASD mueve, click/Q pega, E fuerte, R especial, Shift esquiva y F bloquea."
-};
-
-function createDebateState(overrides = {}) {
-  return {
-    ...RING_START_STATE,
-    playerChamber: 1 + Math.floor(Math.random() * 6),
-    rivalChamber: 1 + Math.floor(Math.random() * 6),
-    ...overrides
-  };
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-const RING_BOUNDS = { x: 1.5, z: 1.12 };
-
-function clampRingPos(pos) {
-  return {
-    x: clamp(pos?.x ?? 0, -RING_BOUNDS.x, RING_BOUNDS.x),
-    z: clamp(pos?.z ?? 0, -RING_BOUNDS.z, RING_BOUNDS.z)
-  };
-}
-
-function getCombatPos(state, actor) {
-  const fallbackX = actor === "player" ? -0.72 : 0.72;
-  const fallbackLane = actor === "player" ? state.playerLane ?? -0.18 : state.rivalLane ?? 0.18;
-  return clampRingPos(actor === "player"
-    ? state.playerPos ?? { x: fallbackX, z: fallbackLane * 0.84 }
-    : state.rivalPos ?? { x: fallbackX, z: fallbackLane * 0.84 });
-}
-
-function getCombatVector(from, to) {
-  const dx = (to?.x ?? 0) - (from?.x ?? 0);
-  const dz = (to?.z ?? 0) - (from?.z ?? 0);
-  const distance = Math.hypot(dx, dz) || 0.0001;
-  return { x: dx / distance, z: dz / distance, distance };
-}
-
-function getFacing(from, to) {
-  return Math.atan2((to?.x ?? 0) - (from?.x ?? 0), (to?.z ?? 0) - (from?.z ?? 0));
-}
-
-function laneFromPos(pos) {
-  return clamp((pos?.z ?? 0) / 0.84, -0.72, 0.72);
-}
-
-function withActorPos(state, actor, pos, facingTarget) {
-  const nextPos = clampRingPos(pos);
-  const facing = facingTarget ? getFacing(nextPos, facingTarget) : actor === "player" ? state.playerFacing : state.rivalFacing;
-
-  return actor === "player"
-    ? {
-      ...state,
-      playerPos: nextPos,
-      playerLane: laneFromPos(nextPos),
-      playerFacing: Number.isFinite(facing) ? facing : state.playerFacing
-    }
-    : {
-      ...state,
-      rivalPos: nextPos,
-      rivalLane: laneFromPos(nextPos),
-      rivalFacing: Number.isFinite(facing) ? facing : state.rivalFacing
-    };
-}
-
-function getRingRead(distance, stamina) {
-  const range = distance <= 0.5 ? "encimados" : distance <= 0.78 ? "a tiro" : "fuera de rango";
-  const air = stamina >= 2.5 ? "aire lleno" : stamina >= 1 ? "aire justo" : "sin aire";
-  return `${range} · ${air}`;
-}
-
-function getRivalAttackName(attack) {
-  if (attack === "barrida") return "Barrida";
-  if (attack === "hombro") return "Hombro";
-  return "Carga";
-}
-
-function getCombatActionConfig(kind) {
-  if (kind === "remate") {
-    return { label: "Especial", cost: 2.1, cooldown: 1.1, range: 0.92, damage: 34, stunDamage: 26, knockback: 0.36 };
-  }
-
-  if (kind === "empujon") {
-    return { label: "Fuerte", cost: 1.35, cooldown: 0.62, range: 0.78, damage: 22, stunDamage: 18, knockback: 0.3 };
-  }
-
-  return { label: "Piña", cost: 0.55, cooldown: 0.28, range: 0.64, damage: 12, stunDamage: 20, knockback: 0.16 };
-}
-
-function getDebateTitle(state) {
-  if (state.mode === "ruleta") return state.resolved ? "Corcho cantado" : "Ruleta de corchos";
-  if (state.resolved) return (state.rivalHealth ?? 100) <= 0 ? "KO: P1 ganó la disputa" : "KO: P2 ganó la disputa";
-  if ((state.fightIntro ?? 0) > 0) return "Entrás al ring";
-  if ((state.playerHitStun ?? 0) > 0) return "Te tambalearon";
-  if ((state.rivalHitStun ?? 0) > 0) return "P2 quedó abierto";
-  if ((state.playerDash ?? 0) > 0) return "Esquive";
-  if ((state.playerGuard ?? 0) > 0) return "Guardia";
-  if (state.kind === "remate") return "Especial conectado";
-  if (state.kind === "empujon") return "Fuerte conectado";
-  if (state.kind === "golpe") return "Piña conectada";
-  if (state.kind?.startsWith("rival")) return "P2 atacó";
-  if (!state.rivalControlled) return "Esperando P2";
-  return "Arena libre: pegá con click";
-}
-
-function getDebateGoal(state) {
-  if (state.mode === "ruleta") {
-    if (state.resolved) return "Disputa resuelta. Podés resetear, volver al ring o salir al antro.";
-    return state.turn === "player"
-      ? "Tu turno: apretá el tambor. Si salta el corcho, perdés la discusión."
-      : "Turno de la mesa: mirá cómo aprieta y bancate el silencio.";
-  }
-
-  if (state.resolved) return "La pelea terminó. Revancha con Q o volvé al antro con Esc.";
-  if ((state.fightIntro ?? 0) > 0) return "P1: WASD + click/Q/E/R/F. P2 local: IJKL + H/U/O/P.";
-  if (!state.rivalControlled) return "PvP local: P1 ya se mueve. P2 entra con IJKL + H/U/O/P.";
-  if (state.playerGuard > 0) return "Estás bloqueando. Soltá F o movete para volver a pegar.";
-  if ((state.playerDash ?? 0) > 0) return "Esquive activo: reposicionate y entrá con click o Q.";
-  return "Arena local P1 vs P2: los dos se mueven y pegan en tiempo real.";
-}
-
-function applyCombatAction(current, actor, kind) {
-  const isPlayer = actor === "player";
-  const playerStarted = isPlayer ? { playerEngaged: true } : {};
-  const rivalStarted = !isPlayer ? { rivalControlled: true, playerEngaged: true } : {};
-  const attacker = isPlayer ? "player" : "rival";
-  const defender = isPlayer ? "rival" : "player";
-  const attackerPos = getCombatPos(current, attacker);
-  const defenderPos = getCombatPos(current, defender);
-  const vector = getCombatVector(attackerPos, defenderPos);
-  const nextToken = (current.token ?? 0) + 1;
-  const attackerCooldownKey = isPlayer ? "playerCooldown" : "rivalCooldown";
-  const defenderCooldownKey = isPlayer ? "rivalCooldown" : "playerCooldown";
-  const attackerPulseKey = isPlayer ? "playerActionPulse" : "rivalActionPulse";
-  const attackerStaminaKey = isPlayer ? "playerStamina" : "rivalStamina";
-  const defenderStaminaKey = isPlayer ? "rivalStamina" : "playerStamina";
-  const attackerGuardKey = isPlayer ? "playerGuard" : "rivalGuard";
-  const defenderGuardKey = isPlayer ? "rivalGuard" : "playerGuard";
-  const attackerHitStunKey = isPlayer ? "playerHitStun" : "rivalHitStun";
-  const defenderHitStunKey = isPlayer ? "rivalHitStun" : "playerHitStun";
-  const attackerHealthKey = isPlayer ? "playerHealth" : "rivalHealth";
-  const defenderHealthKey = isPlayer ? "rivalHealth" : "playerHealth";
-  const attackerDashKey = isPlayer ? "playerDash" : "rivalDash";
-
-  if ((current[attackerHitStunKey] ?? 0) > 0 && kind !== "guardia") {
-    return {
-      ...current,
-      ...playerStarted,
-      ...rivalStarted,
-      kind: isPlayer ? "stun" : "rival-stun",
-      token: nextToken,
-      lastDamageToPlayer: 0,
-      lastDamageToRival: 0,
-      hitStrength: 0,
-      lastMove: isPlayer ? "P1 quedó aturdido. Movete para recuperar postura." : "P2 quedó aturdido."
-    };
-  }
-
-  if (kind === "guardia") {
-    return {
-      ...current,
-      ...playerStarted,
-      ...rivalStarted,
-      kind: isPlayer ? "guardia" : "rival-guard",
-      token: nextToken,
-      [attackerGuardKey]: 0.55,
-      [attackerPulseKey]: 0,
-      [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) + 0.25, 0, 3),
-      lastDamageToPlayer: 0,
-      lastDamageToRival: 0,
-      hitStrength: 0.08,
-      lastMove: isPlayer ? "P1 cubre arriba. Reducís daño frontal, pero si te rodean te la cobran." : "P2 levanta guardia."
-    };
-  }
-
-  if (kind === "esquive") {
-    const away = getCombatVector(defenderPos, attackerPos);
-    const dashPos = clampRingPos({
-      x: attackerPos.x + away.x * 0.54,
-      z: attackerPos.z + away.z * 0.54
-    });
-    const withPos = withActorPos(current, attacker, dashPos, defenderPos);
-
-    return {
-      ...withPos,
-      ...playerStarted,
-      ...rivalStarted,
-      kind: isPlayer ? "dash" : "rival-dash",
-      token: nextToken,
-      [attackerDashKey]: 0.28,
-      [attackerPulseKey]: 0,
-      [attackerGuardKey]: 0,
-      [attackerStaminaKey]: clamp((current[attackerStaminaKey] ?? 3) - 0.55, 0, 3),
-      lastDamageToPlayer: 0,
-      lastDamageToRival: 0,
-      hitStrength: 0,
-      lastMove: isPlayer ? "P1 esquiva corto. Saliste del eje: entrá con click si quedó cerca." : "P2 esquiva y busca otro ángulo."
-    };
-  }
-
-  const actionConfig = getCombatActionConfig(kind);
-  const cooldown = current[attackerCooldownKey] ?? 0;
-  const stamina = current[attackerStaminaKey] ?? 3;
-  const hasAir = stamina >= actionConfig.cost;
-  const canAttack = cooldown <= 0 && hasAir;
-  const hitLanded = canAttack && vector.distance <= actionConfig.range;
-  const defenderGuard = current[defenderGuardKey] ?? 0;
-  const guarded = hitLanded && defenderGuard > 0.05 && kind !== "remate";
-  const guardBroken = hitLanded && defenderGuard > 0.05 && kind === "remate";
-  const rawDamage = hitLanded
-    ? guarded
-      ? Math.max(3, Math.round(actionConfig.damage * 0.34))
-      : actionConfig.damage + (guardBroken ? 8 : 0)
-    : 0;
-  const damage = rawDamage;
-  const counterDamage = guarded ? 4 : 0;
-  const nextDefenderHealth = clamp((current[defenderHealthKey] ?? 100) - damage, 0, 100);
-  const nextAttackerHealth = clamp((current[attackerHealthKey] ?? 100) - counterDamage, 0, 100);
-  const defenderKnockback = damage > 0 ? actionConfig.knockback * (guarded ? 0.45 : 1) : 0;
-  const nextDefenderPos = damage > 0
-    ? clampRingPos({
-      x: defenderPos.x + vector.x * defenderKnockback,
-      z: defenderPos.z + vector.z * defenderKnockback
-    })
-    : defenderPos;
-  const nextStateWithDefenderPos = withActorPos(current, defender, nextDefenderPos, attackerPos);
-  const attackerWon = nextDefenderHealth <= 0;
-  const defenderWon = nextAttackerHealth <= 0;
-  const kindPrefix = isPlayer ? "" : "rival-";
-  const actionKind = `${kindPrefix}${kind}`;
-
-  return {
-    ...nextStateWithDefenderPos,
-    ...playerStarted,
-    ...rivalStarted,
-    kind: actionKind,
-    token: nextToken,
-    [attackerHealthKey]: nextAttackerHealth,
-    [defenderHealthKey]: nextDefenderHealth,
-    [attackerPulseKey]: canAttack ? (kind === "remate" ? 0.42 : kind === "empujon" ? 0.32 : 0.22) : 0,
-    [attackerStaminaKey]: clamp(stamina - (canAttack ? actionConfig.cost : 0), 0, 3),
-    [defenderStaminaKey]: clamp((current[defenderStaminaKey] ?? 3) + (guarded ? 0.12 : 0), 0, 3),
-    [attackerCooldownKey]: canAttack ? actionConfig.cooldown : Math.max(0.06, cooldown),
-    [defenderCooldownKey]: Math.max(0, current[defenderCooldownKey] ?? 0),
-    [attackerGuardKey]: 0,
-    [defenderGuardKey]: guarded ? Math.max(0, defenderGuard - 0.34) : 0,
-    [defenderHitStunKey]: damage >= actionConfig.stunDamage ? 0.22 : damage > 0 ? 0.08 : Math.max(0, current[defenderHitStunKey] ?? 0),
-    [attackerHitStunKey]: counterDamage > 0 ? 0.08 : Math.max(0, current[attackerHitStunKey] ?? 0),
-    lastDamageToPlayer: isPlayer ? counterDamage : damage,
-    lastDamageToRival: isPlayer ? damage : counterDamage,
-    hitStrength: clamp((damage + counterDamage) / 34, 0, 1),
-    player: Math.min(5, Math.floor((100 - (isPlayer ? nextDefenderHealth : nextAttackerHealth)) / 20)),
-    rival: Math.min(5, Math.floor((100 - (isPlayer ? nextAttackerHealth : nextDefenderHealth)) / 20)),
-    resolved: attackerWon || defenderWon,
-    lastMove: attackerWon
-      ? (isPlayer ? "KO. P1 sacó a P2 del ring: tu versión gana el conflicto." : "KO. P2 sacó a P1 del ring.")
-      : defenderWon
-        ? (isPlayer ? "KO. P2 contestó y P1 cayó." : "KO. P2 cayó por contra.")
-        : !canAttack
-          ? !hasAir
-            ? (isPlayer ? "P1 sin aire: corré, esquivá o bloqueá para recuperar." : "P2 se quedó sin aire.")
-            : (isPlayer ? "Cooldown: el golpe todavía no salió." : "P2 quiso repetir demasiado rápido.")
-          : hitLanded
-            ? guarded
-              ? (isPlayer ? "P1 pegó sobre guardia. Hizo daño menor y cobró un raspón." : "P1 bloqueó parte del golpe de P2.")
-              : guardBroken
-                ? (isPlayer ? "Especial rompe guardia. Entró fuerte." : "P2 rompió tu guardia con especial.")
-                : (isPlayer ? `${actionConfig.label} conectado. ${getRingRead(vector.distance, stamina)}.` : `P2 conectó ${actionConfig.label.toLowerCase()}.`)
-            : (isPlayer ? `Golpe al aire. Acercate: ${getRingRead(vector.distance, stamina)}.` : "P2 pegó al aire.")
-  };
-}
-
-function stepArenaCombat(current, keys, dt) {
-  if (current.resolved || current.mode === "ruleta") return current;
-
-  const safeDt = Math.min(0.05, Math.max(0.001, dt));
-  let next = {
-    ...current,
-    playerCooldown: Math.max(0, (current.playerCooldown ?? 0) - safeDt),
-    rivalCooldown: Math.max(0, (current.rivalCooldown ?? 0) - safeDt),
-    playerActionPulse: Math.max(0, (current.playerActionPulse ?? 0) - safeDt),
-    rivalActionPulse: Math.max(0, (current.rivalActionPulse ?? 0) - safeDt),
-    playerHitStun: Math.max(0, (current.playerHitStun ?? 0) - safeDt),
-    rivalHitStun: Math.max(0, (current.rivalHitStun ?? 0) - safeDt),
-    fightIntro: Math.max(0, (current.fightIntro ?? 0) - safeDt),
-    playerGuard: keys.has("f") || keys.has("rightclick") ? 0.38 : Math.max(0, (current.playerGuard ?? 0) - safeDt * 1.45),
-    rivalGuard: keys.has("p") ? 0.38 : Math.max(0, (current.rivalGuard ?? 0) - safeDt * 1.25),
-    playerDash: Math.max(0, (current.playerDash ?? 0) - safeDt),
-    rivalDash: Math.max(0, (current.rivalDash ?? 0) - safeDt),
-    playerMoving: Math.max(0, (current.playerMoving ?? 0) - safeDt),
-    rivalMoving: Math.max(0, (current.rivalMoving ?? 0) - safeDt),
-    playerStamina: clamp((current.playerStamina ?? 3) + safeDt * ((current.playerGuard ?? 0) > 0 ? 0.45 : 0.82), 0, 3),
-    rivalStamina: clamp((current.rivalStamina ?? 3) + safeDt * 0.72, 0, 3),
-    lastDamageToPlayer: Math.max(0, (current.lastDamageToPlayer ?? 0) - safeDt * 32),
-    lastDamageToRival: Math.max(0, (current.lastDamageToRival ?? 0) - safeDt * 32)
-  };
-
-  const playerPos = getCombatPos(next, "player");
-  const rivalPos = getCombatPos(next, "rival");
-  const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
-  const inputZ = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-  const inputLength = Math.hypot(inputX, inputZ) || 1;
-  const playerCanMove = (next.playerHitStun ?? 0) <= 0;
-
-  if (playerCanMove && (inputX || inputZ)) {
-    const sprint = keys.has("shift");
-    const speed = sprint && (next.playerStamina ?? 0) > 0.12 ? 1.92 : 1.38;
-    const nextPlayerPos = clampRingPos({
-      x: playerPos.x + (inputX / inputLength) * speed * safeDt,
-      z: playerPos.z + (inputZ / inputLength) * speed * safeDt
-    });
-    next = withActorPos(next, "player", nextPlayerPos, getCombatPos(next, "rival"));
-    next.playerEngaged = true;
-    next.playerMoving = 0.18;
-    if (sprint) next.playerStamina = clamp((next.playerStamina ?? 3) - safeDt * 0.55, 0, 3);
-  } else {
-    next.playerFacing = getFacing(getCombatPos(next, "player"), getCombatPos(next, "rival"));
-  }
-
-  const currentPlayerPos = getCombatPos(next, "player");
-  const currentRivalPos = getCombatPos(next, "rival");
-  const rivalCanMove = (next.rivalHitStun ?? 0) <= 0;
-  const rivalInputX = (keys.has("l") ? 1 : 0) - (keys.has("j") ? 1 : 0);
-  const rivalInputZ = (keys.has("k") ? 1 : 0) - (keys.has("i") ? 1 : 0);
-  const rivalManualInput = Boolean(rivalInputX || rivalInputZ || keys.has("p"));
-
-  if ((next.fightIntro ?? 0) > 0) {
-    next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
-  } else if (rivalManualInput && rivalCanMove) {
-    const rivalInputLength = Math.hypot(rivalInputX, rivalInputZ) || 1;
-    next = {
-      ...next,
-      rivalControlled: true,
-      playerEngaged: true
-    };
-    if (rivalInputX || rivalInputZ) {
-      next = withActorPos(next, "rival", {
-        x: currentRivalPos.x + (rivalInputX / rivalInputLength) * 1.26 * safeDt,
-        z: currentRivalPos.z + (rivalInputZ / rivalInputLength) * 1.26 * safeDt
-      }, currentPlayerPos);
-      next.rivalMoving = 0.18;
-    } else {
-      next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
-    }
-  } else {
-    next.rivalFacing = getFacing(getCombatPos(next, "rival"), getCombatPos(next, "player"));
-  }
-
-  return next;
-}
-
 function createEmptyWalkTouchInput() {
   return { x: 0, z: 0, rotate: 0, sprint: false, boxToken: 0, jumpToken: 0 };
-}
-
-function getInitialPerformanceProfile() {
-  if (typeof window === "undefined") {
-    return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
-  }
-
-  const perfOverride = new URLSearchParams(window.location.search).get("perf");
-  // La calidad visual es el piso. El perfil liviano queda como override manual
-  // de diagnóstico; desktop y mobile reciben la escena completa por defecto.
-  if (perfOverride === "low") {
-    return { mode: "low", dpr: [0.7, 0.95], antialias: true, shadows: true, postprocessing: true };
-  }
-  return { mode: "high", dpr: [0.85, 1.25], antialias: true, shadows: true, postprocessing: true };
 }
 
 function SceneReadySignal({ onReady }) {
@@ -448,82 +28,95 @@ function SceneReadySignal({ onReady }) {
   return null;
 }
 
-function playConflictHitSound(hitStrength = 0.5, resolved = false) {
-  if (typeof window === "undefined") return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
+// Mide fps dentro del render loop sin re-renderizar nada por frame.
+// El contador de fps mide SIEMPRE; solo la degradación depende del modo auto.
+const PERF_PROBE = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("probe");
 
-  const context = playConflictHitSound.context ?? new AudioContext();
-  playConflictHitSound.context = context;
-  if (context.state === "suspended") void context.resume();
+function QualityWatchdog({ quality }) {
+  const { gl, scene, camera } = useThree();
+  const tick = useFrameWatchdog({
+    enabled: true,
+    onFps: quality.reportFps,
+    onDegrade: quality.auto ? quality.degrade : undefined
+  });
 
-  const now = context.currentTime;
-  const gain = context.createGain();
-  const low = context.createOscillator();
-  const snap = context.createOscillator();
-  const strength = clamp(hitStrength, 0.15, 1);
+  // ?probe: expone draw calls / triángulos acumulados de TODAS las pasadas del
+  // frame (con postprocessing, el autoReset solo mostraría el quad final).
+  useEffect(() => {
+    if (!PERF_PROBE) return undefined;
+    window.__TL_THREE__ = { scene, camera, gl, Raycaster, Vector2 };
+    gl.info.autoReset = false;
+    return () => { gl.info.autoReset = true; };
+  }, [gl]);
 
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(resolved ? 0.18 : 0.08 + strength * 0.12, now + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + (resolved ? 0.22 : 0.12));
-
-  low.type = "sine";
-  low.frequency.setValueAtTime(resolved ? 58 : 82 - strength * 18, now);
-  low.frequency.exponentialRampToValueAtTime(38, now + (resolved ? 0.22 : 0.12));
-
-  snap.type = "triangle";
-  snap.frequency.setValueAtTime(190 + strength * 90, now);
-  snap.frequency.exponentialRampToValueAtTime(92, now + 0.06);
-
-  low.connect(gain);
-  snap.connect(gain);
-  gain.connect(context.destination);
-
-  low.start(now);
-  snap.start(now);
-  low.stop(now + 0.24);
-  snap.stop(now + 0.09);
+  useFrame((state) => {
+    tick(state.clock.elapsedTime);
+    if (!PERF_PROBE) return;
+    const { render, memory, programs } = gl.info;
+    window.__TL_PERF__ = {
+      calls: render.calls,
+      triangles: render.triangles,
+      geometries: memory.geometries,
+      textures: memory.textures,
+      programs: programs?.length ?? 0
+    };
+    gl.info.reset();
+  }, -1000);
+  return null;
 }
 
-function resolveCorkRoulettePull(current) {
-  if (current.resolved) {
-    return createDebateState({
-      mode: "ruleta",
-      token: current.token + 1,
-      lastMove: "Se resetean los tambores de utileria. Seis chances por lado, cero argumentos validos."
-    });
-  }
+// Perilla de calidad. El watchdog degrada solo, pero el jugador manda: si
+// toca un tier, se guarda y el auto se apaga (nada le pisa la elección).
+function QualityDock({ quality }) {
+  const [open, setOpen] = useState(false);
+  const fps = useFps();
+  const fpsTone = fps >= 55 ? "ok" : fps >= 40 ? "mid" : "bad";
 
-  const owner = current.turn ?? "player";
-  const playerTrigger = owner === "player" ? current.playerTrigger + 1 : current.playerTrigger;
-  const rivalTrigger = owner === "rival" ? current.rivalTrigger + 1 : current.rivalTrigger;
-  const pull = current.pull + 1;
-  const popped = owner === "player" ? playerTrigger >= current.playerChamber : rivalTrigger >= current.rivalChamber;
-  const playerLost = popped && owner === "player";
-  const rivalLost = popped && owner === "rival";
-
-  return {
-    ...current,
-    kind: popped ? "corchazo" : "click",
-    token: current.token + 1,
-    pull,
-    playerTrigger,
-    rivalTrigger,
-    turn: owner === "player" ? "rival" : "player",
-    player: rivalLost ? 5 : current.player,
-    rival: playerLost ? 5 : current.rival,
-    resolved: popped,
-    lastMove: popped
-      ? playerLost
-        ? "Tu tambor salto primero. La mesa gana esta disputa por cobarde jurisprudencia."
-        : "El tambor de la mesa salto primero. Tu version queda oficialmente aprobada."
-      : owner === "player"
-        ? `Vos apretas. Click seco. Te quedan ${6 - playerTrigger} posiciones.`
-        : `La mesa aprieta. Click seco. Le quedan ${6 - rivalTrigger} posiciones.`
-  };
+  return (
+    <div className={open ? "quality-dock quality-dock-open" : "quality-dock"}>
+      <button
+        type="button"
+        className="quality-dock-toggle"
+        onClick={() => setOpen((value) => !value)}
+        title="Calidad grafica y rendimiento"
+      >
+        <span className={`quality-fps quality-fps-${fpsTone}`}>{fps}</span>
+        <small>fps</small>
+      </button>
+      {open ? (
+        <div className="quality-dock-panel">
+          <strong>Calidad</strong>
+          <div className="quality-dock-tiers">
+            {quality.tiers.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={id === quality.tier ? "quality-tier quality-tier-on" : "quality-tier"}
+                onClick={() => quality.setTier(id)}
+              >
+                {QUALITY_TIERS[id].label}
+              </button>
+            ))}
+          </div>
+          <em>{QUALITY_TIERS[quality.tier]?.blurb}</em>
+          <span className="quality-dock-meta">
+            {quality.auto ? "Auto: baja sola si el antro se traba" : "Manual"}
+            {" · "}
+            {Math.round(quality.dpr * 100)}% de resolucion
+          </span>
+          {!quality.auto ? (
+            <button type="button" className="quality-dock-auto" onClick={() => quality.setAuto(true)}>
+              Volver a automatico
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function App({ onExitToPortal } = {}) {
+  if (PERF_PROBE) window.__TL_RENDERS__ = { ...(window.__TL_RENDERS__ ?? {}), App: (window.__TL_RENDERS__?.App ?? 0) + 1 };
   // tu silla online define tu PERSPECTIVA del match (deriveView de Codex):
   // reclamás B-estrella y el motor te muestra ESA mano, no la del equipo A
   const [myOnlineSeatId, setMyOnlineSeatId] = useState(null);
@@ -536,8 +129,15 @@ export default function App({ onExitToPortal } = {}) {
     const code = new URLSearchParams(window.location.search).get("sala")?.toUpperCase() ?? "";
     return code.length === 4 ? code : "";
   }, []);
+  // lo que el jugador ya decidió en el portal: no se lo volvemos a preguntar
+  const urlIntent = useMemo(() => {
+    if (typeof window === "undefined") return { play: "", modeLocked: false };
+    const params = new URLSearchParams(window.location.search);
+    return { play: params.get("jugar") ?? "", modeLocked: params.has("modo") };
+  }, []);
   const match = useTrucolocoMatch({ mySeatId: myOnlineSeatId });
-  const performanceProfile = useMemo(() => getInitialPerformanceProfile(), []);
+  const quality = useQuality();
+  const performanceProfile = quality.profile;
   const [sceneReady, setSceneReady] = useState(false);
   const [cameraView, setCameraView] = useState("table");
   const [isSeatingRitual, setIsSeatingRitual] = useState(false);
@@ -608,26 +208,16 @@ export default function App({ onExitToPortal } = {}) {
     setCameraView(viewId);
   }, [identityConfirmed]);
 
+  useEffect(() => {
+    if (!PERF_PROBE) return undefined;
+    window.__TL_PROBE_VIEW__ = handleCameraViewChange;
+    return () => { delete window.__TL_PROBE_VIEW__; };
+  }, [handleCameraViewChange]);
+
   const handleRingExit = useCallback(() => {
     handleCameraViewChange("walk");
   }, [handleCameraViewChange]);
 
-  const conflictWeaponContext = useMemo(() => ({
-    role: match.selectedRole,
-    activeWeapon: match.activeWeapon
-  }), [match.activeWeapon, match.selectedRole]);
-
-  const {
-    debateState,
-    resetDebateState,
-    triggerDebateAction,
-    switchDebateMode,
-    setCombatKey
-  } = useConflictCombat({
-    enabled: cameraView === "ring",
-    onExit: handleRingExit,
-    weaponContext: conflictWeaponContext
-  });
 
   // ─── SALA ONLINE (etapa presencia): crear, entrar por link, ver quién está ──
   const [netRoom, setNetRoom] = useState(null);
@@ -659,10 +249,16 @@ export default function App({ onExitToPortal } = {}) {
     voiceRoomRef.current?.leave();
     voiceRoomRef.current = useP2P ? null : createTrucolocoRoom(`${code}-voz`, { isHost, profile });
     room.onRoster(setRoster);
-    setRemotePos({});
-    room.onPos((peerId, data) =>
-      setRemotePos((current) => ({ ...current, [peerId]: { x: data.x, z: data.z, yaw: data.yaw, mode: data.mode } }))
-    );
+    remotePosRef.current = {};
+    setRemoteSeen({});
+    // 20 Hz por peer: van a un ref que los caminantes leen en useFrame.
+    // React solo se entera cuando aparece alguien nuevo (antes: un render
+    // de App entero por paquete, ~100/s con la mesa llena).
+    room.onPos((peerId, data) => {
+      const known = peerId in remotePosRef.current;
+      remotePosRef.current[peerId] = { x: data.x, z: data.z, yaw: data.yaw, mode: data.mode };
+      if (!known) setRemoteSeen((current) => ({ ...current, [peerId]: true }));
+    });
     if (!isHost) {
       // espejo v1: tu pantalla ES la partida del host
       room.onSnapshot((snapPayload) => matchRef.current.hydrate?.(snapPayload));
@@ -695,6 +291,25 @@ export default function App({ onExitToPortal } = {}) {
     return () => window.clearTimeout(timer);
   }, [netRoom, roster.length]);
 
+  const [linkCopied, setLinkCopied] = useState(false);
+  useEffect(() => {
+    if (!linkCopied) return undefined;
+    const timer = window.setTimeout(() => setLinkCopied(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [linkCopied]);
+
+  const copySalaLink = useCallback(async () => {
+    const room = netRoomRef.current;
+    if (!room) return;
+    const link = `${window.location.origin}${window.location.pathname}?sala=${room.code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+    } catch {
+      window.prompt("Copiá el link:", link);
+    }
+  }, []);
+
   const retrySala = useCallback(() => {
     const room = netRoomRef.current;
     if (!room) return;
@@ -703,7 +318,8 @@ export default function App({ onExitToPortal } = {}) {
     setConnTimedOut(false);
     joinSala(code, isHost); // recrea la conexión al mismo código
   }, [joinSala]);
-  const [remotePos, setRemotePos] = useState({});
+  const remotePosRef = useRef({});
+  const [remoteSeen, setRemoteSeen] = useState({});
   const lastPosSentRef = useRef(0);
   const salaNoticeTimerRef = useRef(null);
 
@@ -976,8 +592,16 @@ export default function App({ onExitToPortal } = {}) {
       setCameraView("walk");
       return;
     }
-    if (urlSalaCode) joinSala(urlSalaCode, false);
-  }, [claimSeat, getSeatBlockReason, joinSala, match.selectedCharacter, showSalaNotice, urlSalaCode]);
+    if (urlSalaCode) {
+      joinSala(urlSalaCode, false);
+      return;
+    }
+    // "Jugar con un bot" en el portal = sentarse y repartir, sin menú intermedio
+    if (urlIntent.play === "bot") {
+      match.startHand();
+      setCameraView("seat");
+    }
+  }, [claimSeat, getSeatBlockReason, joinSala, match, showSalaNotice, urlIntent.play, urlSalaCode]);
 
   const unlockIdentity = useCallback(() => {
     if (netRoomRef.current || matchRef.current?.handStarted) return;
@@ -1040,7 +664,8 @@ export default function App({ onExitToPortal } = {}) {
     voiceRoomRef.current = null;
     setNetRoom(null);
     setRoster([]);
-    setRemotePos({});
+    remotePosRef.current = {};
+    setRemoteSeen({});
     setMyOnlineSeatId(null);
     window.history.replaceState(null, "", window.location.pathname);
     // frenar la partida al salir: antes los bots seguian tirando cartas
@@ -1113,8 +738,21 @@ export default function App({ onExitToPortal } = {}) {
     () => new URLSearchParams(window.location.search).get("auto") !== "0",
     []
   );
+  const autoMomentKey = [
+    match.handNumber,
+    match.phase,
+    match.tableCards.length,
+    match.trickHistory.length,
+    match.currentTurnSeatId,
+    match.canAdvance,
+    match.canPlayCard,
+    match.handStarted,
+    match.matchWinner ?? "",
+    netRoom?.isHost ?? "solo"
+  ].join("|");
   useEffect(() => {
     if (!autoPlayEnabled) return undefined;
+    if (!sceneReady) return undefined; // nadie juega detrás de "Abriendo el antro"
     if (netRoom && !netRoom.isHost) return undefined; // espejo: manda el host
     if (!match.handStarted || match.matchWinner) return undefined;
     if (!match.canAdvance || match.canPlayCard) return undefined;
@@ -1133,14 +771,18 @@ export default function App({ onExitToPortal } = {}) {
     // pausa larga al cerrar la vuelta para que se VEA quién ganó (antes se
     // cerraba tan rápido que no llegabas a leer la mano)
     const delay = match.phase === "trick-closed" ? 3400 : match.phase === "envido-resolution" ? 2600 : 1100;
+    // el timer se ancla al MOMENTO de la mesa, no a la identidad de `match`:
+    // un re-render cualquiera (sala, hover, calidad) no debe reiniciar la cuenta
     const timer = window.setTimeout(() => {
-      if (match.phase === "envido-resolution") match.settleEnvido();
-      else if (match.phase === "trick-closed") match.clearTrick();
-      else if (match.phase === "pre-rival-lead" || match.phase === "rival-leads") match.revealRivalLead();
-      else match.advance();
+      const current = matchRef.current;
+      if (current.phase === "envido-resolution") current.settleEnvido();
+      else if (current.phase === "trick-closed") current.clearTrick();
+      else if (current.phase === "pre-rival-lead" || current.phase === "rival-leads") current.revealRivalLead();
+      else current.advance();
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [autoPlayEnabled, match, roster]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlayEnabled, autoMomentKey, roster, sceneReady]);
 
   // audio: el contexto se despierta con el primer gesto (política de autoplay)
   useEffect(() => {
@@ -1238,7 +880,6 @@ export default function App({ onExitToPortal } = {}) {
     }
 
     if (hotspot === "ring") {
-      resetDebateState();
       handleCameraViewChange("ring");
       return;
     }
@@ -1262,7 +903,7 @@ export default function App({ onExitToPortal } = {}) {
       setCameraView("table");
       setIsSeatingRitual(false);
     }, 950);
-  }, [handleCameraViewChange, resetDebateState, startRoomHand]);
+  }, [handleCameraViewChange, startRoomHand]);
 
   const stageClassName = [
     "stage-shell",
@@ -1278,7 +919,7 @@ export default function App({ onExitToPortal } = {}) {
     <div className="app-shell">
       {onExitToPortal || (match.handStarted && cameraView !== "ring") ? (
         <button className="exit-to-menu" type="button" onClick={() => exitToMenu("home")} title="Salir de la partida sin refrescar">
-          ← Salir al menú
+          ← <span className="exit-to-menu-label">Salir al menú</span>
         </button>
       ) : null}
       {pillTrip ? <div className={`pill-trip pill-trip-${pillTrip.color}`} aria-hidden="true" /> : null}
@@ -1288,7 +929,7 @@ export default function App({ onExitToPortal } = {}) {
           <Canvas
             camera={{ position: [0, 4.45, 6.15], fov: 34 }}
             shadows={performanceProfile.shadows ? { enabled: true, type: PCFSoftShadowMap } : false}
-            dpr={performanceProfile.dpr}
+            dpr={quality.dpr}
             gl={{
               antialias: performanceProfile.antialias,
               outputColorSpace: SRGBColorSpace,
@@ -1304,13 +945,12 @@ export default function App({ onExitToPortal } = {}) {
                 netRoster={roster}
                 onWalkerMove={handleMyMove}
                 remoteWalkers={roster
-                  .filter((peer) => !peer.self && remotePos[peer.peerId])
-                  .map((peer) => ({ ...peer, pos: remotePos[peer.peerId] }))}
+                  .filter((peer) => !peer.self && remoteSeen[peer.peerId])}
+                remotePosRef={remotePosRef}
                 match={playMatch}
                 cameraView={cameraView}
-                debateAction={debateState}
                 selectedWalkCharacter={match.selectedCharacter ?? match.activeLane.human}
-                performanceMode={performanceProfile.mode}
+                performanceMode={quality.tier}
                 walkHotspot={walkHotspot}
                 walkTouchInput={walkTouchInput}
                 onWalkHotspotChange={setWalkHotspot}
@@ -1318,6 +958,7 @@ export default function App({ onExitToPortal } = {}) {
                 onWalkAnimationDebugChange={setWalkAnimationDebug}
               />
               <SceneReadySignal onReady={() => setSceneReady(true)} />
+              <QualityWatchdog quality={quality} />
             </Suspense>
             {performanceProfile.postprocessing ? (
               <EffectComposer multisampling={0}>
@@ -1328,6 +969,8 @@ export default function App({ onExitToPortal } = {}) {
             ) : null}
           </Canvas>
 
+          <QualityDock quality={quality} />
+
           {!sceneReady ? (
             <div className="scene-loading-ui" role="status" aria-live="polite">
               <div className="scene-loading-mark">TL</div>
@@ -1337,17 +980,14 @@ export default function App({ onExitToPortal } = {}) {
           ) : null}
 
           {identityConfirmed && (netRoom || match.handStarted) && cameraView !== "walk" && cameraView !== "ring" ? <div className="camera-dock camera-dock-context" aria-label="Movimiento por el bar">
-            <span className="camera-dock-kicker">Movimiento</span>
-            <div className="camera-dock-actions">
-              <button
-                type="button"
-                className="camera-dock-button camera-dock-button-active"
-                onClick={() => handleCameraViewChange("walk")}
-              >
-                <span>🍺 Caminar por el bar</span>
-                <small>WASD / flechas</small>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="camera-dock-button camera-dock-button-active"
+              title="Levantarse y caminar por el bar (WASD / flechas)"
+              onClick={() => handleCameraViewChange("walk")}
+            >
+              <span>🍺 Pararse</span>
+            </button>
           </div> : null}
 
           {cameraView === "walk" && !isSeatingRitual ? (
@@ -1494,112 +1134,11 @@ export default function App({ onExitToPortal } = {}) {
           ) : null}
 
           {cameraView === "ring" && !isSeatingRitual ? (
-            <div className={debateState.resolved ? "debate-hint debate-hint-resolved" : "debate-hint"} aria-live="polite">
-              <div className="debate-hint-header">
-                <span>Conflicto · {debateState.rivalControlled ? "P2 local" : "CPU"}</span>
-                <strong>
-                  {debateState.mode === "ruleta"
-                    ? `${debateState.player} - ${debateState.rival}`
-                    : `${Math.round(debateState.playerHealth ?? 100)} HP · ${Math.round(debateState.rivalHealth ?? 100)} HP`}
-                </strong>
-              </div>
-              <strong>{getConflictDebateTitle(debateState)}</strong>
-              <em>{getConflictDebateGoal(debateState)}</em>
-              <p>{debateState.lastMove}</p>
-              <div className="debate-meter-stack" aria-hidden="true">
-                <div className="debate-meter-row">
-                  <span>Vos</span>
-                  <div className="debate-meter debate-meter-player">
-                    <i style={{ "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.playerTrigger / 6) * 100) : Math.max(0, debateState.playerHealth ?? 100)}%` }} />
-                  </div>
-                </div>
-                <div className="debate-meter-row">
-                    <span>Rival</span>
-                  <div className="debate-meter debate-meter-rival">
-                    <i style={{ "--debate-meter": `${debateState.mode === "ruleta" ? Math.max(8, (debateState.rivalTrigger / 6) * 100) : Math.max(0, debateState.rivalHealth ?? 100)}%` }} />
-                  </div>
-                </div>
-              </div>
-              <div className="debate-readout">
-                {debateState.mode === "ruleta" ? (
-                  <>
-                    <span>Vos {debateState.playerTrigger}/6</span>
-                    <span>Rival {debateState.rivalTrigger}/6</span>
-                    <span>{debateState.turn === "player" ? "tu tambor" : "tambor rival"}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Vos {Math.round(debateState.playerHealth ?? 100)} HP</span>
-                    <span>Rival {Math.round(debateState.rivalHealth ?? 100)} HP</span>
-                    <span>Aire {Math.round(debateState.playerStamina * 10) / 10}/3</span>
-                    <span>Aire B {Math.round(debateState.rivalStamina * 10) / 10}/3</span>
-                    <span>{debateState.playerGuard > 0 ? "guardia arriba" : "guardia baja"}</span>
-                    {debateState.rivalGuard > 0 ? <span>guardia rival</span> : null}
-                    {(debateState.playerCooldown ?? 0) > 0 ? <span>recuperando brazo</span> : null}
-                    {(debateState.rivalCooldown ?? 0) > 0 ? <span>rival recupera</span> : null}
-                    {(debateState.playerHitStun ?? 0) > 0 ? <span>aturdido</span> : null}
-                    {(debateState.rivalHitStun ?? 0) > 0 ? <span>rival aturdido</span> : null}
-                    {debateState.rivalIntent === "windup" ? (
-                      <span>{getConflictRivalAttackName(debateState.rivalAttack)} viene</span>
-                    ) : null}
-                    {debateState.vulnerable ? <span>rival vulnerable</span> : null}
-                    {(debateState.streak ?? 0) > 0 ? <span>racha {debateState.streak}</span> : null}
-                    <span>{getConflictRingRead(getConflictCombatVector(getConflictCombatPos(debateState, "player"), getConflictCombatPos(debateState, "rival")).distance, debateState.playerStamina)}</span>
-                  </>
-                )}
-              </div>
-              <div className="debate-actions" aria-label="Acciones de conflicto">
-                {debateState.mode === "ruleta" ? (
-                  <>
-                    <button type="button" onClick={() => triggerDebateAction("gatillo")} disabled={!debateState.resolved && debateState.turn !== "player"}>
-                      {debateState.resolved ? "Otra botella" : "Apretar"}
-                    </button>
-                    <button type="button" onClick={() => switchDebateMode("ring")}>Ring</button>
-                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
-                  </>
-                ) : debateState.resolved ? (
-                  <>
-                    <button type="button" onClick={() => triggerDebateAction("golpe")}>Revancha</button>
-                    <button type="button" onClick={() => handleCameraViewChange("walk")}>Salir</button>
-                  </>
-                ) : (
-                  <div className="debate-live-controls">
-                    <div className="debate-dpad" aria-label="Movimiento de pelea">
-                      {[
-                        ["w", "↑", "debate-dpad-up"],
-                        ["a", "←", "debate-dpad-left"],
-                        ["s", "↓", "debate-dpad-down"],
-                        ["d", "→", "debate-dpad-right"]
-                      ].map(([key, label, className]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={className}
-                          aria-label={`Mover ${key}`}
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.currentTarget.setPointerCapture?.(event.pointerId);
-                            setCombatKey(key, true);
-                          }}
-                          onPointerUp={() => setCombatKey(key, false)}
-                          onPointerCancel={() => setCombatKey(key, false)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="debate-strikes" aria-label="Golpes de pelea">
-                      <button type="button" onClick={() => triggerDebateAction("golpe")}>Piña <kbd>Q</kbd></button>
-                      <button type="button" onClick={() => triggerDebateAction("empujon")}>Fuerte <kbd>E</kbd></button>
-                      <button type="button" onClick={() => triggerDebateAction("remate")} disabled={(debateState.playerStamina ?? 0) < 2.1}>Especial <kbd>R</kbd></button>
-                      <button type="button" onClick={() => triggerDebateAction("esquive")}>Esquive</button>
-                      <button type="button" onClick={() => triggerDebateAction("guardia")}>Guardia</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <small>{debateState.mode === "ruleta" ? "Espacio/click: apretar · G: ring · Esc: volver" : debateState.rivalControlled ? "P1 WASD + Q/E/R/F · P2 IJKL + H/U/O/P · Esc salir" : "WASD mover · click/Q piña · E fuerte · R especial · F guardia · Espacio esquiva"}</small>
-            </div>
+            <DuelOverlay
+              playerName={(match.selectedCharacter ?? match.activeLane.human)?.name}
+              rivalName={match.activeLane.rival?.name}
+              onExit={handleRingExit}
+            />
           ) : null}
 
           <div className="stage-overlay">
@@ -1635,6 +1174,8 @@ export default function App({ onExitToPortal } = {}) {
             onReturnToTable={() => handleCameraViewChange("table")}
             onboarding={{
               identityConfirmed,
+              modeLocked: urlIntent.modeLocked && !netRoom,
+              playIntent: urlIntent.play,
               inviteCode: netRoom ? "" : urlSalaCode,
               confirmIdentity,
               unlockIdentity
@@ -1734,54 +1275,49 @@ export default function App({ onExitToPortal } = {}) {
                               ? "Sala creada. Invitá a tus amigos."
                               : "Entraste a la sala. Esperando al host."}
                     </p>
+                    {/* El host solo recién creada la sala es lo normal: no es un
+                        error. El invitado solo sí lo es (no enganchó al host). */}
                     {roster.length < 2 && connTimedOut ? (
-                      <div className="sala-conn-help">
-                        <p>Si estás con otra persona y no aparece: revisá que los dos tengan el MISMO código, bajá los Shields de Brave 🦁, o probá en Chrome. El enlace P2P a veces tarda o el relay falla.</p>
-                        <button className="sala-btn sala-btn-on" type="button" onClick={retrySala}>
-                          🔄 Reintentar conexión
-                        </button>
-                      </div>
-                    ) : null}
-                    {netRoom.isHost ? (
-                      <>
-                        <button
-                          className="sala-share sala-start"
-                          type="button"
-                          disabled={roster.length < ROOM_LIMIT}
-                          onClick={startRoomHand}
-                        >
-                          {roster.length >= ROOM_LIMIT
-                            ? "▶ Iniciar partida con amigos"
-                            : `Esperando ${ROOM_LIMIT - roster.length} personas`}
-                        </button>
-                        <details className="sala-test-tools">
-                          <summary>Herramientas de prueba</summary>
-                          <p>Los bots existen sólo para testear el juego.</p>
-                          <button className="sala-btn" type="button" onClick={startRoomHand}>
-                            Iniciar ahora y completar con bots
+                      netRoom.isHost ? (
+                        <p className="sala-conn-hint">
+                          ¿Tu amigo entró y no aparece?{" "}
+                          <button type="button" onClick={retrySala}>Reconectar</button>
+                        </p>
+                      ) : (
+                        <div className="sala-conn-help">
+                          <p>No encontramos al anfitrión. Revisá que tengan el mismo código, bajá los Shields de Brave 🦁 o probá en Chrome.</p>
+                          <button className="sala-btn sala-btn-on" type="button" onClick={retrySala}>
+                            🔄 Reintentar conexión
                           </button>
-                        </details>
-                      </>
-                    ) : (
-                      <p className="sala-note">El anfitrión inicia cuando estén las seis personas.</p>
-                    )}
+                        </div>
+                      )
+                    ) : null}
                   </div>
                 ) : null}
 
+                {!match.handStarted && netRoom.isHost && roster.length >= ROOM_LIMIT ? (
+                  <button className="sala-share sala-start" type="button" onClick={startRoomHand}>
+                    ▶ Arrancar la partida
+                  </button>
+                ) : null}
+
                 <button
-                  className="sala-share"
+                  className={!match.handStarted && roster.length >= ROOM_LIMIT ? "sala-btn sala-copy" : "sala-share sala-copy"}
                   type="button"
-                  onClick={async () => {
-                    const link = `${window.location.origin}${window.location.pathname}?sala=${netRoom.code}`;
-                    try {
-                      await navigator.clipboard.writeText(link);
-                    } catch {
-                      window.prompt("Copiá el link:", link);
-                    }
-                  }}
+                  onClick={copySalaLink}
                 >
-                  ⧉ {roster.length === 1 ? "Copiar link e invitar" : "Copiar link"}
+                  {linkCopied ? "✓ ¡Link copiado! Mandalo al grupo" : `⧉ ${roster.length === 1 ? "Copiar link e invitar" : "Copiar link"}`}
                 </button>
+
+                {!match.handStarted && roster.length < ROOM_LIMIT ? (
+                  netRoom.isHost ? (
+                    <button className="sala-btn sala-fill-bots" type="button" onClick={startRoomHand}>
+                      Jugar ya · {ROOM_LIMIT - roster.length} {ROOM_LIMIT - roster.length === 1 ? "bot" : "bots"} completan la mesa
+                    </button>
+                  ) : (
+                    <p className="sala-note">El anfitrión arranca cuando quiera; si faltan, completan bots.</p>
+                  )
+                ) : null}
 
                 <div className="sala-actions">
                   <button className={micOn ? "sala-btn sala-btn-on" : "sala-btn"} type="button" onClick={toggleMic}>
@@ -1862,12 +1398,9 @@ export default function App({ onExitToPortal } = {}) {
                     Unirse
                   </button>
                 </div>
-                <details className="sala-test-tools sala-test-tools-solo">
-                  <summary>Prueba técnica</summary>
-                  <button className="canto-chip sala-btn" type="button" onClick={startBotTest}>
-                    Jugar solo con bots
-                  </button>
-                </details>
+                <button className="sala-btn sala-fill-bots" type="button" onClick={startBotTest}>
+                  Jugar solo con bots
+                </button>
               </>
             )}
           </div>

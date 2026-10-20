@@ -4,6 +4,7 @@ import { Billboard } from "@react-three/drei";
 import { characterSkins, tableSeats, teams } from "../data/characters";
 import { CharacterFigure } from "./CharacterFigure";
 import { SceneText as Text } from "./SceneText";
+import { isLowPower } from "../perf.js";
 
 function getVisibleRosterSeats(match) {
   const playersById = [...teams.A, ...teams.B].reduce((lookup, player) => {
@@ -359,7 +360,7 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
   const selectedCharacterId = match.selectedCharacter?.id;
   const { size } = useThree();
   const isNarrow = size.width < 640;
-  const lowPower = performanceMode === "low";
+  const lowPower = isLowPower(performanceMode);
   const isSeatCamera = !isRoleSelect && (cameraView === "seat" || cameraView === "table");
 
   const actingSeat = match.handStarted && !match.handClosed
@@ -384,7 +385,9 @@ export function TeamsAroundTable({ match, cameraView = "table", performanceMode 
         // [VISUAL] Walking mode needs a cleaner cinematic read; floating roster labels clutter the table focus.
         // En primera persona el billboard del avatar local queda pegado al lente
         // y explota de tamaño. El turno ya se comunica con anillo y mesa.
-        const showFloatingLabel = isRoleSelect && !isSeatCamera && cameraView !== "walk";
+        // en el teléfono el plano héroe pega la cabeza al borde superior: el
+        // nombre ya está en la hoja de abajo y el cartel pisaría la botonera
+        const showFloatingLabel = isRoleSelect && !isSeatCamera && cameraView !== "walk" && !isNarrow;
         return (
           <CharacterSeat
             key={seat.key}

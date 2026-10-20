@@ -1,10 +1,11 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { RoundedBox, useGLTF, useTexture } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Billboard, RoundedBox, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, Vector3 } from "three";
 import { getCardRankLabel, getCardRankNumber, getCardSuitCode } from "../data/cards";
 import { tableSeats } from "../data/characters";
 import { assetUrl } from "../assetUrl.js";
+import { isLowPower } from "../perf.js";
 import { sfx } from "../audio/sfx";
 import { SceneText as Text } from "./SceneText";
 
@@ -452,6 +453,69 @@ const getTableCardPose = (card, index) => {
     rotation: [0, 0, (card.side === "A" ? -1 : 1) * 0.08]
   };
 };
+
+// A la altura de los ojos una carta plana sobre el fieltro es ilegible. Cada
+// carta de la vuelta en curso lleva una chapita flotante (número + palo +
+// dueño) que siempre mira a TU cámara: leés la mesa sin paneles encima.
+const tagWorld = new Vector3();
+
+// la que hoy se lleva la vuelta (si hay empate entre equipos, nadie: parda)
+function getLeadingSeatIds(tableCards) {
+  if (tableCards.length < 2) return new Set();
+  const powerOf = (play) => play.power ?? play.card?.power ?? 0;
+  const maxPower = Math.max(...tableCards.map(powerOf));
+  const top = tableCards.filter((play) => powerOf(play) === maxPower);
+  const teams = new Set(top.map((play) => play.side));
+  return teams.size === 1 ? new Set(top.map((play) => play.seatId)) : new Set();
+}
+
+function PlayedCardTag({ card, position, leading = false }) {
+  const groupRef = useRef(null);
+  const bornRef = useRef(0);
+  const rank = getCardRankNumber(card);
+  const headline = rank === "?" ? card.name.toUpperCase() : `${rank} ${getCardSuitCode(card)}`;
+  const teamColor = card.side === "A" ? "#91e9f6" : "#ff9a7f";
+
+  useFrame((state, delta) => {
+    const g = groupRef.current;
+    if (!g) return;
+    // aparece cuando la carta ya aterrizó (~0.35s) con un pop corto
+    bornRef.current += delta;
+    const t = Math.min(1, Math.max(0, (bornRef.current - 0.32) / 0.22));
+    const ease = 1 - Math.pow(1 - t, 3);
+    // tamaño casi constante en pantalla: la del vecino no explota, la de
+    // enfrente no se vuelve una hormiga
+    g.getWorldPosition(tagWorld);
+    const distance = state.camera.position.distanceTo(tagWorld);
+    // en vertical el ancho visible se achica: la chapa también
+    const aspectScale = Math.min(1, Math.max(0.55, state.size.width / state.size.height));
+    const screenScale = Math.min(1.15, Math.max(0.36, distance * 0.27)) * aspectScale;
+    g.scale.setScalar(Math.max(0.0001, ease * screenScale));
+  });
+
+  return (
+    <group ref={groupRef} position={[position[0], 0.9, position[2]]} scale={0.0001}>
+      <Billboard follow>
+        {leading ? (
+          <mesh position={[0, -0.005, -0.012]}>
+            <planeGeometry args={[Math.max(0.5, headline.length * 0.07 + 0.16) + 0.04, 0.34]} />
+            <meshBasicMaterial color="#e5a83e" transparent opacity={0.9} depthWrite={false} toneMapped={false} />
+          </mesh>
+        ) : null}
+        <mesh position={[0, -0.005, -0.01]}>
+          <planeGeometry args={[Math.max(0.5, headline.length * 0.07 + 0.16), 0.3]} />
+          <meshBasicMaterial color="#120b07" transparent opacity={leading ? 0.94 : 0.82} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <Text position={[0, 0.035, 0]} fontSize={0.15} color={leading ? "#ffd27a" : "#f6e6bf"} anchorX="center" anchorY="middle" letterSpacing={0.04}>
+          {headline}
+        </Text>
+        <Text position={[0, -0.09, 0]} fontSize={0.065} color={teamColor} anchorX="center" anchorY="middle" letterSpacing={0.12}>
+          {(card.owner ?? "").toUpperCase()}
+        </Text>
+      </Billboard>
+    </group>
+  );
+}
 
 // Pulsing tension ring around center badge — intensity driven by match state
 function TensionRing({ handClosed, outcomeTone, modId }) {
@@ -1016,9 +1080,28 @@ function ImportedHexBoardAsset() {
   );
 }
 
-function ImportedHexBoard({ handClosed, outcomeTone, modId }) {
+// La copa (tablero.glb, una sola malla de Tripo) mide más que una cabeza
+// sentada: durante la mano tapaba la cara y la carta del rival de enfrente.
+// Ahora es un TROFEO: emerge del hexágono al cerrar la mano y en la antesala,
+// y se hunde cuando se reparte. Mientras se juega, manda el hexágono bajo.
+function ImportedHexBoard({ visible }) {
+  const groupRef = useRef(null);
+  const riseRef = useRef(visible ? 1 : 0);
+
+  useFrame((_, delta) => {
+    const g = groupRef.current;
+    if (!g) return;
+    const target = visible ? 1 : 0;
+    riseRef.current += (target - riseRef.current) * Math.min(1, delta * (visible ? 3.2 : 6));
+    const rise = riseRef.current;
+    g.visible = rise > 0.02;
+    g.scale.setScalar(0.5 * Math.max(0.0001, rise));
+    g.position.y = 0.3 + rise * 0.04;
+    g.rotation.y += delta * (visible ? 0.25 : 0);
+  });
+
   return (
-    <group name="Imported_Tablero_Central" position={[0, 0.34, 0.08]} rotation={[0, 0, 0]} scale={0.5}>
+    <group ref={groupRef} name="Imported_Tablero_Central" position={[0, 0.34, 0.08]}>
       <Suspense fallback={null}>
         <ImportedHexBoardAsset />
       </Suspense>
@@ -1067,7 +1150,8 @@ export function Table({ match, performanceMode = "high" }) {
   const modId = match.activeModifier?.id ?? "";
   const showCurrentPair = match.tableCards.length >= 6 && !match.handClosed;
   const showActiveTableCards = match.tableCards.length > 0 && !match.handClosed;
-  const lowPower = performanceMode === "low";
+  const lowPower = isLowPower(performanceMode);
+  const leadingSeatIds = getLeadingSeatIds(match.tableCards);
 
   return (
     <group name="Table_Setup">
@@ -1089,7 +1173,8 @@ export function Table({ match, performanceMode = "high" }) {
       <BrassStuds lowPower={lowPower} />
       <TableProps lowPower={lowPower} />
 
-      <ImportedHexBoard handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      <HexagonHub handClosed={match.handClosed} outcomeTone={match.outcomeTone} modId={modId} />
+      <ImportedHexBoard visible={!match.handStarted || match.handClosed} />
 
       <mesh name="Table_Pedestal" castShadow receiveShadow position={[0, -1.05, 0]}>
         <cylinderGeometry args={[0.42, 0.58, 1.75, 24]} />
@@ -1107,13 +1192,15 @@ export function Table({ match, performanceMode = "high" }) {
             const pose = getTableCardPose(card, index);
 
             return (
-              <AnimatedTableCard
-                key={`${match.pendingAnimationKey}-${card.owner}-${card.id}`}
-                animationKey={match.pendingAnimationKey}
-                card={card}
-                position={pose.position}
-                rotation={pose.rotation}
-              />
+              <group key={`${match.pendingAnimationKey}-${card.owner}-${card.id}`}>
+                <AnimatedTableCard
+                  animationKey={match.pendingAnimationKey}
+                  card={card}
+                  position={pose.position}
+                  rotation={pose.rotation}
+                />
+                <PlayedCardTag card={card} position={pose.position} leading={leadingSeatIds.has(card.seatId)} />
+              </group>
             );
           })
         : null}
@@ -1166,7 +1253,7 @@ function HeldCard({ card, offset, hovered, selected, dimmed, onOver, onOut, onPl
   useFrame((_, delta) => {
     const g = ref.current;
     if (!g) return;
-    const lift = selected ? 0.26 : hovered ? 0.15 : 0;
+    const lift = selected ? 0.2 : hovered ? 0.12 : 0;
     const tx = offset * 0.315;
     const ty = -Math.abs(offset) * 0.05 + lift;
     const tz = selected ? 0.16 : hovered ? 0.1 : 0;
@@ -1220,8 +1307,8 @@ function HeldCard({ card, offset, hovered, selected, dimmed, onOver, onOut, onPl
           </mesh>
         ) : null}
         {selected && !dimmed ? (
-          <Text position={[0, -0.31, 0.02]} fontSize={0.055} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.14}>
-            TOCÁ DE NUEVO PARA TIRAR
+          <Text position={[0, 0.3, 0.02]} fontSize={0.05} color="#91e9f6" anchorX="center" anchorY="middle" letterSpacing={0.14} outlineWidth={0.004} outlineColor="#06161a">
+            OTRO TOQUE Y LA TIRÁS
           </Text>
         ) : null}
       </group>
@@ -1250,15 +1337,29 @@ export function HeldHand({ match }) {
     []
   );
 
-  useFrame((state) => {
+  const restRef = useRef(canPlay ? 0 : 1);
+  // el abanico entra en el ancho visible. La escena usa fov 68 en teléfonos
+  // (<640px) y 47 en el resto: a 1.1m eso deja ±0.74 / ±0.48 de alto visible.
+  const viewport = useThree((state) => state.size);
+  const isPhone = viewport.width < 640;
+  const aspect = viewport.width / viewport.height;
+  const handScale = isPhone ? 0.6 : Math.min(0.66, Math.max(0.42, aspect * 0.9));
+  const handDrop = isPhone ? 0.46 : 0.335;
+
+  useFrame((state, delta) => {
     const g = groupRef.current;
     if (!g) return;
-    // viewmodel: ride the camera, park the fan low like cards held at the chest
+    // viewmodel: ride the camera, park the fan low like cards held at the chest.
+    // fov 47 a 1.1m deja ±0.48 de alto visible: el abanico vive en el tercio
+    // inferior con el índice (número + palo) siempre adentro del cuadro.
+    // Fuera de turno la mano "descansa" más abajo y deja ver la mesa.
+    const rest = restRef.current + ((canPlay ? 0 : 1) - restRef.current) * Math.min(1, delta * 5);
+    restRef.current = rest;
     g.position.copy(state.camera.position);
     g.quaternion.copy(state.camera.quaternion);
-    g.translateZ(-1.08);
-    g.translateY(-0.45);
-    g.rotateX(0.3);
+    g.translateZ(-1.1);
+    g.translateY(-handDrop - rest * 0.09);
+    g.rotateX(0.3 + rest * 0.18);
     g.rotateZ(Math.sin(state.clock.elapsedTime * 0.7) * 0.01); // breathing
   });
 
@@ -1267,7 +1368,7 @@ export function HeldHand({ match }) {
   const midpoint = (cards.length - 1) / 2;
 
   return (
-    <group ref={groupRef} name="HeldHand3D" renderOrder={40}>
+    <group ref={groupRef} name="HeldHand3D" renderOrder={40} scale={handScale}>
       {cards.map((card, index) => (
         <HeldCard
           key={card.handIndex}

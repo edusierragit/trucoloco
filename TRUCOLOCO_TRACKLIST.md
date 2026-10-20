@@ -299,7 +299,72 @@
   Ahora: 'Copiar link e invitar' + '🎙 Hablar'/'Salir' + checkbox honesto
   'Dejar entrar desconocidos para completar' + una linea de ayuda.
 
+## ✅ HECHO (2026-09-29 — Duelo de bardo + rendimiento)
+
+- **Sala del Conflicto reemplazada: DUELO DE BARDO** (`src/game/conflict/duel/`).
+  La pelea real-time se tiró (modelos sin rig = estatuas deslizándose). Ahora:
+  duelo de insultos estilo Monkey Island en lunfardo + revólver de corchos.
+  Bardo (3 cartas) → remate (3 opciones, reloj que se achica) → el que pierde
+  el intercambio aprieta. Revólver sin recarga (1/6 → 1/1), un giro de tambor
+  por jugador. Motor puro y determinista (`duelEngine.js`, listo para lockstep
+  online), store propio fuera de App, test en `check:rules` (validate-duel.mjs).
+  Repertorio: `duelLines.js` (16 pares) — sumar bardos es solo agregar filas.
+- **Perf**: el ring hacía setState en App por frame (~30 renders/s → 10 fps).
+  Walkers remotos igual (1 render de App por paquete). Ambos pasados a refs.
+  Cono de luz de la mesa y vidrios del bar: transparente+DoubleSide forzaba
+  needsUpdate x2 por frame → `forceSinglePass`. Main thread: mesa 59→41%,
+  ring 82→26%. Sonda: `npm run probe:perf` (draw calls, renders, PROFILE=1,
+  MATS=1 materiales sucios, SHOTS=dir capturas del duelo). `?probe` en la URL.
+- **Calidad adaptativa** (`perf.js`/`useQuality.js`): tiers bajo/medio/alto/ultra
+  por GPU detectada + watchdog que baja dpr y después tier. Panel de fps.
+- **Panel de sala**: sin desplegable "herramientas de prueba"; "Copiar link"
+  es el CTA, "Jugar ya · N bots" siempre visible, sin cartel rojo al host solo.
+- ⚠ **Geometría**: `SideRoom_*` (pasillo lateral de Codex) atraviesa la sala
+  del conflicto; en modo ring se oculta (`MainRoomShell hideSideRoom`).
+
+## ✅ HECHO (2026-10-19 — Pase supremo, vuelta 1–3, Claude Opus)
+
+Prompt de trabajo en bucle: `prompts/prompt-supremo-autocritica.md`.
+
+- 🔴 **El anotador arrancaba en MANUAL**: contra bots los puntos nunca se
+  sumaban (CODEX_TASK_5 pedía default "auto"). Corregido + test en `check:flow`.
+- 🔴 **La mesa no limpiaba la vuelta sola**: el contador de fps re-renderizaba
+  la App cada segundo y reiniciaba el timer de 3,4 s. Fps a store externo
+  (`useFps`), y el auto-avance se ancla a una clave de momento, no a `match`.
+- 🔴 **Se jugaba detrás de "Abriendo el antro"**: auto-avance espera `sceneReady`.
+- 🔴 **Cartas jugadas ilegibles desde la silla**: chapita flotante por carta
+  (número + palo + dueño), tamaño constante en pantalla; la que va ganando la
+  vuelta, en dorado.
+- 🟠 **Flujo sin preguntas repetidas**: portal → `?jugar=bot|online`. "Jugar con
+  un bot" = confirmar personaje y se reparte. Modo ya elegido no se repregunta.
+  Refrescar en el juego te deja en el juego (antes volvía a la portada).
+- 🟠 **Antesala**: CTA "Confirmar" dorado y siempre visible, tarjetas compactas,
+  plano héroe del personaje elegido (cámara desde la mesa, mesa en primer
+  plano). En el teléfono, hoja inferior + personaje arriba.
+- 🟠 **Mano 3D**: entra entera (antes cortada a la mitad), escala por pantalla,
+  baja sola fuera de turno para dejar ver la mesa.
+- 🟠 **La copa (tablero.glb) tapaba al rival de enfrente**: ahora es trofeo que
+  emerge al cerrar la mano y en la antesala; en juego, hexágono bajo.
+- 🟠 **Mobile en partida**: marcador de 218 px → tira de palitos, salir = flecha,
+  sonido = ícono, fov 68 y mirada al fieltro, doble toque recentra la cámara.
+- 🟡 Cierre de mano con grito del antro (frases canónicas: Highlight!, L'Merk…).
+- 🟡 Portada con botón ▶ JUGAR; "Pararse" en píldora chica; fuera el panel de
+  depuración "Mesa 3v3 · foco actual"; +/− del anotador solo en manual.
+- ⚪ Watchdog de calidad ignora pestañas en segundo plano (<10 fps) — antes
+  dejaba el antro pixelado para siempre al volver.
+
+**Autocrítica para la próxima vuelta**: (1) chapitas de vecinos se solapan
+entre sí; (2) carga inicial larga sin progreso real (medir en build de prod);
+(3) la pose sentada de algunos GLB (Pol) se ve rara; (4) no hay ceremonia
+fuerte al llegar a 30 más allá del panel + trofeo; (5) `styles.css` (6000+
+líneas de overrides en cascada) pide una limpieza seria.
+
 ## 🔧 EN CURSO
+
+- [ ] **Duelo online**: el motor ya es determinista; falta sincronizar por sala
+  (host siembra el rng, acciones por relay) y P2 humano.
+- [ ] **Duelo con consecuencia**: que el perdedor pague algo en la mesa
+  (¿punto, carta, Sustancia X?) — decidir con Edu.
 
 - [x] **Codex**: escenario sólido (casa cerrada, salas tapiadas, taburetes) — base cerrada; taburetes quedan pendientes porque los asientos viven en archivos marcados NO TOCAR.
 - [ ] **Cámara silla**: si "agarrar el mundo" tampoco convence a Edu, probar

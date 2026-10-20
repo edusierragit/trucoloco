@@ -150,6 +150,7 @@ async function main() {
       await sleep(1200);
     }
 
+    let idleSteps = 0;
     for (let step = 0; step < 24; step += 1) {
       const state = await evaluate(client, `(() => {
         const txt = (node) => (node?.textContent ?? "").replace(/\\s+/g, " ").trim();
@@ -210,10 +211,19 @@ async function main() {
         return label;
       })()`);
 
-      actions.push(clicked);
+      if (clicked) actions.push(clicked);
 
       if (observed.maxHandImages >= 1 && observed.trickResolved) break;
-      if (!clicked) break;
+      // Sin botones no significa trabado: la transición del portal y el
+      // lazy-load del juego dejan la pantalla muda un par de segundos.
+      if (!clicked) {
+        idleSteps += 1;
+        if (idleSteps > 12) break;
+        step -= 1;
+        await sleep(500);
+        continue;
+      }
+      idleSteps = 0;
       await sleep(420);
     }
 

@@ -65,26 +65,26 @@ function TeamColumn({ name, score, accent, onAdjust, canAdjust }) {
       </div>
       <ScoreHalf label="MALAS" points={malas} accent={accent} />
       <ScoreHalf label="BUENAS" points={buenas} accent={accent} />
-      <div className="palito-adjust">
-        <button
-          type="button"
-          className="palito-adjust-btn"
-          disabled={!canAdjust}
-          title={canAdjust ? "Restar un tanto" : "Anotador manual: próximamente"}
-          onClick={() => onAdjust?.(-1)}
-        >
-          −
-        </button>
-        <button
-          type="button"
-          className="palito-adjust-btn"
-          disabled={!canAdjust}
-          title={canAdjust ? "Sumar un tanto" : "Anotador manual: próximamente"}
-          onClick={() => onAdjust?.(1)}
-        >
-          +
-        </button>
-      </div>
+      {canAdjust ? (
+        <div className="palito-adjust">
+          <button
+            type="button"
+            className="palito-adjust-btn"
+            title="Restar un tanto"
+            onClick={() => onAdjust?.(-1)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="palito-adjust-btn"
+            title="Sumar un tanto"
+            onClick={() => onAdjust?.(1)}
+          >
+            +
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

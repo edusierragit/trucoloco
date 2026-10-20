@@ -255,9 +255,12 @@ function PlaySection({ onLaunch }) {
   const [launchingMode, setLaunchingMode] = useState(null);
   const modeLabel = selectedMode === "comun" ? "Truco tradicional" : "Trucoloco";
 
+  // el primer toque manda: doble clic (o un bot apurado) no reinicia la cuenta
+  const launch = (intent) => setLaunchingMode((current) => current ?? { mode: selectedMode, intent });
+
   useEffect(() => {
     if (!launchingMode) return undefined;
-    const timer = window.setTimeout(() => onLaunch(launchingMode), 1350);
+    const timer = window.setTimeout(() => onLaunch(launchingMode.mode, launchingMode.intent), 1350);
     return () => window.clearTimeout(timer);
   }, [launchingMode, onLaunch]);
 
@@ -332,9 +335,9 @@ function PlaySection({ onLaunch }) {
           <p>Elegí cómo jugar.</p>
         </header>
         <div className="portal-play-actions portal-actions-unfold">
-          <button type="button" onClick={() => setLaunchingMode(selectedMode)}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Jugar con un bot</strong><small>Entrá directo a una partida.</small></button>
-          <button type="button" onClick={() => setLaunchingMode(selectedMode)}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Jugar online</strong><small>Entrá a la mesa online.</small></button>
-          <button className={openPanel === "tournament" ? "portal-action-active" : ""} type="button" aria-pressed={openPanel === "tournament"} onClick={() => setOpenPanel((current) => current === "tournament" ? null : "tournament")}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Torneo</strong><small>Clasificatoria al mejor de tres.</small></button>
+          <button type="button" onClick={() => launch("bot")}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Jugar con un bot</strong><small>Entrá directo a una partida.</small></button>
+          <button type="button" onClick={() => launch("online")}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Jugar online</strong><small>Entrá a la mesa online.</small></button>
+          <button className={openPanel === "tournament" ? "portal-action-active" : ""} type="button" aria-pressed={openPanel === "tournament"} onClick={() => setOpenPanel((current) => current === "tournament" ? null : "tournament")}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg><strong>Torneo</strong><small>Al mejor de tres.</small></button>
           <button className={openPanel === "ranking" ? "portal-action-active" : ""} type="button" aria-pressed={openPanel === "ranking"} onClick={() => setOpenPanel((current) => current === "ranking" ? null : "ranking")}><svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="score" /></svg><strong>Ranking</strong><small>Individual y por equipos.</small></button>
         </div>
         {openPanel === "tournament" ? (
@@ -392,7 +395,7 @@ function PlaySection({ onLaunch }) {
               </div>
               {finalReady.every(Boolean) && !champion ? (
                 <div className="portal-final-match">
-                  <button className="portal-tournament-launch" type="button" onClick={() => setLaunchingMode(selectedMode)}>Jugar la final</button>
+                  <button className="portal-tournament-launch" type="button" onClick={() => launch("bot")}>Jugar la final</button>
                   <div><button type="button" onClick={() => setChampion(semifinalWinners[0])}>Ganó {semifinalWinners[0]}</button><button type="button" onClick={() => setChampion(semifinalWinners[1])}>Ganó {semifinalWinners[1]}</button></div>
                 </div>
               ) : null}
@@ -401,14 +404,14 @@ function PlaySection({ onLaunch }) {
         ) : null}
         {openPanel === "ranking" ? <RankingPanel mode={selectedMode} /> : null}
         {launchingMode ? (
-          <div className={`portal-launch-transition portal-launch-${launchingMode}`} aria-live="assertive">
+          <div className={`portal-launch-transition portal-launch-${launchingMode.mode}`} aria-live="assertive">
             <div className="portal-smoke portal-smoke-one" /><div className="portal-smoke portal-smoke-two" /><div className="portal-smoke portal-smoke-three" />
-            {launchingMode === "comun" ? <div className="portal-launch-cards" aria-hidden="true"><span /><span /><span /></div> : <div className="portal-launch-sparks" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
+            {launchingMode.mode === "comun" ? <div className="portal-launch-cards" aria-hidden="true"><span /><span /><span /></div> : <div className="portal-launch-sparks" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
             <div className="portal-launch-stage">
               <BrandMark compact />
-              <small className="portal-launch-mode">{launchingMode === "trucoloco" ? "TRUCOLOCO" : "TRUCO TRADICIONAL"}</small>
+              <small className="portal-launch-mode">{launchingMode.mode === "trucoloco" ? "TRUCOLOCO" : "TRUCO TRADICIONAL"}</small>
               <strong className="portal-launch-versus">Tu equipo <b>VS</b> La mesa</strong>
-              <p>{launchingMode === "trucoloco" ? "Entrando a la locura…" : "Repartiendo la primera mano…"}</p>
+              <p>{launchingMode.mode === "trucoloco" ? "Entrando a la locura…" : "Repartiendo la primera mano…"}</p>
               <div className="portal-launch-countdown" aria-hidden="true"><b>3</b><b>2</b><b>1</b></div>
             </div>
           </div>
@@ -812,7 +815,11 @@ function RulesSection() {
 
 export default function PortalApp() {
   const [activeSection, setActiveSection] = useState("home");
-  const [gameOpen, setGameOpen] = useState(() => new URLSearchParams(window.location.search).has("sala"));
+  // la URL es el estado: refrescar en el antro te deja en el antro, no en la portada
+  const [gameOpen, setGameOpen] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("sala") || params.has("modo");
+  });
   const [sectionResetKey, setSectionResetKey] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(() => !sfx.isMuted());
   const isHome = activeSection === "home";
@@ -849,10 +856,11 @@ export default function PortalApp() {
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [activeSection, sectionResetKey]);
 
-  const launchGame = (mode) => {
+  const launchGame = (mode, intent = "bot") => {
     runPortalTransition(() => {
       const url = new URL(window.location.href);
       url.searchParams.set("modo", mode);
+      url.searchParams.set("jugar", intent);
       window.history.replaceState(null, "", `${url.pathname}${url.search}`);
       setGameOpen(true);
     }, { direction: "forward", tone: mode });
@@ -862,6 +870,7 @@ export default function PortalApp() {
     runPortalTransition(() => {
       const url = new URL(window.location.href);
       url.searchParams.delete("modo");
+      url.searchParams.delete("jugar");
       url.searchParams.delete("sala");
       window.history.replaceState(null, "", `${url.pathname}${url.search}`);
       setGameOpen(false);
@@ -900,6 +909,12 @@ export default function PortalApp() {
         <div className="portal-brand-lockup">
           <BrandMark compact={!isHome} />
           <p>El truco, pero bien loco.</p>
+          {isHome ? (
+            <button className="portal-home-play" type="button" onClick={() => navigate("play")}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><PortalIcon name="play" /></svg>
+              Jugar
+            </button>
+          ) : null}
         </div>
       </header>
       <main className="portal-content" aria-live="polite">

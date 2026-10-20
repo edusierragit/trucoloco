@@ -191,7 +191,7 @@ function HangingGlass({ x }) {
       </mesh>
       <mesh position={[0, -0.02, 0]}>
         <sphereGeometry args={[0.05, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#cfe0e6" roughness={0.1} transparent opacity={0.4} side={2} />
+        <meshStandardMaterial color="#cfe0e6" roughness={0.1} transparent opacity={0.4} side={2} forceSinglePass />
       </mesh>
       <mesh position={[0, -0.165, 0]}>
         <cylinderGeometry args={[0.035, 0.035, 0.008, 12]} />

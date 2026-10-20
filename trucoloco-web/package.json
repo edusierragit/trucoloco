@@ -7,10 +7,11 @@
     "dev": "vite",
     "dev:mcp": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/dev-with-threejs-mcp.ps1",
     "mcp:three": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start-threejs-mcp.ps1",
-    "check:rules": "node scripts/validate-truco-rules.mjs",
+    "check:rules": "node scripts/validate-truco-rules.mjs && node scripts/validate-duel.mjs",
     "check:flow": "node scripts/validate-truco-flow.mjs",
     "check:ui": "node scripts/validate-ui-flow.mjs",
-    "check:conflict": "node scripts/validate-conflict-combat.mjs",
+    "check:duel": "node scripts/validate-duel.mjs",
+    "probe:perf": "node scripts/probe-perf.mjs",
     "build": "vite build .",
     "preview": "vite preview"
   },

@@ -5887,22 +5887,35 @@ label {
 
 .sala-player-empty { opacity: 0.44; }
 
-.sala-test-tools {
-  margin-top: 9px;
-  border-top: 1px solid rgba(240, 221, 180, 0.12);
-  padding-top: 7px;
-  color: rgba(240, 221, 180, 0.62);
-  font-size: 10px;
+/* Jugar con bots: acción secundaria visible, nunca escondida en un desplegable. */
+.sala-fill-bots {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  white-space: normal;
+  border-style: dashed;
 }
 
-.sala-test-tools summary {
+.sala-copy { width: 100%; }
+.sala-btn.sala-copy { display: block; margin: 8px 0; }
+
+/* El host solo no es un error: pista chica, no cartel rojo. */
+.sala-conn-hint {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: rgba(240, 221, 180, 0.55);
+}
+
+.sala-conn-hint button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: #91e9f6;
+  font: inherit;
+  text-decoration: underline;
   cursor: pointer;
-  letter-spacing: 0.08em;
 }
-
-.sala-test-tools p { margin: 7px 0; line-height: 1.4; }
-.sala-test-tools .sala-btn { width: 100%; }
-.sala-test-tools-solo { width: 100%; }
 
 .scene-loading-ui {
   position: absolute;
@@ -6262,4 +6275,313 @@ body:has(.hand-result-panel-lose) .stage-viewport canvas { filter: brightness(.8
   .envido-panel,
   .canto-chip-weapon::after { animation: none !important; }
   .stage-viewport canvas { transition: none; }
+}
+
+/* ── PERILLA DE CALIDAD ───────────────────────────────────────────────────
+   Chiquita y fuera del camino. Sin abrir, es solo el contador de fps: el
+   jugador ve al instante si el antro le está rindiendo o no. */
+.quality-dock {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.quality-dock > * {
+  pointer-events: auto;
+}
+
+.quality-dock-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 138, 54, 0.28);
+  background: rgba(10, 7, 5, 0.72);
+  color: #c99b58;
+  font-family: inherit;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.quality-dock-toggle:hover {
+  border-color: rgba(217, 138, 54, 0.6);
+  background: rgba(16, 11, 8, 0.9);
+}
+
+.quality-fps {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.quality-fps-ok { color: #63d5c5; }
+.quality-fps-mid { color: #e8b34a; }
+.quality-fps-bad { color: #e06b4a; }
+
+.quality-dock-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 232px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(217, 138, 54, 0.3);
+  background: rgba(9, 6, 5, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(9px);
+}
+
+.quality-dock-panel strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f3dfb6;
+}
+
+.quality-dock-tiers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.quality-tier {
+  padding: 5px 2px;
+  border-radius: 7px;
+  border: 1px solid rgba(217, 138, 54, 0.22);
+  background: rgba(30, 19, 13, 0.7);
+  color: #a98a63;
+  font-family: inherit;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.quality-tier:hover { color: #f3dfb6; border-color: rgba(217, 138, 54, 0.5); }
+
+.quality-tier-on {
+  background: linear-gradient(180deg, #d98a36, #a4581f);
+  border-color: #e8b34a;
+  color: #140d07;
+  font-weight: 700;
+}
+
+.quality-dock-panel em {
+  font-style: normal;
+  font-size: 0.64rem;
+  line-height: 1.35;
+  color: #8d7355;
+}
+
+.quality-dock-meta {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: #6f5c44;
+}
+
+.quality-dock-auto {
+  padding: 5px;
+  border-radius: 7px;
+  border: 1px solid rgba(99, 213, 197, 0.3);
+  background: rgba(20, 38, 36, 0.6);
+  color: #63d5c5;
+  font-family: inherit;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+/* ─── PASE SUPREMO · antesala ───────────────────────────────────────────────
+   El confirmar ES el CTA: dorado, pegado abajo del panel, siempre a la vista. */
+.hud-role-select .role-ready-strip {
+  position: sticky;
+  bottom: 0;
+}
+.role-confirm-button:not(:disabled) {
+  min-height: 56px;
+  border: 1px solid #f1c66e;
+  border-style: solid;
+  color: #1a0f06;
+  background: linear-gradient(180deg, #f2c463, #c9862c 62%, #a8641c);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 12px 28px rgba(201, 134, 44, 0.32),
+    inset 0 1px 0 rgba(255, 244, 214, 0.6);
+}
+.role-confirm-button:not(:disabled):hover {
+  border-color: #ffe0a0;
+  background: linear-gradient(180deg, #ffd47a, #d8933a 62%, #b06d22);
+  transform: translateY(-1px);
+}
+.role-confirm-button .role-test-main {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.role-confirm-button .role-test-sub {
+  opacity: 0.78;
+  font-weight: 700;
+}
+.hud-role-select .role-card-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.hud-role-select .role-card {
+  padding: 26px 10px 10px !important;
+}
+.hud-role-select .role-card-number {
+  top: 8px !important;
+  left: 10px !important;
+  transform: none;
+  font-size: 0.95rem !important;
+  opacity: 0.55;
+}
+.hud-role-select .role-card strong {
+  font-size: 0.98rem !important;
+  line-height: 1.05;
+}
+.hud-role-select .character-card-row {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+/* el "levantarse a caminar" es secundario: píldora chica, nunca sobre tus naipes */
+.camera-dock.camera-dock-context {
+  min-width: 0;
+  width: auto;
+  padding: 4px;
+  border-radius: 999px;
+  opacity: 0.78;
+}
+.camera-dock.camera-dock-context:hover { opacity: 1; }
+.camera-dock-context .camera-dock-button {
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+/* la voz del antro arriba del resultado: grito corto, no un párrafo */
+.hand-result-flavor {
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #ffd27a;
+  text-shadow: 0 0 18px rgba(229, 168, 62, 0.45);
+  animation: hand-flavor-pop 520ms cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.hand-result-panel-lose .hand-result-flavor {
+  color: #ff9a7f;
+  text-shadow: 0 0 18px rgba(208, 90, 68, 0.4);
+}
+@keyframes hand-flavor-pop {
+  from { opacity: 0; transform: scale(1.6) rotate(-4deg); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hand-result-flavor { animation: none; }
+}
+
+/* "Mesa 3v3 · foco actual" era un tablero de depuración: quién es mano y quién
+   actúa ya lo cuentan la mesa 3D (ficha MANO, anillo del actor) y la píldora. */
+.table-flow-panel { display: none !important; }
+
+/* en la antesala el panel de personajes ocupa la derecha: el sonido se muda
+   bajo el título para no pisar la tarjeta del Cartachin */
+.hud-role-select .game-sound-toggle {
+  top: 84px;
+  right: auto;
+  left: 18px;
+}
+
+/* antesala en el teléfono: hoja inferior. El personaje que elegís se VE arriba
+   (antes el panel lo tapaba entero); el título sobra, el neón ya lo dice. */
+@media (max-width: 780px) {
+  .hud-role-select .hud-top-select { display: none; }
+  .hud-role-select .role-selector {
+    top: auto;
+    bottom: max(4px, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 60vh;
+    overflow-x: hidden;
+  }
+  .hud-role-select .role-select-hero h2 { font-size: 1.45rem; }
+  .hud-role-select .game-sound-toggle {
+    top: 12px;
+    left: auto;
+    right: 8px;
+  }
+}
+
+/* ─── teléfono en partida: la mesa primero ───────────────────────────────────
+   Salir = flecha chica en la esquina; el marcador se vuelve una tira de
+   palitos (sin título, sin PIZARRA, sin leyenda): de 218px a ~70px. */
+@media (max-width: 780px) {
+  .exit-to-menu {
+    left: 8px;
+    transform: none;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  .exit-to-menu-label { display: none; }
+
+  .hud-top-compact {
+    top: 6px !important;
+    left: 50% !important;
+    right: auto !important;
+    width: auto !important;
+    max-width: calc(100vw - 132px);
+    transform: translateX(-50%);
+    padding: 4px 6px !important;
+    min-height: 0 !important;
+  }
+  .hud-top-compact .title-block,
+  .hud-top-compact .score-names,
+  .hud-top-compact .palitos-head,
+  .hud-top-compact .palito-half-label {
+    display: none !important;
+  }
+  .hud-top-compact .scoreboard { gap: 2px; padding: 0; }
+  .hud-top-compact .score-label {
+    font-size: 0.58rem;
+    text-align: center;
+    opacity: 0.8;
+  }
+  .hud-top-compact .palitos-board { padding: 4px 6px; gap: 2px; }
+  .hud-top-compact .palito-half { gap: 0; }
+  .hud-top-compact .palito-team { gap: 1px; }
+  .hud-top-compact .palito-team:not(:has(.palito-adjust)) { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .hud-top-compact .palito-team-head { width: 100%; }
+  .hud-top-compact .palito-square { width: 14px; height: 14px; }
+  .hud-hand-active .game-sound-toggle,
+  .hud-hand-active ~ .game-sound-toggle {
+    top: 8px;
+  }
+}
+
+.game-sound-toggle { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 780px) {
+  .game-sound-label { display: none; }
+  .game-sound-toggle { min-width: 44px; justify-content: center; padding: 7px; }
+}
+@media (max-width: 780px) {
+  .camera-dock.camera-dock-context {
+    left: 8px !important;
+    right: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  }
 }
